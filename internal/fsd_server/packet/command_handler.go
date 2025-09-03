@@ -5,7 +5,6 @@ import (
 	"fmt"
 	c "github.com/half-nothing/simple-fsd/internal/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strings"
 )
@@ -19,7 +18,7 @@ func (ch *ConnectionHandler) checkPacketLength(data []string, requirement *Comma
 }
 
 // verifyUserInfo 验证用户信息与处理客户端重连机制
-func (ch *ConnectionHandler) verifyUserInfo(callsign string, protocol int, cid UserId, password string) *Result {
+func (ch *ConnectionHandler) verifyUserInfo(callsign string, protocol int, cid string, password string) *Result {
 	if !callsignValid(callsign) {
 		return ResultError(CallsignInvalid, true, callsign, nil)
 	}
@@ -41,7 +40,7 @@ func (ch *ConnectionHandler) verifyUserInfo(callsign string, protocol int, cid U
 		}
 	}
 
-	user, err := cid.GetUser(ch.userOperation)
+	user, err := ch.userOperation.GetUserByCid(cid)
 	if err != nil {
 		return ResultError(AuthFail, true, callsign, err)
 	}
@@ -66,7 +65,7 @@ func (ch *ConnectionHandler) handleAddAtc(data []string, rawLine []byte) *Result
 	// #AA 2352_OBS SERVER 2352 2352 123456  1  9  1  0  29.86379 119.49287 100
 	// [0] [   1  ] [  2 ] [ 3] [ 4] [  5 ] [6][7][8][9] [  10  ] [   11  ] [12]
 	callsign := data[0]
-	cid := GetUserId(data[3])
+	cid := data[3]
 	password := data[4]
 	protocol := utils.StrToInt(data[6], 0)
 	result := ch.verifyUserInfo(callsign, protocol, cid, password)
@@ -97,7 +96,7 @@ func (ch *ConnectionHandler) handleAddPilot(data []string, rawLine []byte) *Resu
 	//	#AP CES2352 SERVER 2352 123456  1   9  16  Half_nothing ZGHA
 	//  [0] [  1  ] [  2 ] [ 3] [  4 ] [5] [6] [7] [       8       ]
 	callsign := data[0]
-	cid := GetUserId(data[2])
+	cid := data[2]
 	password := data[3]
 	protocol := utils.StrToInt(data[5], 0)
 	result := ch.verifyUserInfo(callsign, protocol, cid, password)
@@ -118,16 +117,6 @@ func (ch *ConnectionHandler) handleAddPilot(data []string, rawLine []byte) *Resu
 	go ch.clientManager.BroadcastMessage(rawLine, ch.client, BroadcastToClientInRange)
 	ch.client.SendMotd()
 	c.InfoF("[%s] client login successfully", callsign)
-	if !ch.config.SimulatorServer {
-		flightPlan := ch.client.FlightPlan()
-		if flightPlan != nil && flightPlan.FromWeb && callsign != flightPlan.Callsign {
-			ch.client.SendLine(makePacket(Message, "FPlanManager", callsign,
-				fmt.Sprintf("Seems you are connect with callsign(%s), "+
-					"but we found a flightplan submit by web at %s which has callsign(%s), "+
-					"please check it.", flightPlan.UpdatedAt.String(), callsign, flightPlan.Callsign)))
-
-		}
-	}
 	return ResultSuccess()
 }
 
@@ -216,7 +205,6 @@ func (ch *ConnectionHandler) handleClientQuery(data []string, rawLine []byte) *R
 	if ch.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
-	commandLength := len(data)
 	targetStation := data[1]
 	if targetStation == "SERVER" {
 		subQuery := data[2]
@@ -232,27 +220,6 @@ func (ch *ConnectionHandler) handleClientQuery(data []string, rawLine []byte) *R
 	}
 	// 如果发送目标是一个频率
 	if strings.HasPrefix(targetStation, "@") {
-		// 如果目标频率是94835
-		if !ch.config.SimulatorServer && targetStation == SpecialFrequency {
-			// 这里并不是发给服务器的, 所以如果客户端没有权限, 直接返回就行
-			if !ch.client.CheckFacility(AllowAtcFacility) {
-				return ResultSuccess()
-			}
-			subQuery := data[2]
-			if subQuery == "FA" && commandLength >= 5 {
-				targetCallsign := data[3]
-				client, ok := ch.clientManager.GetClient(targetCallsign)
-				if !ok {
-					// 这里并不是发给服务器的, 所以如果找不到指定客户端, 直接返回就行
-					return ResultSuccess()
-				}
-				cruiseAltitude := utils.StrToInt(data[4], 0)
-				if err := ch.flightPlanOperation.UpdateCruiseAltitude(client.FlightPlan(), fmt.Sprintf("FL%03d", cruiseAltitude/100)); err != nil {
-					// 这里并不是发给服务器的, 所以如果出错, 直接返回就行
-					return ResultSuccess()
-				}
-			}
-		}
 		err := ch.sendFrequencyMessage(targetStation, rawLine)
 		if err != nil {
 			return err
@@ -353,8 +320,8 @@ func (ch *ConnectionHandler) handleAtcEditPlan(data []string, _ []byte) *Result 
 	if client.FlightPlan == nil {
 		return ResultError(NoFlightPlan, false, ch.client.Callsign(), fmt.Errorf("%s do not have filght plan", ch.client.Callsign()))
 	}
-	client.FlightPlan().Locked = !ch.config.SimulatorServer
-	if err := ch.flightPlanOperation.UpdateFlightPlan(client.FlightPlan(), data[1:], true); err != nil {
+	client.FlightPlan().Locked = true
+	if err := ch.flightPlanOperation.UpdateFlightPlan(client.FlightPlan(), client.Callsign(), data[1:], true); err != nil {
 		return ResultError(Syntax, false, ch.client.Callsign(), err)
 	}
 	go ch.clientManager.BroadcastMessage([]byte(ch.flightPlanOperation.ToString(client.FlightPlan(), string(AllATC))),

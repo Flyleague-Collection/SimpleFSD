@@ -34,7 +34,6 @@ type Client struct {
 	flightPlan          *operation.FlightPlan
 	atisInfo            []string
 	paths               []*PilotPath
-	history             *operation.History
 	clientManager       ClientManagerInterface
 	disconnect          atomic.Bool
 	motdBytes           []byte
@@ -43,25 +42,12 @@ type Client struct {
 	config              *c.Config
 	userOperation       operation.UserOperationInterface
 	flightPlanOperation operation.FlightPlanOperationInterface
-	historyOperation    operation.HistoryOperationInterface
-	pathTrigger         *utils.OverflowTrigger
 }
 
 func (cm *ClientManager) NewClient(callsign string, rating Rating, protocol int, realName string, socket ConnectionHandlerInterface, isAtc bool) ClientInterface {
 	socket.SetCallsign(callsign)
 	var flightPlan *operation.FlightPlan = nil
-	flightPlanOperation := cm.applicationContent.FlightPlanOperation()
 	userOperation := cm.applicationContent.UserOperation()
-	historyOperation := cm.applicationContent.HistoryOperation()
-	if !isAtc && !cm.config.Server.General.SimulatorServer {
-		var err error
-		flightPlan, err = flightPlanOperation.GetFlightPlanByCid(socket.User().Cid)
-		if errors.Is(err, operation.ErrFlightPlanNotFound) {
-			c.WarnF("No flight plan found for %s(%d)", callsign, socket.User().Cid)
-		} else if err != nil {
-			c.WarnF("Fail to get flight plan for %s(%d): %v", callsign, socket.User().Cid, err)
-		}
-	}
 	client := &Client{
 		isAtc:               isAtc,
 		callsign:            callsign,
@@ -81,7 +67,6 @@ func (cm *ClientManager) NewClient(callsign string, rating Rating, protocol int,
 		flightPlan:          flightPlan,
 		atisInfo:            make([]string, 0, 4),
 		paths:               make([]*PilotPath, 0),
-		history:             historyOperation.NewHistory(socket.User().Cid, callsign, isAtc),
 		motdBytes:           nil,
 		clientManager:       cm,
 		disconnect:          atomic.Bool{},
@@ -89,10 +74,8 @@ func (cm *ClientManager) NewClient(callsign string, rating Rating, protocol int,
 		lock:                sync.RWMutex{},
 		config:              cm.config,
 		userOperation:       userOperation,
-		flightPlanOperation: flightPlanOperation,
-		historyOperation:    historyOperation,
+		flightPlanOperation: cm.applicationContent.FlightPlanOperation(),
 	}
-	client.pathTrigger = utils.NewOverflowTrigger(cm.config.Server.FSDServer.PosUpdatePoints, client.recordPathPoint)
 	return client
 }
 
@@ -117,23 +100,6 @@ func (client *Client) Delete() {
 		if client.reconnectTimer != nil {
 			client.reconnectTimer.Stop()
 			client.reconnectTimer = nil
-		}
-
-		if client.isAtc || !client.config.Server.General.SimulatorServer {
-			if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
-				c.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
-			}
-		}
-
-		if client.isAtc {
-			if err := client.userOperation.UpdateUserAtcTime(client.user, client.history.OnlineTime); err != nil {
-				c.ErrorF("[%s](%s) Failed to add ATC time: %v", client.socket.ConnId(), client.callsign, err)
-			}
-		} else if !client.config.Server.General.SimulatorServer {
-			// 如果不是模拟机服务器, 则写入机组连线时长
-			if err := client.userOperation.UpdateUserPilotTime(client.user, client.history.OnlineTime); err != nil {
-				c.ErrorF("[%s](%s) Failed to add pilot time: %v", client.socket.ConnId(), client.callsign, err)
-			}
 		}
 
 		if !client.clientManager.DeleteClient(client.callsign) {
@@ -191,22 +157,18 @@ func (client *Client) MarkedDisconnect(immediate bool) {
 		return
 	}
 
-	client.reconnectTimer = time.AfterFunc(client.config.Server.FSDServer.SessionCleanDuration, client.Delete)
+	client.reconnectTimer = time.AfterFunc(client.config.SessionCleanDuration, client.Delete)
 	c.InfoF("[%s](%s) client disconnected, reconnect window: %v", client.socket.ConnId(),
-		client.callsign, client.config.Server.FSDServer.SessionCleanDuration)
+		client.callsign, client.config.SessionCleanDuration)
 }
 
 func (client *Client) UpsertFlightPlan(flightPlanData []string) error {
 	if client.flightPlan == nil {
-		flightPlan, err := client.flightPlanOperation.UpsertFlightPlan(client.user, client.callsign, flightPlanData)
+		flightPlan, err := client.flightPlanOperation.NewFlightPlan(client.user, client.callsign, flightPlanData)
 		if err != nil {
 			return err
 		}
 		client.flightPlan = flightPlan
-		return nil
-	}
-	// 如果是模拟机服务器, 只创建就行
-	if client.config.Server.General.SimulatorServer {
 		return nil
 	}
 	if client.flightPlan.Locked {
@@ -214,10 +176,11 @@ func (client *Client) UpsertFlightPlan(flightPlanData []string) error {
 		arrivalAirport := flightPlanData[9]
 		if client.flightPlan.DepartureAirport != departureAirport || client.flightPlan.ArrivalAirport != arrivalAirport {
 			client.flightPlan.Locked = false
+		} else {
+			return nil
 		}
 	}
-	err := client.flightPlanOperation.UpdateFlightPlan(client.flightPlan, flightPlanData, false)
-	return err
+	return client.flightPlanOperation.UpdateFlightPlan(client.flightPlan, client.callsign, flightPlanData, false)
 }
 
 func (client *Client) SetPosition(index int, lat float64, lon float64) error {
@@ -235,7 +198,7 @@ func (client *Client) UpdatePilotPos(transponder int, lat float64, lon float64, 
 	client.altitude = alt
 	client.groundSpeed = groundSpeed
 	client.pbh = pbh
-	go client.pathTrigger.Tick()
+	client.recordPathPoint()
 }
 
 func (client *Client) UpdateAtcPos(frequency int, facility Facility, visualRange float64, lat float64, lon float64) {
@@ -265,7 +228,7 @@ func (client *Client) SendError(result *Result) {
 		return
 	}
 
-	packet := makePacket(Error, "fsd_server", client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, result.Errno.String())
+	packet := makePacket(Error, "SERVER", client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, result.Errno.String())
 	client.SendLine(packet)
 
 	if result.Fatal {
@@ -324,11 +287,11 @@ func (client *Client) SendMotd() {
 		return
 	}
 
-	data := make([][]byte, 0, len(client.config.Server.FSDServer.Motd)+1)
+	data := make([][]byte, 0, len(client.config.Motd)+1)
 	data = append(data, []byte(fmt.Sprintf("%sserver:%s:Welcome to use %s v%s\r\n",
-		Message, client.callsign, client.config.Server.FSDServer.FSDName, c.AppVersion.String())))
+		Message, client.callsign, client.config.FSDName, c.AppVersion.String())))
 
-	for _, message := range client.config.Server.FSDServer.Motd {
+	for _, message := range client.config.Motd {
 		data = append(data, makePacket(Message, "fsd_server", client.callsign, message))
 	}
 
@@ -374,8 +337,6 @@ func (client *Client) Frequency() int { return client.frequency }
 
 func (client *Client) AtisInfo() []string { return client.atisInfo }
 
-func (client *Client) History() *operation.History { return client.history }
-
 func (client *Client) Transponder() string { return client.transponder }
 
 func (client *Client) Altitude() int { return client.altitude }
@@ -385,8 +346,4 @@ func (client *Client) GroundSpeed() int { return client.groundSpeed }
 func (client *Client) Heading() int {
 	_, _, heading, _ := utils.UnpackPBH(client.pbh)
 	return int(heading)
-}
-
-func (client *Client) Paths() []*PilotPath {
-	return client.paths
 }

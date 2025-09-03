@@ -5,16 +5,16 @@ import (
 	c "github.com/half-nothing/simple-fsd/internal/config"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server/packet"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"net"
 	"time"
 )
 
 type FsdCloseCallback struct {
-	clientManager fsd.ClientManagerInterface
+	clientManager ClientManagerInterface
 }
 
-func NewFsdCloseCallback(clientManager fsd.ClientManagerInterface) *FsdCloseCallback {
+func NewFsdCloseCallback(clientManager ClientManagerInterface) *FsdCloseCallback {
 	return &FsdCloseCallback{clientManager: clientManager}
 }
 
@@ -45,8 +45,8 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 	cm := packet.NewClientManager(applicationContent)
 
 	// 创建TCP监听器
-	sem := make(chan struct{}, config.Server.FSDServer.MaxWorkers)
-	ln, err := net.Listen("tcp", config.Server.FSDServer.Address)
+	sem := make(chan struct{}, config.MaxWorkers)
+	ln, err := net.Listen("tcp", config.Address)
 	if err != nil {
 		c.FatalF("FSD Server Start error: %v", err)
 		return
@@ -78,7 +78,7 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 		go func(c net.Conn) {
 			connection := packet.NewConnectionHandler(
 				conn,
-				config.Server.General,
+				config,
 				cm,
 				applicationContent.UserOperation(),
 				applicationContent.FlightPlanOperation(),

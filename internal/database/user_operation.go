@@ -1,251 +1,48 @@
+// Package database
 package database
 
 import (
-	"context"
-	"errors"
+	"bytes"
+	"crypto/md5"
+	"crypto/sha256"
 	c "github.com/half-nothing/simple-fsd/internal/config"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-	"time"
 )
 
 type UserOperation struct {
-	config       *c.OtherConfig
-	db           *gorm.DB
-	queryTimeout time.Duration
+	config *c.Config
 }
 
-func NewUserOperation(db *gorm.DB, queryTimeout time.Duration, config *c.OtherConfig) *UserOperation {
-	return &UserOperation{config: config, db: db, queryTimeout: queryTimeout}
+func NewUserOperation(config *c.Config) *UserOperation {
+	return &UserOperation{config: config}
 }
 
-func (userOperation *UserOperation) GetUserByUid(uid uint) (user *User, err error) {
-	user = &User{}
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).
-		Where("id = ?", uid).
-		First(user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = ErrUserNotFound
+func (userOperation *UserOperation) GetUserByCid(cid string) (user *User, err error) {
+	user, exist := data[cid]
+	if !exist {
+		return nil, ErrUserNotFound
 	}
 	return
 }
 
-func (userOperation *UserOperation) GetUserByCid(cid int) (user *User, err error) {
-	user = &User{}
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).
-		Where("cid = ?", cid).
-		First(user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = ErrUserNotFound
+func (userOperation *UserOperation) VerifyUserPassword(user *User, password string) (pass bool) {
+	switch userOperation.config.EncryptionType {
+	case 0:
+		// 明文
+		return user.Password == password
+	case 1:
+		// MD5
+		hashValue := md5.Sum([]byte(password))
+		return bytes.Equal(hashValue[:], []byte(user.Password))
+	case 2:
+		// SHA256
+		hashValue := sha256.Sum256([]byte(password))
+		return bytes.Equal(hashValue[:], []byte(user.Password))
+	case 3:
+		// bcrypt
+		return bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)) == nil
+	default:
+		return false
 	}
-	return
-}
-
-func (userOperation *UserOperation) GetUserByUsername(username string) (user *User, err error) {
-	user = &User{}
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).
-		Where("username = ?", username).
-		First(user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = ErrUserNotFound
-	}
-	return
-}
-
-func (userOperation *UserOperation) GetUserByEmail(email string) (user *User, err error) {
-	user = &User{}
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).
-		Where("email = ?", email).
-		First(user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = ErrUserNotFound
-	}
-	return user, nil
-}
-
-func (userOperation *UserOperation) GetUserByUsernameOrEmail(ident string) (user *User, err error) {
-	user = &User{}
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).
-		Where("username = ? OR email = ?", ident, ident).
-		First(user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = ErrUserNotFound
-	}
-	return user, nil
-}
-
-func (userOperation *UserOperation) GetUsers(page, pageSize int) (users []*User, total int64, err error) {
-	users = make([]*User, 0, pageSize)
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	userOperation.db.WithContext(ctx).Model(&User{}).Select("id").Count(&total)
-	err = userOperation.db.WithContext(ctx).Offset((page - 1) * pageSize).Order("cid").Limit(pageSize).Find(&users).Error
-	return
-}
-
-func (userOperation *UserOperation) GetControllers(page, pageSize int) (users []*User, total int64, err error) {
-	users = make([]*User, 0, pageSize)
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	userOperation.db.WithContext(ctx).Model(&User{}).Select("id").Where("rating > ?", fsd.Normal).Count(&total)
-	err = userOperation.db.WithContext(ctx).Offset((page-1)*pageSize).Order("cid").Where("rating > ?", fsd.Normal).Limit(pageSize).Find(&users).Error
-	return
-}
-
-func (userOperation *UserOperation) NewUser(username string, email string, cid int, password string) (user *User, err error) {
-	encodePassword, err := bcrypt.GenerateFromPassword([]byte(password), userOperation.config.BcryptCost)
-	if err != nil {
-		return nil, ErrPasswordEncode
-	}
-	user = &User{
-		Username:       username,
-		Email:          email,
-		Cid:            cid,
-		Password:       string(encodePassword),
-		AvatarUrl:      "",
-		QQ:             0,
-		Rating:         0,
-		Permission:     0,
-		TotalPilotTime: 0,
-		TotalAtcTime:   0,
-	}
-	return
-}
-
-func (userOperation *UserOperation) AddUser(user *User) error {
-	return userOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).Transaction(func(tx *gorm.DB) error {
-		taken, err := userOperation.IsUserIdentifierTaken(tx, user.Cid, user.Username, user.Email)
-		if err != nil {
-			return ErrIdentifierCheck
-		}
-
-		if taken {
-			return ErrIdentifierTaken
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-		defer cancel()
-		return tx.WithContext(ctx).Create(user).Error
-	})
-}
-
-func (userOperation *UserOperation) UpdateUserAtcTime(user *User, seconds int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	return userOperation.db.WithContext(ctx).Model(user).Update("total_atc_time", gorm.Expr("total_atc_time + ?", seconds)).Error
-}
-
-func (userOperation *UserOperation) UpdateUserPilotTime(user *User, seconds int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	return userOperation.db.WithContext(ctx).Model(user).Update("total_pilot_time", gorm.Expr("total_pilot_time + ?", seconds)).Error
-}
-
-func (userOperation *UserOperation) UpdateUserRating(user *User, rating int) error {
-	user.Rating = rating
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	return userOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Model(user).Update("rating", rating).Error
-	})
-}
-
-func (userOperation *UserOperation) UpdateUserPermission(user *User, permission Permission) error {
-	user.Permission = int64(permission)
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	return userOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Model(user).Update("permission", int64(permission)).Error
-	})
-}
-
-func (userOperation *UserOperation) UpdateUserInfo(user *User, info map[string]interface{}) error {
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	return userOperation.db.WithContext(ctx).Model(user).Updates(info).Error
-}
-
-func (userOperation *UserOperation) UpdateUserPassword(user *User, originalPassword, newPassword string, skipVerify bool) ([]byte, error) {
-	if !skipVerify && !userOperation.VerifyUserPassword(user, originalPassword) {
-		return nil, ErrOldPassword
-	}
-	encodePassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), userOperation.config.BcryptCost)
-	if err != nil {
-		return nil, ErrPasswordEncode
-	}
-	user.Password = string(encodePassword)
-	return encodePassword, nil
-}
-
-func (userOperation *UserOperation) SaveUser(user *User) error {
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-
-	err := userOperation.db.WithContext(ctx).Save(user).Error
-	return err
-}
-
-func (userOperation *UserOperation) VerifyUserPassword(user *User, password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	return err == nil
-}
-
-func (userOperation *UserOperation) IsUserIdentifierTaken(tx *gorm.DB, cid int, username, email string) (bool, error) {
-	if tx == nil {
-		tx = userOperation.db
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-
-	var count int64
-	err := tx.WithContext(ctx).
-		Model(&User{}).
-		Where("cid = ? OR username = ? OR email = ?", cid, username, email).
-		Count(&count).Error
-
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
-}
-
-func (userOperation *UserOperation) GetTotalUsers() (total int64, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).Model(&User{}).Select("id").Count(&total).Error
-	return
-}
-
-func (userOperation *UserOperation) GetTotalControllers() (total int64, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).Model(&User{}).Select("id").Where("rating > ?", fsd.Normal).Count(&total).Error
-	return
-}
-
-func (userOperation *UserOperation) GetTimeRatings() (pilots []*User, controllers []*User, err error) {
-	pilots = make([]*User, 0, 10)
-	controllers = make([]*User, 0, 10)
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).Select("id", "cid", "total_pilot_time").Where("total_pilot_time > 0").Order("total_pilot_time desc").Limit(10).Find(&pilots).Error
-	if err != nil {
-		return
-	}
-	err = userOperation.db.WithContext(ctx).Select("id", "cid", "total_atc_time").Where("total_atc_time > 0").Order("total_atc_time desc").Limit(10).Find(&controllers).Error
-	return
 }

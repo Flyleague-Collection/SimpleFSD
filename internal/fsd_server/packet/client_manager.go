@@ -5,7 +5,7 @@ import (
 	"fmt"
 	c "github.com/half-nothing/simple-fsd/internal/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -14,11 +14,11 @@ import (
 )
 
 type ClientManager struct {
-	clients            map[string]ClientInterface
+	clients            map[string]fsd.ClientInterface
 	lock               sync.RWMutex
 	shuttingDown       atomic.Bool
 	config             *c.Config
-	heartbeatSender    *HeartbeatSender
+	heartbeatSender    *fsd.HeartbeatSender
 	clientSlicePool    sync.Pool
 	applicationContent *interfaces.ApplicationContent
 }
@@ -32,23 +32,23 @@ func NewClientManager(applicationContent *interfaces.ApplicationContent) *Client
 	once.Do(func() {
 		if clientManager == nil {
 			clientManager = &ClientManager{
-				clients:            make(map[string]ClientInterface),
+				clients:            make(map[string]fsd.ClientInterface),
 				shuttingDown:       atomic.Bool{},
 				config:             applicationContent.Config(),
 				applicationContent: applicationContent,
 				clientSlicePool: sync.Pool{
 					New: func() interface{} {
-						return make([]ClientInterface, 0, 128)
+						return make([]fsd.ClientInterface, 0, 128)
 					},
 				},
 			}
-			clientManager.heartbeatSender = NewHeartbeatSender(applicationContent.Config().Server.FSDServer.HeartbeatDuration, clientManager.SendHeartBeat)
+			clientManager.heartbeatSender = fsd.NewHeartbeatSender(applicationContent.Config().HeartbeatDuration, clientManager.SendHeartBeat)
 		}
 	})
 	return clientManager
 }
 
-func (cm *ClientManager) PutSlice(clients []ClientInterface) {
+func (cm *ClientManager) PutSlice(clients []fsd.ClientInterface) {
 	cm.clientSlicePool.Put(clients)
 }
 
@@ -78,12 +78,12 @@ func (cm *ClientManager) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (cm *ClientManager) GetClientSnapshot() []ClientInterface {
+func (cm *ClientManager) GetClientSnapshot() []fsd.ClientInterface {
 	cm.lock.RLock()
 	defer cm.lock.RUnlock()
 
 	// 从池中获取切片
-	clients := cm.clientSlicePool.Get().([]ClientInterface)
+	clients := cm.clientSlicePool.Get().([]fsd.ClientInterface)
 	clients = clients[:0]
 
 	// 填充客户端
@@ -94,19 +94,19 @@ func (cm *ClientManager) GetClientSnapshot() []ClientInterface {
 }
 
 // 并发断开所有客户端连接
-func (cm *ClientManager) disconnectClients(clients []ClientInterface) {
+func (cm *ClientManager) disconnectClients(clients []fsd.ClientInterface) {
 	if len(clients) == 0 {
 		return
 	}
 
-	sem := make(chan struct{}, cm.config.Server.FSDServer.MaxBroadcastWorkers)
+	sem := make(chan struct{}, cm.config.MaxBroadcastWorkers)
 	var wg sync.WaitGroup
 
 	for _, client := range clients {
 		wg.Add(1)
 		sem <- struct{}{}
 
-		go func(c ClientInterface) {
+		go func(c fsd.ClientInterface) {
 			defer func() {
 				<-sem
 				wg.Done()
@@ -124,12 +124,12 @@ func (cm *ClientManager) SendHeartBeat() error {
 		return nil
 	}
 	randomInt := rand.Int()
-	packet := makePacket(WindDelta, "SERVER", string(AllClient), strconv.Itoa(randomInt%11-5), strconv.Itoa(randomInt%21-10))
-	cm.BroadcastMessage(packet, nil, BroadcastToAll)
+	packet := makePacket(fsd.WindDelta, "SERVER", string(fsd.AllClient), strconv.Itoa(randomInt%11-5), strconv.Itoa(randomInt%21-10))
+	cm.BroadcastMessage(packet, nil, fsd.BroadcastToAll)
 	return nil
 }
 
-func (cm *ClientManager) AddClient(client ClientInterface) error {
+func (cm *ClientManager) AddClient(client fsd.ClientInterface) error {
 	if cm.shuttingDown.Load() {
 		return fmt.Errorf("fsd_server shutting down")
 	}
@@ -143,7 +143,7 @@ func (cm *ClientManager) AddClient(client ClientInterface) error {
 	return nil
 }
 
-func (cm *ClientManager) GetClient(callsign string) (ClientInterface, bool) {
+func (cm *ClientManager) GetClient(callsign string) (fsd.ClientInterface, bool) {
 	if cm.shuttingDown.Load() {
 		return nil, false
 	}
@@ -174,7 +174,7 @@ func (cm *ClientManager) SendMessageTo(callsign string, message []byte) error {
 
 	client, exists := cm.GetClient(callsign)
 	if !exists {
-		return ErrCallsignNotFound
+		return fsd.ErrCallsignNotFound
 	}
 
 	client.SendLine(message)
@@ -184,16 +184,16 @@ func (cm *ClientManager) SendMessageTo(callsign string, message []byte) error {
 func (cm *ClientManager) SendRawMessageTo(from int, to string, message string) error {
 	client, exists := cm.GetClient(to)
 	if !exists {
-		return ErrCallsignNotFound
+		return fsd.ErrCallsignNotFound
 	}
 
-	bytes := makePacket(Message, fmt.Sprintf("(%04d)", from), to, message)
+	bytes := makePacket(fsd.Message, fmt.Sprintf("(%04d)", from), to, message)
 
 	client.SendLine(bytes)
 	return nil
 }
 
-func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInterface, filter BroadcastFilter) {
+func (cm *ClientManager) BroadcastMessage(message []byte, fromClient fsd.ClientInterface, filter fsd.BroadcastFilter) {
 	if cm.shuttingDown.Load() || len(message) == 0 {
 		return
 	}
@@ -212,7 +212,7 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 
 	// 并发广播
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, cm.config.Server.FSDServer.MaxBroadcastWorkers)
+	sem := make(chan struct{}, cm.config.MaxBroadcastWorkers)
 
 	for _, client := range clients {
 		if client == fromClient || client.Disconnected() {
@@ -225,7 +225,7 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(cl ClientInterface) {
+		go func(cl fsd.ClientInterface) {
 			defer func() {
 				<-sem
 				wg.Done()

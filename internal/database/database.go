@@ -1,85 +1,110 @@
 package database
 
 import (
+	"bufio"
 	"context"
-	. "fmt"
+	"github.com/fsnotify/fsnotify"
 	c "github.com/half-nothing/simple-fsd/internal/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-	"time"
+	"github.com/half-nothing/simple-fsd/internal/utils"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 )
 
 type DBCloseCallback struct {
-	db *gorm.DB
+	watcher *fsnotify.Watcher
 }
 
-func NewDBCloseCallback(db *gorm.DB) *DBCloseCallback {
-	return &DBCloseCallback{db: db}
+func NewDBCloseCallback(watcher *fsnotify.Watcher) *DBCloseCallback {
+	return &DBCloseCallback{watcher: watcher}
 }
 
-func (dc *DBCloseCallback) Invoke(ctx context.Context) error {
-	c.InfoF("Closing operation connection")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	db, err := dc.db.DB()
-	if err != nil {
-		return err
+func (dc *DBCloseCallback) Invoke(_ context.Context) error {
+	c.InfoF("Closing file watcher")
+	return dc.watcher.Close()
+}
+
+var (
+	data = map[string]*User{}
+	lock = sync.RWMutex{}
+)
+
+func readData(file *os.File) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	data = map[string]*User{}
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := string(scanner.Bytes())
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		information := strings.Split(line, " ")
+		if len(information) < 3 {
+			continue
+		}
+		user := &User{
+			Cid:      information[0],
+			Password: information[1],
+			Rating:   utils.StrToInt(information[2], -1),
+		}
+		data[user.Cid] = user
 	}
-	err = db.Close()
-	return err
 }
 
 func ConnectDatabase(config *c.Config) (*DatabaseOperations, error) {
-	queryTimeout := config.Database.QueryDuration
-
-	connection := config.Database.GetConnection()
-
-	gormConfig := gorm.Config{}
-	gormConfig.DefaultTransactionTimeout = 5 * time.Second
-	gormConfig.PrepareStmt = true
-	gormConfig.TranslateError = true
-
-	if config.DebugMode {
-		gormConfig.Logger = logger.Default.LogMode(logger.Error)
-	} else {
-		gormConfig.Logger = logger.Default.LogMode(logger.Silent)
+	if err := os.MkdirAll(filepath.Dir(config.CertFile), 0775); err != nil {
+		return nil, err
 	}
 
-	db, err := gorm.Open(connection, &gormConfig)
+	var file *os.File
+	if _, err := os.Stat(config.CertFile); os.IsNotExist(err) {
+		file, _ = os.Create(config.CertFile)
+		_, _ = file.Write([]byte("# CID PASSWORD RATING"))
+	} else if err != nil {
+		return nil, err
+	} else if file, err = os.Open(config.CertFile); err != nil {
+		return nil, err
+	}
+
+	readData(file)
+
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, Errorf("error occured while connecting to operation: %v", err)
+		return nil, err
+	}
+	if err := watcher.Add(config.CertFile); err != nil {
+		return nil, err
 	}
 
-	if err = db.Migrator().AutoMigrate(&User{}, &FlightPlan{}, &History{}, &Activity{}, &ActivityATC{}, &ActivityPilot{}, &ActivityFacility{}, &AuditLog{}); err != nil {
-		return nil, Errorf("error occured while migrating operation: %v", err)
-	}
+	go func() {
+		for {
+			select {
+			case ev := <-watcher.Events:
+				{
+					if ev.Op&fsnotify.Write == fsnotify.Write {
+						file, err := os.Open(ev.Name)
+						if err != nil {
+							c.ErrorF("Error opening file %s", ev.Name)
+						} else {
+							readData(file)
+						}
+					}
+				}
+			case err := <-watcher.Errors:
+				{
+					c.ErrorF("Error watching file, %v", err)
+					return
+				}
+			}
+		}
+	}()
 
-	dbPool, err := db.DB()
-	if err != nil {
-		return nil, Errorf("error occured while creating operation pool: %v", err)
-	}
+	c.GetCleaner().Add(NewDBCloseCallback(watcher))
 
-	maxOpenConnections := config.Database.ServerMaxConnections * 4 / 5 // 不超过数据库最大连接的80%
-	maxIdleConnections := maxOpenConnections / 5                       // 空闲连接约为最大连接的20%
-
-	dbPool.SetMaxIdleConns(maxIdleConnections)
-	dbPool.SetMaxOpenConns(maxOpenConnections)
-	dbPool.SetConnMaxLifetime(config.Database.ConnectIdleDuration)
-
-	err = dbPool.Ping()
-	if err != nil {
-		return nil, Errorf("error occured while pinging operation: %v", err)
-	}
-	c.Info("Database initialized and connection established")
-
-	c.GetCleaner().Add(NewDBCloseCallback(db))
-
-	userOperation := NewUserOperation(db, queryTimeout, config.Server.General)
-	flightPlanOperation := NewFlightPlanOperation(db, queryTimeout, config.Server.General)
-	historyOperation := NewHistoryOperation(db, queryTimeout)
-	activityOperation := NewActivityOperation(db, queryTimeout)
-	auditLogOperation := NewAuditLogOperation(db, queryTimeout)
-
-	return NewDatabaseOperations(userOperation, flightPlanOperation, historyOperation, activityOperation, auditLogOperation), nil
+	return NewDatabaseOperations(NewUserOperation(config), NewFlightPlanOperation(config)), nil
 }

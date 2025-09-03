@@ -42,10 +42,8 @@ type ClientInterface interface {
 	User() *operation.User
 	Frequency() int
 	AtisInfo() []string
-	History() *operation.History
 	Transponder() string
 	Altitude() int
 	GroundSpeed() int
 	Heading() int
-	Paths() []*PilotPath
 }

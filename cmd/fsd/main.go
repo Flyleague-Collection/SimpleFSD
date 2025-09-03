@@ -4,7 +4,6 @@ import (
 	c "github.com/half-nothing/simple-fsd/internal/config"
 	"github.com/half-nothing/simple-fsd/internal/database"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server"
-	"github.com/half-nothing/simple-fsd/internal/http_server"
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 )
@@ -26,11 +25,5 @@ func main() {
 		return
 	}
 	applicationContent := interfaces.NewApplicationContent(config, databaseOperation)
-	if config.Server.HttpServer.Enabled {
-		go http_server.StartHttpServer(applicationContent)
-	}
-	if config.Server.GRPCServer.Enabled {
-		//go grpc_server.StartGRPCServer(applicationContent)
-	}
 	fsd_server.StartFSDServer(applicationContent)
 }

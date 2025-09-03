@@ -1,4 +1,4 @@
-// Package service
+// Package utils
 package utils
 
 import (

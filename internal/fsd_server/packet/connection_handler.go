@@ -24,14 +24,14 @@ type ConnectionHandler struct {
 	clientManager       ClientManagerInterface
 	user                *operation.User
 	disconnected        atomic.Bool
-	config              *c.OtherConfig
+	config              *c.Config
 	userOperation       operation.UserOperationInterface
 	flightPlanOperation operation.FlightPlanOperationInterface
 }
 
 func NewConnectionHandler(
 	conn net.Conn,
-	config *c.OtherConfig,
+	config *c.Config,
 	cm ClientManagerInterface,
 	userOperation operation.UserOperationInterface,
 	flightPlanOperation operation.FlightPlanOperationInterface,
@@ -58,7 +58,7 @@ func (ch *ConnectionHandler) SendError(result *Result) {
 		ch.client.SendError(result)
 		return
 	}
-	packet := makePacket(Error, "fsd_server", ch.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, result.Errno.String())
+	packet := makePacket(Error, "SERVER", ch.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, result.Errno.String())
 	c.DebugF("[%s](%s) <- %s", ch.connId, ch.callsign, packet[:len(packet)-splitSignLen])
 	_, _ = ch.conn.Write(packet)
 	if result.Fatal {
