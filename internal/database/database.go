@@ -64,7 +64,24 @@ func ConnectDatabase(config *c.Config) (*DatabaseOperations, error) {
 	var file *os.File
 	if _, err := os.Stat(config.CertFile); os.IsNotExist(err) {
 		file, _ = os.Create(config.CertFile)
-		_, _ = file.Write([]byte("# CID PASSWORD RATING"))
+		data := "######################\n" +
+			"# -1 Ban\n" +
+			"# 0 Normal\n" +
+			"# 1 Observer\n" +
+			"# 2 STU1\n" +
+			"# 3 STU2\n" +
+			"# 4 STU3\n" +
+			"# 5 CTR1\n" +
+			"# 6 CTR2\n" +
+			"# 7 CTR3\n" +
+			"# 8 Instructor1\n" +
+			"# 9 Instructor2\n" +
+			"# 10 Instructor3\n" +
+			"# 11 Supervisor\n" +
+			"# 12 Administrator\n" +
+			"######################\n" +
+			"# CID PASSWORD RATING"
+		_, _ = file.Write([]byte(data))
 	} else if err != nil {
 		return nil, err
 	} else if file, err = os.Open(config.CertFile); err != nil {

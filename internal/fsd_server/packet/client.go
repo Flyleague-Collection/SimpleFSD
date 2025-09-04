@@ -33,13 +33,13 @@ type Client struct {
 	visualRange         float64
 	flightPlan          *operation.FlightPlan
 	atisInfo            []string
-	paths               []*PilotPath
 	clientManager       ClientManagerInterface
 	disconnect          atomic.Bool
 	motdBytes           []byte
 	reconnectTimer      *time.Timer
 	lock                sync.RWMutex
 	config              *c.Config
+	logonTime           time.Time
 	userOperation       operation.UserOperationInterface
 	flightPlanOperation operation.FlightPlanOperationInterface
 }
@@ -66,25 +66,17 @@ func (cm *ClientManager) NewClient(callsign string, rating Rating, protocol int,
 		visualRange:         40,
 		flightPlan:          flightPlan,
 		atisInfo:            make([]string, 0, 4),
-		paths:               make([]*PilotPath, 0),
 		motdBytes:           nil,
 		clientManager:       cm,
 		disconnect:          atomic.Bool{},
 		reconnectTimer:      nil,
 		lock:                sync.RWMutex{},
 		config:              cm.config,
+		logonTime:           time.Now(),
 		userOperation:       userOperation,
 		flightPlanOperation: cm.applicationContent.FlightPlanOperation(),
 	}
 	return client
-}
-
-func (client *Client) recordPathPoint() {
-	client.paths = append(client.paths, &PilotPath{
-		Latitude:  client.position[0].Latitude,
-		Longitude: client.position[0].Longitude,
-		Altitude:  client.altitude,
-	})
 }
 
 func (client *Client) Disconnected() bool {
@@ -198,7 +190,6 @@ func (client *Client) UpdatePilotPos(transponder int, lat float64, lon float64, 
 	client.altitude = alt
 	client.groundSpeed = groundSpeed
 	client.pbh = pbh
-	client.recordPathPoint()
 }
 
 func (client *Client) UpdateAtcPos(frequency int, facility Facility, visualRange float64, lat float64, lon float64) {
@@ -346,4 +337,8 @@ func (client *Client) GroundSpeed() int { return client.groundSpeed }
 func (client *Client) Heading() int {
 	_, _, heading, _ := utils.UnpackPBH(client.pbh)
 	return int(heading)
+}
+
+func (client *Client) LogonTime() string {
+	return client.logonTime.Format(time.DateTime)
 }

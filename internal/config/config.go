@@ -37,6 +37,9 @@ type Config struct {
 	MaxBroadcastWorkers  int            `json:"max_broadcast_workers"` // 广播并发线程数
 	CertFile             string         `json:"cert_file"`
 	EncryptionType       int            `json:"encryption_type"`
+	WhazzupFile          string         `json:"whazzup_file"`
+	WhazzupInterval      string         `json:"whazzup_interval"`
+	WhazzupDuration      time.Duration  `json:"-"`
 	Motd                 []string       `json:"motd"`
 	Rating               map[string]int `json:"rating"`
 }
@@ -54,6 +57,8 @@ func defaultConfig() *Config {
 		MaxBroadcastWorkers: 128,
 		CertFile:            "cert.txt",
 		EncryptionType:      int(SHA256),
+		WhazzupFile:         "whazzup.txt",
+		WhazzupInterval:     "15s",
 		Rating:              make(map[string]int),
 	}
 }
@@ -121,6 +126,24 @@ func (c *Config) CheckValid() (bool, error) {
 		return false, fmt.Errorf("invalid json field heartbead_interval, duration parse error, %v", err)
 	} else {
 		c.HeartbeatDuration = duration
+	}
+
+	if duration, err := time.ParseDuration(c.WhazzupInterval); err != nil {
+		return false, fmt.Errorf("invalid json field whazzup_interval, duration parse error, %v", err)
+	} else {
+		c.WhazzupDuration = duration
+	}
+
+	if _, err := os.Stat(c.WhazzupFile); err != nil {
+		if os.IsNotExist(err) {
+			file, err := os.Create(c.WhazzupFile)
+			if err != nil {
+				return false, fmt.Errorf("error creating whazzup file, %v", err)
+			}
+			_ = file.Close()
+		} else {
+			return false, fmt.Errorf("can not check whazzup file, %v, %v", c.WhazzupFile, err)
+		}
 	}
 
 	if c.EncryptionType < int(NoEncryption) || c.EncryptionType > int(BCRYPT) {

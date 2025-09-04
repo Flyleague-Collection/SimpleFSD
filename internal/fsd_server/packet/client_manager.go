@@ -2,11 +2,14 @@ package packet
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	c "github.com/half-nothing/simple-fsd/internal/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 	"math/rand"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -18,7 +21,8 @@ type ClientManager struct {
 	lock               sync.RWMutex
 	shuttingDown       atomic.Bool
 	config             *c.Config
-	heartbeatSender    *fsd.HeartbeatSender
+	heartbeatTimer     *utils.IntervalActuator
+	whazzupTimer       *utils.IntervalActuator
 	clientSlicePool    sync.Pool
 	applicationContent *interfaces.ApplicationContent
 }
@@ -42,10 +46,85 @@ func NewClientManager(applicationContent *interfaces.ApplicationContent) *Client
 					},
 				},
 			}
-			clientManager.heartbeatSender = fsd.NewHeartbeatSender(applicationContent.Config().HeartbeatDuration, clientManager.SendHeartBeat)
+			clientManager.heartbeatTimer = utils.NewIntervalActuator(applicationContent.Config().HeartbeatDuration, clientManager.SendHeartBeat)
+			clientManager.whazzupTimer = utils.NewIntervalActuator(applicationContent.Config().WhazzupDuration, clientManager.GenerateWhazzupFile)
+			clientManager.heartbeatTimer.Start()
+			clientManager.whazzupTimer.Start()
 		}
 	})
 	return clientManager
+}
+
+func (cm *ClientManager) GenerateWhazzupFile() error {
+	data := &fsd.OnlineClients{
+		General: &fsd.OnlineGeneral{
+			Version:          3,
+			ConnectedClients: 0,
+			OnlinePilot:      0,
+			OnlineController: 0,
+		},
+		Pilots:      make([]*fsd.OnlinePilot, 0),
+		Controllers: make([]*fsd.OnlineController, 0),
+	}
+
+	clientCopy := cm.GetClientSnapshot()
+	defer cm.PutSlice(clientCopy)
+
+	for _, client := range clientCopy {
+		if client == nil || client.Disconnected() {
+			continue
+		}
+		data.General.ConnectedClients++
+		if client.IsAtc() {
+			data.General.OnlineController++
+			controller := &fsd.OnlineController{
+				Cid:       client.User().Cid,
+				Callsign:  client.Callsign(),
+				RealName:  client.RealName(),
+				Latitude:  client.Position()[0].Latitude,
+				Longitude: client.Position()[0].Longitude,
+				Rating:    client.Rating().Index(),
+				Facility:  client.Facility().Index(),
+				Frequency: client.Frequency() + 100000,
+				AtcInfo:   client.AtisInfo(),
+				LogonTime: client.LogonTime(),
+			}
+			data.Controllers = append(data.Controllers, controller)
+		} else {
+			data.General.OnlinePilot++
+			pilot := &fsd.OnlinePilot{
+				Cid:         client.User().Cid,
+				Callsign:    client.Callsign(),
+				RealName:    client.RealName(),
+				Latitude:    client.Position()[0].Latitude,
+				Longitude:   client.Position()[0].Longitude,
+				Transponder: client.Transponder(),
+				Heading:     client.Heading(),
+				Altitude:    client.Altitude(),
+				GroundSpeed: client.GroundSpeed(),
+				FlightPlan:  client.FlightPlan(),
+				LogonTime:   client.LogonTime(),
+			}
+			data.Pilots = append(data.Pilots, pilot)
+		}
+	}
+
+	data.General.GenerateTime = time.Now().Format(time.DateTime)
+
+	file, err := os.OpenFile(cm.config.WhazzupFile, os.O_WRONLY|os.O_CREATE, 0655)
+	defer file.Close()
+
+	if err != nil {
+		return err
+	}
+
+	if data, err := json.Marshal(data); err != nil {
+		return err
+	} else if _, err := file.Write(data); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (cm *ClientManager) PutSlice(clients []fsd.ClientInterface) {
@@ -59,7 +138,8 @@ func (cm *ClientManager) Shutdown(ctx context.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	cm.heartbeatSender.Stop()
+	cm.heartbeatTimer.Stop()
+	cm.whazzupTimer.Stop()
 
 	clients := cm.GetClientSnapshot()
 	defer cm.PutSlice(clients)

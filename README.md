@@ -1,324 +1,181 @@
-# SimpleFSD
-
-[English](docs/README_en.md)
+# SimpleFSD-Lite
 
 一个用于模拟飞行联飞的FSD, 使用Go语言编写
-
-FSD支持计划同步, 计划锁定, 网页计划提交
+FSD支持计划同步, 计划锁定  
+本分支为主分支的Lite版本, 仅保留FSD的核心功能  
+全功能版本请移步[主分支][Full-Branch]
 
 ---
-[![ReleaseCard]][Release]![ReleaseDataCard]  
-![LastCommitCard]![BuildStateCard]  
+[![ReleaseCard]][Release]![ReleaseDataCard]![LastCommitCard]  
+![BuildStateCard-Full]![BuildStateCard-Lite]  
 ![ProjectLanguageCard]![ProjectLicense]
 ---
-## 项目介绍
-
-本FSD服务器支持开箱即用, 您可以通过连续运行两次服务器可执行文件来快速搭建一个FSD服务器  
-
-第一次运行会报错并自动退出，这是正常现象，第一次运行服务器会生成配置文件模板放置到同目录  
-
-此时您可以  
-
-1.先按照[配置文件简介](#配置文件简介)里面的介绍完成服务器配置后再启动  
-2.直接运行服务端可执行文件, 服务器会使用默认配置运行  
-
-注意：默认配置下使用sqlite数据库存储数据, 而sqlite在多线程写入的时候有很严重的性能瓶颈, 且sqlite以单文件形式存储与磁盘, 受硬盘性能影响较大
-
-> 感谢3370的简易测试结果：  
-> 在本地部署不考虑带宽的情况下, sqlite最多可以支持的客户端数量大约在200-300并且有概率断线  
-> 而在使用mysql数据库的时候, 可以轻松跑到400+的客户端, 还有余力 ~~(因为测试程序是用python写的, 所以测试程序产生了瓶颈)~~ 
-
-所以我们建议  
-
-1.不要使用sqlite作为长期数据库使用  
-2.不要在使用sqlite作为数据库的时候进行大流量或者大压力测试  
-
-如果真的没有部署大型关系型数据库(比如mysql)的条件  
-
-那么我们建议将simulator_server开关打开, 即将本服务器作为模拟机服务器使用  
-
-因为模拟机服务器模式下, 飞行机组的飞行计划不会写入数据库, 很大一部分是缓存在内存中, 可以一定程度上解决sqlite写入性能差的问题
-
-此项目不是纯粹的FSD项目, 同时也集成了HTTP API服务器与gRPC服务器
-
-在[此处](#链接)查看更详细的说明和查看API文档
 
 ## 如何使用
 
 ### 使用方法
 
-1. 在[Release]里面下载对应版本的构建
-2. 克隆整个存储库自己构建
-3. 您也可以前往[Action]页面获取最新开发版(开发版本可能不稳定且会产生Bug, 请谨慎使用)
+1. 获取服务器可执行文件  
+   i. 在[Release]里面下载对应版本的构建  
+   ii. 克隆整个存储库自己[构建](#构建方法)  
+   iii. 也可以前往[Action]页面获取最新开发版(开发版本可能不稳定且会产生Bug, 请谨慎使用)  
+2. 执行可执行文件以生成配置文件  
+3. 此时您可以  
+   i. 按照[配置文件说明](#配置文件简介)编辑配置文件, 然后再次执行可执行文件  
+   ii. 直接再次执行可执行文件以使用默认配置运行  
 
 ### 构建方法
 
 1. 克隆本仓库
 2. 确保安装了go编译器并且版本>=1.23.4
-3. 在项目根目录运行如下命令`go build -x .\cmd\fsd-server\`
+3. 在项目根目录运行如下命令`go build -x .\cmd\fsd\`
 4. \[可选\]使用upx压缩可执行文件  
-i.  (windows)`upx.exe -9 .\fsd-server.exe`  
-ii. (linux)`upx -9 .\fsd-server`  
+   i.  (windows)`upx.exe -9 .\fsd.exe`  
+   ii. (linux)`upx -9 .\fsd`
 5. 等待编译完成后  
-i. 对于Windows用户, 运行生成的fsd-server.exe   
-ii. 对于linux用户, 运行生成的fsd-server文件  
-6. 首次运行会在可执行文件同目录创建配置文件`config.json`, 请在编辑配置文件后再次启动
-7. Enjoy
+   i. 对于Windows用户, 可执行文件为fsd.exe   
+   ii. 对于linux用户, 可执行文件为fsd
 
 ### 配置文件简介
 
 ```json5
 {
-   // 调试模式, 会输出大量日志, 请不要在生产环境中打开
-   "debug_mode": false,
-   // 配置文件版本, 通常情况下与软件版本一致
-   "config_version": "0.5.0",
-   // 服务配置
-   "server": {
-      // 通用配置项
-      "general": {
-         // 是否为模拟机服务器
-         // 由于需要实现检查网页提交计划于实际连线计划是否一致
-         // 所以飞行计划存储是用用户cid进行标识的
-         // 但模拟机所有的模拟机都是一个用户cid, 此时就会出问题
-         // 即模拟机计划错误或者无法获取到计划
-         // 这个时候将这个变量设置为true
-         // 这样服务器就会使用呼号作为标识
-         // 但是与此同时就失去了呼号匹配检查的功能
-         // 但网页提交计划仍然可用, 只是没有检查功能
-         // 所以将这个开关命名为模拟机服务器开关
-         "simulator_server": false,
-         // 密码加密轮数
-         "bcrypt_cost": 12
-      },
-      // FSD服务器配置
-      "fsd_server": {
-         // FSD名称, 会被发送到连接到服务器的客户端作为motd消息
-         "fsd_name": "Simple-Fsd",
-         // FSD服务器监听地址
-         "host": "0.0.0.0",
-         // FSD服务器监听端口
-         "port": 6809,
-         // 机场数据路径, 若不存在会自动从github下载
-         "airport_data_file": "data/airport.json",
-         // 服务器飞行路径记录间隔
-         // 这里间隔的意思是：当客户端每发过来N个包就记录一次位置
-         "pos_update_points": 1,
-         // FSD服务器心跳间隔
-         "heartbeat_interval": "60s",
-         // FSD服务器会话过期时间
-         // 在过期时间内重连, 服务器会自动匹配断开时的session
-         // 反之则会创建新session
-         "session_clean_time": "40s",
-         // 最大工作线程数, 也可以理解为最大同时连接的sockets数目
-         "max_workers": 128,
-         // 最大广播线程数, 用于广播消息的最大线程数
-         "max_broadcast_workers": 128,
-         // 要发送到客户端的motd消息
-         "motd": [
-            "This is my test fsd server"
-         ]
-      },
-      // Http服务器配置
-      "http_server": {
-         // 是否启用Http服务器
-         "enabled": false,
-         // Http服务器监听地址
-         "host": "0.0.0.0",
-         // Http服务器监听端口
-         "port": 6810,
-         // Http服务器最大工作线程
-         "max_workers": 128,
-         // whazzup更新时间
-         "whazzup_cache_time": "15s",
-         // whazzup访问地址
-         // 需要填写外部访问地址用于little nav map的在线航班显示
-         // 如果你不需要little nav map的在线航班显示, 你可以不管这个
-         "whazzup_url_header": "http://127.0.0.1:6810",
-         // 代理类型
-         // 0 直连无代理服务器
-         // 1 代理服务器使用 X-Forwarded-For Http头部
-         // 2 代理服务器使用 X-Real-Ip Http头部
-         "proxy_type": 0,
-         // POST请求的请求体大小限制
-         // 将本选项设置为空字符串可以禁用大小限制
-         "body_limit": "10MB",
-         // 服务器存储配置
-         "store": {
-            // 存储类型, 可选类型为
-            // 0 本地存储
-            // 1 阿里云OSS存储
-            // 2 腾讯云COS存储
-            "store_type": 0,
-            // 储存桶地域, 本地存储此字段无效
-            "region": "",
-            // 存储桶名称, 本地存储此字段无效
-            "bucket": "",
-            // 访问Id, 本地存储此字段无效
-            "access_id": "",
-            // 访问秘钥, 本地存储此字段无效
-            "access_key": "",
-            // CDN访问加速域名, 本地存储此字段无效
-            "cdn_domain": "",
-            // 使用内网地址上传文件, 仅阿里云OSS存储此字段无效
-            "use_internal_url": false,
-            // 本地文件保存路径
-            "local_store_path": "uploads",
-            // 远程文件保存路径, 本地存储此字段无效
-            "remote_store_path": "fsd",
-            // 文件限制
-            "file_limit": {
-               // 图片文件限制
-               "image_limit": {
-                  // 允许的最大文件大小, 单位是B
-                  "max_file_size": 5242880,
-                  // 允许的文件后缀名
-                  "allowed_file_ext": [
-                     ".jpg",
-                     ".png",
-                     ".bmp",
-                     ".jpeg"
-                  ],
-                  // 存储路径前缀
-                  "store_prefix": "images",
-                  // 是否在本地也保存一份
-                  "store_in_server": false
-               }
-            }
-         },
-         "limits": {
-            // Api访问限速
-            // 每个IP的每个接口均单独计算
-            "rate_limit": 60,
-            // Api访问限速窗口
-            // 即 rate_limit 每 rate_limit_window
-            // 滑动窗口计算
-            "rate_limit_window": "1m",
-            // 用户名最小长度
-            "username_length_min": 4,
-            // 用户名最大长度(系统支持的最大长度是64)
-            "username_length_max": 16,
-            // 邮箱最小长度
-            "email_length_min": 4,
-            // 邮箱最大长度(系统支持的最大长度是128)
-            "email_length_max": 64,
-            // 密码最小长度
-            "password_length_min": 6,
-            // 密码最大长度(系统支持的最大长度是128)
-            "password_length_max": 64,
-            // 最小CID
-            "cid_min": 1,
-            // 最大CID(系统支持的最大CID为2147483647)
-            "cid_max": 9999,
-         },
-         // 邮箱配置
-         "email": {
-            // SMTP服务器地址
-            "host": "smtp.example.com",
-            // SMTP服务器端口
-            "port": 465,
-            // 发信账号
-            "username": "noreply@example.cn",
-            // 发信账号密码或者访问Token
-            "password": "123456",
-            // 邮箱验证码过期时间
-            "verify_expired_time": "5m",
-            // 验证码重复发送间隔
-            "send_interval": "1m",
-            // 邮件模板定义
-            "template": {
-               // 验证码模板文件路径, 不存在会自动从Github上下载
-               "email_verify_template_file": "template/email_verify.template",
-               // 管制权限变更通知模板文件路径, 不存在会自动从Github上下载
-               "atc_rating_change_template_file": "template/atc_rating_change.template",
-               // 启用管制权限变更通知
-               "enable_rating_change_email": true,
-               // 飞控权限变更通知模板文件路径, 不存在会自动从Github上下载
-               "permission_change_template_file": "template/permission_change.template",
-               // 启用飞控权限变更通知
-               "enable_permission_change_email": true,
-               // 踢出服务器通知模板文件路径, 不存在会自动从Github上下载
-               "kicked_from_server_template_file": "template/kicked_from_server.template",
-               // 启用踢出服务器通知
-               "enable_kicked_from_server_email": true
-            }
-         },
-         // JWT配置
-         "jwt": {
-            // JWT对称加密秘钥
-            // 请一定要保护好这个秘钥
-            // 并确保不被任何不信任的人知道
-            // 如果该秘钥泄露, 任何人都可以伪造管理员用户
-            // 更安全的做法是将本字段置空, 这样每次服务器重启都会使得之前的秘钥全部失效
-            "secret": "123456",
-            // JWT主密钥过期时间
-            // 建议不要大于1小时, 因为JWT秘钥是无状态的
-            // 所以如果主密钥过期时间太长可能会导致安全问题
-            "expires_time": "15m",
-            // JWT刷新秘钥过期时间
-            // 该时间是在JWT主秘钥过期时间之后的时间
-            // 比如两者都是1h, 那么刷新秘钥的过期时间就是2h
-            // 因为不可能你刷新秘钥比主密钥过期还早:(
-            "refresh_time": "24h"
-         },
-         // SSL配置
-         "ssl": {
-            // 是否启用SSL
-            "enable": false,
-            // 是否启用HSTS
-            "enable_hsts": false,
-            // HSTS过期时间(s)
-            "hsts_expired_time": 5184000,
-            // HSTS是否包括子域名
-            // 警告：如果你的其他子域名没有全部部署SSL证书
-            // 打开此开关可能导致没有SSL证书的域名无法访问
-            // 如果不懂请不要打开此开关
-            "include_domain": false,
-            // SSL证书文件路径
-            "cert_file": "",
-            // SSL私钥文件路径
-            "key_file": ""
-         }
-      },
-      // gRPC服务器
-      "grpc_server": {
-         // 是否启用gRPC服务器
-         "enabled": false,
-         // gRPC服务器监听地址
-         "host": "0.0.0.0",
-         // gRPC服务器监听端口
-         "port": 6811,
-         // gRPC服务器Api缓存时间
-         "whazzup_cache_time": "15s"
-      }
-   },
-   // 数据库配置
-   "database": {
-      // 数据库类型, 支持的数据库类型: mysql, postgres, sqlite3
-      "type": "mysql",
-      // 当数据库类型为sqlite3的时候, 这里是数据库存放路径和文件名
-      // 反之则为要使用的数据库名称
-      "database": "go-fsd",
-      // 数据库地址
-      "host": "localhost",
-      // 数据库端口
-      "port": 3306,
-      // 数据库用户名
-      "username": "root",
-      // 数据库密码
-      "password": "123456",
-      // 是否启用SSL
-      "enable_ssl": false,
-      // 数据库连接池连接超时时间
-      "connect_idle_timeout": "1h",
-      // 连接超时时间
-      "connect_timeout": "5s",
-      // 数据库最大连接数
-      "server_max_connections": 32
-   },
-   // 特殊权限配置, 详情请见`特殊权限配置` 章节
-   "rating": {}
+  // 调试模式, 会输出大量日志, 请不要在生产环境中打开
+  "debug_mode": true,
+  // 配置文件版本, 通常情况下与软件版本一致
+  "config_version": "0.5.0",
+  // FSD名称, 会被发送到连接到服务器的客户端作为motd消息
+  "fsd_name": "Simple-Fsd",
+  // FSD服务器监听地址
+  "host": "0.0.0.0",
+  // FSD服务器监听端口
+  "port": 6809,
+  // FSD服务器心跳间隔
+  "heartbeat_interval": "60s",
+  // FSD服务器会话过期时间
+  // 在过期时间内重连, 服务器会自动匹配断开时的session
+  // 反之则会创建新session
+  "session_clean_time": "40s",
+  // 最大工作线程数, 也可以理解为最大同时连接的sockets数目
+  "max_workers": 128,
+  // 最大广播线程数, 用于广播消息的最大线程数
+  "max_broadcast_workers": 128,
+  // 验证文件路径
+  "cert_file": "cert.txt",
+  // 用户密码加密类型
+  // 0: 无加密
+  // 1: MD5加密
+  // 2: SHA256加密
+  // 3: bcrypt加密
+  "encryption_type": 3,
+  // whazzup文件路径
+  "whazzup_file": "whazzup.json",
+  // whazzup文件生成间隔
+  "whazzup_interval": "15s",
+  // 要发送到客户端的motd消息
+  "motd": [],
+  // 特殊权限配置, 详情请见`特殊权限配置` 章节
+  "rating": {}
 }
+```
+
+### cert.txt 文件简介
+
+服务器会忽略以`#`字符开始的行  
+用户名格式为: CID 密码 [权限等级](#fsd管制权限一览)  
+密码的加密方式请见配置文件中`encryption_type`字段  
+保存后服务端即刻生效, 不用重启  
+
+[MD5/SHA256加密网站]  
+[Bcrypt加密网站]  
+
+```
+######################
+# -1 Ban
+# 0 Normal
+# 1 Observer
+# 2 STU1
+# 3 STU2
+# 4 STU3
+# 5 CTR1
+# 6 CTR2
+# 7 CTR3
+# 8 Instructor1
+# 9 Instructor2
+# 10 Instructor3
+# 11 Supervisor
+# 12 Administrator
+######################
+# CID PASSWORD RATING
+2352 123456 12
+1111 123456 0
+```
+
+### whazzup格式定义
+```go
+package model
+
+type FlightPlan struct {
+	Cid              string `json:"cid"`                // CID
+	Callsign         string `json:"callsign"`           // 呼号
+	FlightType       string `json:"flight_type"`        // 飞行类型
+	AircraftType     string `json:"aircraft_type"`      // 机型
+	Tas              int    `json:"tas"`                // 巡航真空速
+	DepartureAirport string `json:"departure_airport"`  // 离场机场
+	DepartureTime    int    `json:"departure_time"`     // 离场时间
+	AtcDepartureTime int    `json:"atc_departure_time"` // ATC离场时间
+	CruiseAltitude   string `json:"cruise_altitude"`    // 巡航高度
+	ArrivalAirport   string `json:"arrival_airport"`    // 到达机场
+	RouteTimeHour    string `json:"route_time_hour"`    // 航路小时
+	RouteTimeMinute  string `json:"route_time_minute"`  // 航路分钟
+	FuelTimeHour     string `json:"fuel_time_hour"`     // 燃油小时
+	FuelTimeMinute   string `json:"fuel_time_minute"`   // 燃油分钟
+	AlternateAirport string `json:"alternate_airport"`  // 备降机场
+	Remarks          string `json:"remarks"`            // 备注
+	Route            string `json:"route"`              // 航路
+}
+
+type OnlineGeneral struct {
+	Version          int    `json:"version"`           // whazzup版本
+	GenerateTime     string `json:"generate_time"`     // 生成时间
+	ConnectedClients int    `json:"connected_clients"` // 在线客户端
+	OnlinePilot      int    `json:"online_pilot"`      // 在线飞行员
+	OnlineController int    `json:"online_controller"` // 在线管制员
+}
+
+type OnlinePilot struct {
+	Cid         string      `json:"cid"`          // CID
+	Callsign    string      `json:"callsign"`     // 呼号
+	RealName    string      `json:"real_name"`    // 真名
+	Latitude    float64     `json:"latitude"`     // 纬度
+	Longitude   float64     `json:"longitude"`    // 经度
+	Transponder string      `json:"transponder"`  // 应答机
+	Heading     int         `json:"heading"`      // 机头朝向
+	Altitude    int         `json:"altitude"`     // 高度
+	GroundSpeed int         `json:"ground_speed"` // 地速
+	FlightPlan  *FlightPlan `json:"flight_plan"`  // 飞行计划
+	LogonTime   string      `json:"logon_time"`   // 上线时间
+}
+
+type OnlineController struct {
+	Cid       string   `json:"cid"`        // CID
+	Callsign  string   `json:"callsign"`   // 呼号
+	RealName  string   `json:"real_name"`  // 真名
+	Latitude  float64  `json:"latitude"`   // 纬度
+	Longitude float64  `json:"longitude"`  // 经度
+	Rating    int      `json:"rating"`     // 权限等级
+	Facility  int      `json:"facility"`   // 席位
+	Frequency int      `json:"frequency"`  // 频率
+	AtcInfo   []string `json:"atc_info"`   // ATC信息
+	LogonTime string   `json:"logon_time"` // 上线时间
+}
+
+type OnlineClients struct {
+	General     *OnlineGeneral      `json:"general"`
+	Pilots      []*OnlinePilot      `json:"pilots"`
+	Controllers []*OnlineController `json:"controllers"`
+}
+
 ```
 
 ### 权限定义表
@@ -406,15 +263,11 @@ ii. 对于linux用户, 运行生成的fsd-server文件
 在提交时，需要您按照以下步骤进行：
 
 1. 对于可复现的bug:
-    1. 在[配置文件](#配置文件简介)中打开`"debug_mode": true,`以启用log文件
+    1. 在[配置文件](#配置文件简介)中打开`"debug_mode": true`以启用详细日志文件
     2. 重启FSD并复现此bug
     3. 将log文件上传至[Issue]
 2. 对于不可复现的bug:
     1. 尽可能的用文字描述此bug并提交至[Issue]
-
-## 链接
-
-[Http Api文档][HttpApiDocs]
 
 ## 开源协议
 
@@ -434,7 +287,13 @@ Copyright © 2025 Half_nothing
 
 [LastCommitCard]: https://img.shields.io/github/last-commit/Flyleague-Collection/SimpleFSD?display_timestamp=committer&style=for-the-badge&logo=github
 
-[BuildStateCard]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build.yml?style=for-the-badge&logo=github
+[BuildStateCard-Full]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build-main.yml?style=for-the-badge&logo=github&label=Full-Build
+
+[BuildStateCard-Lite]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build-lite.yml?style=for-the-badge&logo=github&label=Lite-Build
+
+[Full-Branch]: https://github.com/Flyleague-Collection/SimpleFSD
+
+[Lite-Branch]: https://github.com/Flyleague-Collection/SimpleFSD/tree/lite
 
 [ProjectLanguageCard]: https://img.shields.io/github/languages/top/Flyleague-Collection/SimpleFSD?style=for-the-badge&logo=github
 
@@ -446,4 +305,5 @@ Copyright © 2025 Half_nothing
 
 [Issue]: https://github.com/Flyleague-Collection/SimpleFSD/issues/new
 
-[HttpApiDocs]: https://fsd.docs.half-nothing.cn/
+[MD5/SHA256加密网站]: https://www.bejson.com/enc/sha/
+[Bcrypt加密网站]: https://www.bejson.com/encrypt/bcrpyt_encode/

@@ -46,4 +46,5 @@ type ClientInterface interface {
 	Altitude() int
 	GroundSpeed() int
 	Heading() int
+	LogonTime() string
 }
