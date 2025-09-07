@@ -34,6 +34,7 @@ type OnlineController struct {
 	Rating    int      `json:"rating"`
 	Facility  int      `json:"facility"`
 	Frequency int      `json:"frequency"`
+	Range     int      `json:"range"`
 	AtcInfo   []string `json:"atc_info"`
 	LogonTime string   `json:"logon_time"`
 }

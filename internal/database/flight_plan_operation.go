@@ -19,6 +19,7 @@ func (flightPlanOperation *FlightPlanOperation) NewFlightPlan(user *User, callsi
 	if len(flightPlanData) < 17 {
 		return nil, ErrFlightPlanDataTooShort
 	}
+	flightPlan = &FlightPlan{}
 	flightPlan.Cid = user.Cid
 	flightPlan.Callsign = callsign
 	flightPlanOperation.updateFlightPlanData(flightPlan, flightPlanData)

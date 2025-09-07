@@ -116,64 +116,65 @@ FSD支持计划同步, 计划锁定
 package model
 
 type FlightPlan struct {
-	Cid              string `json:"cid"`                // CID
-	Callsign         string `json:"callsign"`           // 呼号
-	FlightType       string `json:"flight_type"`        // 飞行类型
-	AircraftType     string `json:"aircraft_type"`      // 机型
-	Tas              int    `json:"tas"`                // 巡航真空速
-	DepartureAirport string `json:"departure_airport"`  // 离场机场
-	DepartureTime    int    `json:"departure_time"`     // 离场时间
-	AtcDepartureTime int    `json:"atc_departure_time"` // ATC离场时间
-	CruiseAltitude   string `json:"cruise_altitude"`    // 巡航高度
-	ArrivalAirport   string `json:"arrival_airport"`    // 到达机场
-	RouteTimeHour    string `json:"route_time_hour"`    // 航路小时
-	RouteTimeMinute  string `json:"route_time_minute"`  // 航路分钟
-	FuelTimeHour     string `json:"fuel_time_hour"`     // 燃油小时
-	FuelTimeMinute   string `json:"fuel_time_minute"`   // 燃油分钟
-	AlternateAirport string `json:"alternate_airport"`  // 备降机场
-	Remarks          string `json:"remarks"`            // 备注
-	Route            string `json:"route"`              // 航路
+   Cid              string `json:"cid"`                // CID
+   Callsign         string `json:"callsign"`           // 呼号
+   FlightType       string `json:"flight_type"`        // 飞行类型
+   AircraftType     string `json:"aircraft_type"`      // 机型
+   Tas              int    `json:"tas"`                // 巡航真空速
+   DepartureAirport string `json:"departure_airport"`  // 离场机场
+   DepartureTime    int    `json:"departure_time"`     // 离场时间
+   AtcDepartureTime int    `json:"atc_departure_time"` // ATC离场时间
+   CruiseAltitude   string `json:"cruise_altitude"`    // 巡航高度
+   ArrivalAirport   string `json:"arrival_airport"`    // 到达机场
+   RouteTimeHour    string `json:"route_time_hour"`    // 航路小时
+   RouteTimeMinute  string `json:"route_time_minute"`  // 航路分钟
+   FuelTimeHour     string `json:"fuel_time_hour"`     // 燃油小时
+   FuelTimeMinute   string `json:"fuel_time_minute"`   // 燃油分钟
+   AlternateAirport string `json:"alternate_airport"`  // 备降机场
+   Remarks          string `json:"remarks"`            // 备注
+   Route            string `json:"route"`              // 航路
 }
 
 type OnlineGeneral struct {
-	Version          int    `json:"version"`           // whazzup版本
-	GenerateTime     string `json:"generate_time"`     // 生成时间
-	ConnectedClients int    `json:"connected_clients"` // 在线客户端
-	OnlinePilot      int    `json:"online_pilot"`      // 在线飞行员
-	OnlineController int    `json:"online_controller"` // 在线管制员
+   Version          int    `json:"version"`           // whazzup版本
+   GenerateTime     string `json:"generate_time"`     // 生成时间
+   ConnectedClients int    `json:"connected_clients"` // 在线客户端
+   OnlinePilot      int    `json:"online_pilot"`      // 在线飞行员
+   OnlineController int    `json:"online_controller"` // 在线管制员
 }
 
 type OnlinePilot struct {
-	Cid         string      `json:"cid"`          // CID
-	Callsign    string      `json:"callsign"`     // 呼号
-	RealName    string      `json:"real_name"`    // 真名
-	Latitude    float64     `json:"latitude"`     // 纬度
-	Longitude   float64     `json:"longitude"`    // 经度
-	Transponder string      `json:"transponder"`  // 应答机
-	Heading     int         `json:"heading"`      // 机头朝向
-	Altitude    int         `json:"altitude"`     // 高度
-	GroundSpeed int         `json:"ground_speed"` // 地速
-	FlightPlan  *FlightPlan `json:"flight_plan"`  // 飞行计划
-	LogonTime   string      `json:"logon_time"`   // 上线时间
+   Cid         string      `json:"cid"`          // CID
+   Callsign    string      `json:"callsign"`     // 呼号
+   RealName    string      `json:"real_name"`    // 真名
+   Latitude    float64     `json:"latitude"`     // 纬度
+   Longitude   float64     `json:"longitude"`    // 经度
+   Transponder string      `json:"transponder"`  // 应答机
+   Heading     int         `json:"heading"`      // 机头朝向
+   Altitude    int         `json:"altitude"`     // 高度
+   GroundSpeed int         `json:"ground_speed"` // 地速
+   FlightPlan  *FlightPlan `json:"flight_plan"`  // 飞行计划
+   LogonTime   string      `json:"logon_time"`   // 上线时间
 }
 
 type OnlineController struct {
-	Cid       string   `json:"cid"`        // CID
-	Callsign  string   `json:"callsign"`   // 呼号
-	RealName  string   `json:"real_name"`  // 真名
-	Latitude  float64  `json:"latitude"`   // 纬度
-	Longitude float64  `json:"longitude"`  // 经度
-	Rating    int      `json:"rating"`     // 权限等级
-	Facility  int      `json:"facility"`   // 席位
-	Frequency int      `json:"frequency"`  // 频率
-	AtcInfo   []string `json:"atc_info"`   // ATC信息
-	LogonTime string   `json:"logon_time"` // 上线时间
+   Cid       string   `json:"cid"`        // CID
+   Callsign  string   `json:"callsign"`   // 呼号
+   RealName  string   `json:"real_name"`  // 真名
+   Latitude  float64  `json:"latitude"`   // 纬度
+   Longitude float64  `json:"longitude"`  // 经度
+   Rating    int      `json:"rating"`     // 权限等级
+   Facility  int      `json:"facility"`   // 席位
+   Frequency int      `json:"frequency"`  // 频率
+   Range     int      `json:"range"`      // 视程范围
+   AtcInfo   []string `json:"atc_info"`   // ATC信息
+   LogonTime string   `json:"logon_time"` // 上线时间
 }
 
 type OnlineClients struct {
-	General     *OnlineGeneral      `json:"general"`
-	Pilots      []*OnlinePilot      `json:"pilots"`
-	Controllers []*OnlineController `json:"controllers"`
+   General     *OnlineGeneral      `json:"general"`
+   Pilots      []*OnlinePilot      `json:"pilots"`
+   Controllers []*OnlineController `json:"controllers"`
 }
 
 ```

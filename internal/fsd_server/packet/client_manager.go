@@ -87,6 +87,7 @@ func (cm *ClientManager) GenerateWhazzupFile() error {
 				Facility:  client.Facility().Index(),
 				Frequency: client.Frequency() + 100000,
 				AtcInfo:   client.AtisInfo(),
+				Range:     int(client.VisualRange()),
 				LogonTime: client.LogonTime(),
 			}
 			data.Controllers = append(data.Controllers, controller)
