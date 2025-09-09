@@ -15,6 +15,7 @@ const (
 	TicketReply          EventType = "TicketReply"
 	ClientKicked         EventType = "ClientKicked"
 	ClientMessage        EventType = "ClientMessage"
+	UnlawfulOverreach    EventType = "UnlawfulOverreach"
 )
 
 type AuditLogOperationInterface interface {

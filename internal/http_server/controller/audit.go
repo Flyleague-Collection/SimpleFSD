@@ -10,6 +10,7 @@ import (
 
 type AuditLogControllerInterface interface {
 	GetAuditLogs(ctx echo.Context) error
+	LogUnlawfulOverreach(ctx echo.Context) error
 }
 
 type AuditLogController struct {
@@ -35,4 +36,20 @@ func (controller *AuditLogController) GetAuditLogs(ctx echo.Context) error {
 	data.Uid = claim.Uid
 	data.Permission = claim.Permission
 	return controller.auditService.GetAuditLogPage(data).Response(ctx)
+}
+
+func (controller *AuditLogController) LogUnlawfulOverreach(ctx echo.Context) error {
+	data := &RequestLogUnlawfulOverreach{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.ErrorF("AuditLogController.LogUnlawfulOverreach bind error: %v", err)
+		return NewErrorResponse(ctx, &ErrLackParam)
+	}
+	token := ctx.Get("user").(*jwt.Token)
+	claim := token.Claims.(*Claims)
+	data.Uid = claim.Uid
+	data.Permission = claim.Permission
+	data.Cid = claim.Cid
+	data.Ip = ctx.RealIP()
+	data.UserAgent = ctx.Request().UserAgent()
+	return controller.auditService.LogUnlawfulOverreach(data).Response(ctx)
 }

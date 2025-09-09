@@ -5,6 +5,7 @@ import "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 
 type AuditServiceInterface interface {
 	GetAuditLogPage(req *RequestGetAuditLog) *ApiResponse[ResponseGetAuditLog]
+	LogUnlawfulOverreach(req *RequestLogUnlawfulOverreach) *ApiResponse[ResponseLogUnlawfulOverreach]
 }
 
 type RequestGetAuditLog struct {
@@ -19,3 +20,12 @@ type ResponseGetAuditLog struct {
 	PageSize int                   `json:"page_size"`
 	Total    int64                 `json:"total"`
 }
+
+type RequestLogUnlawfulOverreach struct {
+	JwtHeader
+	EchoContentHeader
+	Cid        int
+	AccessPath string `json:"access_path"`
+}
+
+type ResponseLogUnlawfulOverreach bool

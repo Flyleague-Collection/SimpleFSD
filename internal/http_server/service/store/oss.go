@@ -7,7 +7,6 @@ import (
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"mime/multipart"
 	"net/url"
@@ -93,10 +92,6 @@ func (store *ALiYunOssStoreService) DeleteImageFile(file string) (*StoreInfo, er
 func (store *ALiYunOssStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
 	if req.Permission <= 0 {
 		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, Unsatisfied, nil)
-	}
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.ActivityPublish) {
-		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, PermissionDenied, nil)
 	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {

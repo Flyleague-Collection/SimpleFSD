@@ -19,6 +19,7 @@ const (
 	ActivityEditPilotState
 	ActivityDelete
 	AuditLogShow
+	ClientManagerEntry
 	ClientSendMessage
 	ClientKill
 )
@@ -36,6 +37,7 @@ var PermissionMap = map[string]Permission{
 	"ActivityEditState":      ActivityEditState,
 	"ActivityEditPilotState": ActivityEditPilotState,
 	"ActivityDelete":         ActivityDelete,
+	"ClientManagerEntry":     ClientManagerEntry,
 	"ClientSendMessage":      ClientSendMessage,
 	"ClientKill":             ClientKill,
 }

@@ -222,6 +222,10 @@ func (lg *Logger) ShutdownCallback() global.Callable {
 	return lg.shutdownCallback
 }
 
+func (lg *Logger) LogHandler() *slog.Logger {
+	return lg.logger
+}
+
 func (lg *Logger) Debug(msg string, v ...interface{}) {
 	lg.logger.Debug(msg, v...)
 }

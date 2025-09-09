@@ -51,6 +51,10 @@ func (serverService *ServerService) getServerConfig() *ResponseGetServerConfig {
 			CidMax:            serverService.config.HttpServer.Limits.CidMax,
 			SimulatorServer:   serverService.config.General.SimulatorServer,
 		},
+		ImageLimit: &ImageLimit{
+			MaxAllowSize: int(serverService.config.HttpServer.Store.FileLimit.ImageLimit.MaxFileSize),
+			AllowedExt:   serverService.config.HttpServer.Store.FileLimit.ImageLimit.AllowedFileExt,
+		},
 		Facilities: &fsd.Facilities,
 		Ratings:    &fsd.Ratings,
 	}

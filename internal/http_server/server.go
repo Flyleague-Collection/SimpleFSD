@@ -78,7 +78,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 		ClientErrorLevel: slog.LevelWarn,
 		ServerErrorLevel: slog.LevelError,
 	}
-	e.Use(slogecho.NewWithConfig(slog.Default(), loggerConfig))
+	e.Use(slogecho.NewWithConfig(logger.LogHandler(), loggerConfig))
 	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
 		XSSProtection:         "1; mode=block",
 		ContentTypeNosniff:    "nosniff",
@@ -200,7 +200,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	clientGroup.DELETE("/:callsign", clientController.KillClient, jwtMiddleware)
 
 	serverGroup := apiGroup.Group("/server")
-	serverGroup.GET("/base", serverController.GetServerConfig)
+	serverGroup.GET("/config", serverController.GetServerConfig)
 	serverGroup.GET("/info", serverController.GetServerInfo, jwtMiddleware)
 	serverGroup.GET("/rating", serverController.GetServerOnlineTime, jwtMiddleware)
 
@@ -223,6 +223,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	auditLogGroup := apiGroup.Group("/audits")
 	auditLogGroup.GET("", auditLogController.GetAuditLogs, jwtMiddleware)
+	auditLogGroup.POST("/unlawful_overreach", auditLogController.LogUnlawfulOverreach, jwtMiddleware)
 
 	apiGroup.Use(middleware.Static(httpConfig.Store.LocalStorePath))
 

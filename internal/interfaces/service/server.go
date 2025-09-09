@@ -11,6 +11,11 @@ type ServerServiceInterface interface {
 	GetTimeRating() *ApiResponse[ResponseGetTimeRating]
 }
 
+type ImageLimit struct {
+	MaxAllowSize int      `json:"max_allow_size"`
+	AllowedExt   []string `json:"allowed_ext"`
+}
+
 type ServerLimits struct {
 	UsernameLengthMin int  `json:"username_length_min"`
 	UsernameLengthMax int  `json:"username_length_max"`
@@ -25,6 +30,7 @@ type ServerLimits struct {
 
 type ResponseGetServerConfig struct {
 	Limits     *ServerLimits    `json:"limits"`
+	ImageLimit *ImageLimit      `json:"image_limit"`
 	Facilities *[]FacilityModel `json:"facilities"`
 	Ratings    *[]RatingModel   `json:"ratings"`
 }

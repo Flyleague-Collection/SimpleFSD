@@ -46,3 +46,16 @@ func (auditLogService *AudioLogService) GetAuditLogPage(req *RequestGetAuditLog)
 		Total:    total,
 	})
 }
+
+var SuccessLogUnlawfulOverreach = ApiStatus{StatusName: "LOG_UNLAWFUL_OVERREACH", Description: "成功记录非法访问", HttpCode: Ok}
+
+func (auditLogService *AudioLogService) LogUnlawfulOverreach(req *RequestLogUnlawfulOverreach) *ApiResponse[ResponseLogUnlawfulOverreach] {
+	auditLog := auditLogService.auditOperation.NewAuditLog(operation.UnlawfulOverreach, req.Cid, req.AccessPath,
+		req.Ip, req.UserAgent, nil)
+	err := auditLogService.auditOperation.SaveAuditLog(auditLog)
+	if err != nil {
+		auditLogService.logger.ErrorF("Fail to create audit log for unlawful_overreach, detail: %v", err)
+	}
+	data := ResponseLogUnlawfulOverreach(true)
+	return NewApiResponse(&SuccessLogUnlawfulOverreach, Unsatisfied, &data)
+}

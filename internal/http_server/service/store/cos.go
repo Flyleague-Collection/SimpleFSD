@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/tencentyun/cos-go-sdk-v5"
 	"mime/multipart"
@@ -87,10 +86,6 @@ func (store *TencentCosStoreService) DeleteImageFile(file string) (*StoreInfo, e
 func (store *TencentCosStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
 	if req.Permission <= 0 {
 		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, Unsatisfied, nil)
-	}
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.ActivityPublish) {
-		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, PermissionDenied, nil)
 	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {

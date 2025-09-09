@@ -6,7 +6,6 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"io"
 	"mime/multipart"
@@ -102,10 +101,6 @@ func (store *LocalStoreService) DeleteImageFile(file string) (*StoreInfo, error)
 func (store *LocalStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
 	if req.Permission <= 0 {
 		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, Unsatisfied, nil)
-	}
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.ActivityPublish) {
-		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, PermissionDenied, nil)
 	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {
