@@ -26,17 +26,19 @@ type OnlinePilot struct {
 }
 
 type OnlineController struct {
-	Cid       string   `json:"cid"`
-	Callsign  string   `json:"callsign"`
-	RealName  string   `json:"real_name"`
-	Latitude  float64  `json:"latitude"`
-	Longitude float64  `json:"longitude"`
-	Rating    int      `json:"rating"`
-	Facility  int      `json:"facility"`
-	Frequency int      `json:"frequency"`
-	Range     int      `json:"range"`
-	AtcInfo   []string `json:"atc_info"`
-	LogonTime string   `json:"logon_time"`
+	Cid         string   `json:"cid"`
+	Callsign    string   `json:"callsign"`
+	RealName    string   `json:"real_name"`
+	Latitude    float64  `json:"latitude"`
+	Longitude   float64  `json:"longitude"`
+	Rating      int      `json:"rating"`
+	Facility    int      `json:"facility"`
+	Frequency   int      `json:"frequency"`
+	Range       int      `json:"range"`
+	OfflineTime string   `json:"offline_time"`
+	IsBreak     bool     `json:"is_break"`
+	AtcInfo     []string `json:"atc_info"`
+	LogonTime   string   `json:"logon_time"`
 }
 
 type OnlineClients struct {

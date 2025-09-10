@@ -3,6 +3,7 @@
 一个用于模拟飞行联飞的FSD, 使用Go语言编写
 FSD支持计划同步, 计划锁定  
 本分支为主分支的Lite版本, 仅保留FSD的核心功能  
+如果你想对本分支进行二次开发, 请查看[二次开发指引](./docs/development.md)  
 全功能版本请移步[主分支][Full-Branch]
 
 ---
@@ -11,6 +12,8 @@ FSD支持计划同步, 计划锁定
 ![ProjectLanguageCard]![ProjectLicense]
 ---
 
+![](./docs/image/show.png)
+
 ## 如何使用
 
 ### 使用方法
@@ -18,11 +21,11 @@ FSD支持计划同步, 计划锁定
 1. 获取服务器可执行文件  
    i. 在[Release]里面下载对应版本的构建  
    ii. 克隆整个存储库自己[构建](#构建方法)  
-   iii. 也可以前往[Action]页面获取最新开发版(开发版本可能不稳定且会产生Bug, 请谨慎使用)  
-2. 执行可执行文件以生成配置文件  
+   iii. 也可以前往[Action]页面获取最新开发版(开发版本可能不稳定且会产生Bug, 请谨慎使用)
+2. 执行可执行文件
 3. 此时您可以  
-   i. 按照[配置文件说明](#配置文件简介)编辑配置文件, 然后再次执行可执行文件  
-   ii. 直接再次执行可执行文件以使用默认配置运行  
+   i. 按照[配置文件说明](#配置文件简介)编辑配置文件, 然后重启服务器以应用变更  
+   ii. 不对配置文件进行修改, 让服务器以默认配置运行
 
 ### 构建方法
 
@@ -40,10 +43,8 @@ FSD支持计划同步, 计划锁定
 
 ```json5
 {
-  // 调试模式, 会输出大量日志, 请不要在生产环境中打开
-  "debug_mode": true,
   // 配置文件版本, 通常情况下与软件版本一致
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   // FSD名称, 会被发送到连接到服务器的客户端作为motd消息
   "fsd_name": "Simple-Fsd",
   // FSD服务器监听地址
@@ -72,6 +73,8 @@ FSD支持计划同步, 计划锁定
   "whazzup_file": "whazzup.json",
   // whazzup文件生成间隔
   "whazzup_interval": "15s",
+  // 首行发送到客户端的motd格式, 第一个参数为fsd_name, 第二个为版本号
+  "first_motd_line": "Welcome to use %[1]s v%[2]s",
   // 要发送到客户端的motd消息
   "motd": [],
   // 特殊权限配置, 详情请见`特殊权限配置` 章节
@@ -79,15 +82,23 @@ FSD支持计划同步, 计划锁定
 }
 ```
 
+### 命令行参数
+
+| 参数名     | 类型     | 默认值             | 作用     |
+|:--------|:-------|:----------------|:-------|
+| -help   | ×      | ×               | 显示命令帮助 |
+| -debug  | bool   | false           | 开启调试模式 |
+| -config | string | "./config.json" | 配置文件路径 |
+
 ### cert.txt 文件简介
 
 服务器会忽略以`#`字符开始的行  
 用户名格式为: CID 密码 [权限等级](#fsd管制权限一览)  
 密码的加密方式请见配置文件中`encryption_type`字段  
-保存后服务端即刻生效, 不用重启  
+保存后服务端即刻生效, 不用重启
 
 [MD5/SHA256加密网站]  
-[Bcrypt加密网站]  
+[Bcrypt加密网站]
 
 ```
 ######################
@@ -112,69 +123,72 @@ FSD支持计划同步, 计划锁定
 ```
 
 ### whazzup格式定义
+
 ```go
 package model
 
 type FlightPlan struct {
-   Cid              string `json:"cid"`                // CID
-   Callsign         string `json:"callsign"`           // 呼号
-   FlightType       string `json:"flight_type"`        // 飞行类型
-   AircraftType     string `json:"aircraft_type"`      // 机型
-   Tas              int    `json:"tas"`                // 巡航真空速
-   DepartureAirport string `json:"departure_airport"`  // 离场机场
-   DepartureTime    int    `json:"departure_time"`     // 离场时间
-   AtcDepartureTime int    `json:"atc_departure_time"` // ATC离场时间
-   CruiseAltitude   string `json:"cruise_altitude"`    // 巡航高度
-   ArrivalAirport   string `json:"arrival_airport"`    // 到达机场
-   RouteTimeHour    string `json:"route_time_hour"`    // 航路小时
-   RouteTimeMinute  string `json:"route_time_minute"`  // 航路分钟
-   FuelTimeHour     string `json:"fuel_time_hour"`     // 燃油小时
-   FuelTimeMinute   string `json:"fuel_time_minute"`   // 燃油分钟
-   AlternateAirport string `json:"alternate_airport"`  // 备降机场
-   Remarks          string `json:"remarks"`            // 备注
-   Route            string `json:"route"`              // 航路
+	Cid              string `json:"cid"`                // CID
+	Callsign         string `json:"callsign"`           // 呼号
+	FlightType       string `json:"flight_type"`        // 飞行类型
+	AircraftType     string `json:"aircraft_type"`      // 机型
+	Tas              int    `json:"tas"`                // 巡航真空速
+	DepartureAirport string `json:"departure_airport"`  // 离场机场
+	DepartureTime    int    `json:"departure_time"`     // 离场时间
+	AtcDepartureTime int    `json:"atc_departure_time"` // ATC离场时间
+	CruiseAltitude   string `json:"cruise_altitude"`    // 巡航高度
+	ArrivalAirport   string `json:"arrival_airport"`    // 到达机场
+	RouteTimeHour    string `json:"route_time_hour"`    // 航路小时
+	RouteTimeMinute  string `json:"route_time_minute"`  // 航路分钟
+	FuelTimeHour     string `json:"fuel_time_hour"`     // 燃油小时
+	FuelTimeMinute   string `json:"fuel_time_minute"`   // 燃油分钟
+	AlternateAirport string `json:"alternate_airport"`  // 备降机场
+	Remarks          string `json:"remarks"`            // 备注
+	Route            string `json:"route"`              // 航路
 }
 
 type OnlineGeneral struct {
-   Version          int    `json:"version"`           // whazzup版本
-   GenerateTime     string `json:"generate_time"`     // 生成时间
-   ConnectedClients int    `json:"connected_clients"` // 在线客户端
-   OnlinePilot      int    `json:"online_pilot"`      // 在线飞行员
-   OnlineController int    `json:"online_controller"` // 在线管制员
+	Version          int    `json:"version"`           // whazzup版本
+	GenerateTime     string `json:"generate_time"`     // 生成时间
+	ConnectedClients int    `json:"connected_clients"` // 在线客户端
+	OnlinePilot      int    `json:"online_pilot"`      // 在线飞行员
+	OnlineController int    `json:"online_controller"` // 在线管制员
 }
 
 type OnlinePilot struct {
-   Cid         string      `json:"cid"`          // CID
-   Callsign    string      `json:"callsign"`     // 呼号
-   RealName    string      `json:"real_name"`    // 真名
-   Latitude    float64     `json:"latitude"`     // 纬度
-   Longitude   float64     `json:"longitude"`    // 经度
-   Transponder string      `json:"transponder"`  // 应答机
-   Heading     int         `json:"heading"`      // 机头朝向
-   Altitude    int         `json:"altitude"`     // 高度
-   GroundSpeed int         `json:"ground_speed"` // 地速
-   FlightPlan  *FlightPlan `json:"flight_plan"`  // 飞行计划
-   LogonTime   string      `json:"logon_time"`   // 上线时间
+	Cid         string      `json:"cid"`          // CID
+	Callsign    string      `json:"callsign"`     // 呼号
+	RealName    string      `json:"real_name"`    // 真名
+	Latitude    float64     `json:"latitude"`     // 纬度
+	Longitude   float64     `json:"longitude"`    // 经度
+	Transponder string      `json:"transponder"`  // 应答机
+	Heading     int         `json:"heading"`      // 机头朝向
+	Altitude    int         `json:"altitude"`     // 高度
+	GroundSpeed int         `json:"ground_speed"` // 地速
+	FlightPlan  *FlightPlan `json:"flight_plan"`  // 飞行计划
+	LogonTime   string      `json:"logon_time"`   // 上线时间
 }
 
 type OnlineController struct {
-   Cid       string   `json:"cid"`        // CID
-   Callsign  string   `json:"callsign"`   // 呼号
-   RealName  string   `json:"real_name"`  // 真名
-   Latitude  float64  `json:"latitude"`   // 纬度
-   Longitude float64  `json:"longitude"`  // 经度
-   Rating    int      `json:"rating"`     // 权限等级
-   Facility  int      `json:"facility"`   // 席位
-   Frequency int      `json:"frequency"`  // 频率
-   Range     int      `json:"range"`      // 视程范围
-   AtcInfo   []string `json:"atc_info"`   // ATC信息
-   LogonTime string   `json:"logon_time"` // 上线时间
+	Cid         string   `json:"cid"`          // CID
+	Callsign    string   `json:"callsign"`     // 呼号
+	RealName    string   `json:"real_name"`    // 真名
+	Latitude    float64  `json:"latitude"`     // 纬度
+	Longitude   float64  `json:"longitude"`    // 经度
+	Rating      int      `json:"rating"`       // 权限等级
+	Facility    int      `json:"facility"`     // 席位
+	Frequency   int      `json:"frequency"`    // 频率
+	Range       int      `json:"range"`        // 视程范围
+	OfflineTime string   `json:"offline_time"` // 预计下线时间
+	IsBreak     bool     `json:"is_break"`     // 是否离开
+	AtcInfo     []string `json:"atc_info"`     // ATC信息
+	LogonTime   string   `json:"logon_time"`   // 上线时间
 }
 
 type OnlineClients struct {
-   General     *OnlineGeneral      `json:"general"`
-   Pilots      []*OnlinePilot      `json:"pilots"`
-   Controllers []*OnlineController `json:"controllers"`
+	General     *OnlineGeneral      `json:"general"`
+	Pilots      []*OnlinePilot      `json:"pilots"`
+	Controllers []*OnlineController `json:"controllers"`
 }
 
 ```
@@ -264,7 +278,7 @@ type OnlineClients struct {
 在提交时，需要您按照以下步骤进行：
 
 1. 对于可复现的bug:
-    1. 在[配置文件](#配置文件简介)中打开`"debug_mode": true`以启用详细日志文件
+    1. 对可执行文件添加`-debug`命令行参数以启用详细日志输出
     2. 重启FSD并复现此bug
     3. 将log文件上传至[Issue]
 2. 对于不可复现的bug:
@@ -307,4 +321,5 @@ Copyright © 2025 Half_nothing
 [Issue]: https://github.com/Flyleague-Collection/SimpleFSD/issues/new
 
 [MD5/SHA256加密网站]: https://www.bejson.com/enc/sha/
+
 [Bcrypt加密网站]: https://www.bejson.com/encrypt/bcrpyt_encode/

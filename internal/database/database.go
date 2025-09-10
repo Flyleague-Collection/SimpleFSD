@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"github.com/fsnotify/fsnotify"
-	c "github.com/half-nothing/simple-fsd/internal/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"os"
@@ -14,15 +16,19 @@ import (
 )
 
 type DBCloseCallback struct {
+	logger  log.LoggerInterface
 	watcher *fsnotify.Watcher
 }
 
-func NewDBCloseCallback(watcher *fsnotify.Watcher) *DBCloseCallback {
-	return &DBCloseCallback{watcher: watcher}
+func NewDBCloseCallback(logger log.LoggerInterface, watcher *fsnotify.Watcher) *DBCloseCallback {
+	return &DBCloseCallback{
+		logger:  logger,
+		watcher: watcher,
+	}
 }
 
 func (dc *DBCloseCallback) Invoke(_ context.Context) error {
-	c.InfoF("Closing file watcher")
+	dc.logger.InfoF("Closing file watcher")
 	return dc.watcher.Close()
 }
 
@@ -56,14 +62,14 @@ func readData(file *os.File) {
 	}
 }
 
-func ConnectDatabase(config *c.Config) (*DatabaseOperations, error) {
-	if err := os.MkdirAll(filepath.Dir(config.CertFile), 0775); err != nil {
-		return nil, err
+func ConnectDatabase(lg log.LoggerInterface, config *config.Config, _ bool) (*DBCloseCallback, *DatabaseOperations, error) {
+	if err := os.MkdirAll(filepath.Dir(config.CertFile), global.DefaultDirectoryPermission); err != nil {
+		return nil, nil, err
 	}
 
 	var file *os.File
 	if _, err := os.Stat(config.CertFile); os.IsNotExist(err) {
-		file, _ = os.Create(config.CertFile)
+		file, _ = os.OpenFile(config.CertFile, os.O_WRONLY|os.O_CREATE, global.DefaultFilePermissions)
 		data := "######################\n" +
 			"# -1 Ban\n" +
 			"# 0 Normal\n" +
@@ -83,19 +89,19 @@ func ConnectDatabase(config *c.Config) (*DatabaseOperations, error) {
 			"# CID PASSWORD RATING"
 		_, _ = file.Write([]byte(data))
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if file, err = os.Open(config.CertFile); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	readData(file)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := watcher.Add(config.CertFile); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	go func() {
@@ -106,7 +112,7 @@ func ConnectDatabase(config *c.Config) (*DatabaseOperations, error) {
 					if ev.Op&fsnotify.Write == fsnotify.Write {
 						file, err := os.Open(ev.Name)
 						if err != nil {
-							c.ErrorF("Error opening file %s", ev.Name)
+							lg.ErrorF("Error opening file %s", ev.Name)
 						} else {
 							readData(file)
 						}
@@ -114,14 +120,12 @@ func ConnectDatabase(config *c.Config) (*DatabaseOperations, error) {
 				}
 			case err := <-watcher.Errors:
 				{
-					c.ErrorF("Error watching file, %v", err)
+					lg.ErrorF("Error watching file, %v", err)
 					return
 				}
 			}
 		}
 	}()
 
-	c.GetCleaner().Add(NewDBCloseCallback(watcher))
-
-	return NewDatabaseOperations(NewUserOperation(config), NewFlightPlanOperation(config)), nil
+	return NewDBCloseCallback(lg, watcher), NewDatabaseOperations(NewUserOperation(lg, config), NewFlightPlanOperation(lg, config)), nil
 }

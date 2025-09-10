@@ -3,14 +3,30 @@ package config
 
 import (
 	"errors"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strings"
 )
 
-type VersionType int
+var (
+	ConfVersion, _ = newVersion(global.ConfigVersion)
+	AppVersion, _  = newVersion(global.AppVersion)
+)
+
+func checkPort(port uint) *ValidResult {
+	if port <= 0 {
+		return ValidFail(errors.New("port must be greater than zero"))
+	}
+	if port > 65535 {
+		return ValidFail(errors.New("port must be less than 65535"))
+	}
+	return ValidPass()
+}
+
+type checkVersionResult int
 
 const (
-	AllMatch VersionType = iota
+	AllMatch checkVersionResult = iota
 	MajorUnmatch
 	MinorUnmatch
 	PatchUnmatch
@@ -36,7 +52,7 @@ func newVersion(version string) (*Version, error) {
 	}, nil
 }
 
-func (v *Version) checkVersion(version *Version) VersionType {
+func (v *Version) checkVersion(version *Version) checkVersionResult {
 	if v.major != version.major {
 		return MajorUnmatch
 	}

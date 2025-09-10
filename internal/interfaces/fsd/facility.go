@@ -3,7 +3,7 @@ package fsd
 
 import (
 	"fmt"
-	c "github.com/half-nothing/simple-fsd/internal/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
@@ -55,7 +55,7 @@ func (r Rating) CheckRatingFacility(facility Facility) bool {
 	return RatingFacilityMap[r].CheckFacility(facility)
 }
 
-func SyncRatingConfig(config *c.Config) error {
+func SyncRatingConfig(config *config.Config) error {
 	if len(config.Rating) == 0 {
 		return nil
 	}

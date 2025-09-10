@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-type ConnectionHandlerInterface interface {
+type SessionInterface interface {
 	SendError(result *Result)
 	HandleConnection()
 	Callsign() string

@@ -1,5 +1,0 @@
-<p>{{.Cid}}, 您好</p>
-<p>您的管制权限已被修改为: {{.NewValue}}</p>
-<p>原管制权限: {{.OldValue}}</p>
-<p>操作人: {{.Operator}}</p>
-<p>如有疑问请联系 {{.Contact}}</p>

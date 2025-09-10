@@ -24,8 +24,6 @@ func (h *IntervalActuator) Start() {
 	h.ticker = time.NewTicker(h.interval)
 
 	go func() {
-		defer fmt.Println("Actuator stopped")
-
 		for {
 			select {
 			case <-h.ticker.C:

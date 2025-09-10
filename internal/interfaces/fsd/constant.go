@@ -5,7 +5,7 @@ type Enum interface {
 	Index() int
 }
 
-const SpecialFrequency = "@94835"
+const EuroscopeFrequency = "@94835"
 
 const AllowAtcFacility = DEL | GND | TWR | APP | CTR | FSS
 
@@ -49,4 +49,15 @@ var CommandRequirements = map[ClientCommand]*CommandRequirement{
 	AcceptHandoff:  {3, false},
 	ProController:  {3, false},
 	SquawkBox:      {2, false},
+}
+
+var FacilityMap = map[string]Facility{
+	"SUP": OBS,
+	"OBS": OBS,
+	"DEL": DEL,
+	"GND": GND,
+	"TWR": TWR,
+	"APP": APP,
+	"CTR": CTR,
+	"FSS": FSS,
 }

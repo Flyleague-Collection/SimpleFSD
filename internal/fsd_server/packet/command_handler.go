@@ -2,23 +2,24 @@
 package packet
 
 import (
+	"errors"
 	"fmt"
-	c "github.com/half-nothing/simple-fsd/internal/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strings"
 )
 
-func (ch *ConnectionHandler) checkPacketLength(data []string, requirement *CommandRequirement) (*Result, bool) {
+func (session *Session) checkPacketLength(data []string, requirement *CommandRequirement) (*Result, bool) {
 	length := len(data)
 	if length < requirement.RequireLength {
-		return ResultError(Syntax, requirement.Fatal, ch.callsign, fmt.Errorf("datapack length too short, require %d but got %d", requirement.RequireLength, length)), false
+		return ResultError(Syntax, requirement.Fatal, session.callsign, fmt.Errorf("datapack length too short, require %d but got %d", requirement.RequireLength, length)), false
 	}
 	return nil, true
 }
 
 // verifyUserInfo 验证用户信息与处理客户端重连机制
-func (ch *ConnectionHandler) verifyUserInfo(callsign string, protocol int, cid string, password string) *Result {
+func (session *Session) verifyUserInfo(callsign string, protocol int, cid string, password string) *Result {
 	if !callsignValid(callsign) {
 		return ResultError(CallsignInvalid, true, callsign, nil)
 	}
@@ -27,79 +28,89 @@ func (ch *ConnectionHandler) verifyUserInfo(callsign string, protocol int, cid s
 		return ResultError(InvalidProtocolVision, true, callsign, nil)
 	}
 
-	client, ok := ch.clientManager.GetClient(callsign)
+	client, ok := session.clientManager.GetClient(callsign)
 
 	// 客户端存在且标记为断开连接
 	if ok {
-		if client.Reconnect(ch) {
+		if client.Reconnect(session) {
 			// 客户端重连
-			ch.client = client
+			session.client = client
 		} else {
 			// 呼号已被使用
 			return ResultError(CallsignInUse, true, callsign, nil)
 		}
 	}
 
-	user, err := ch.userOperation.GetUserByCid(cid)
+	user, err := session.userOperation.GetUserByCid(cid)
 	if err != nil {
-		return ResultError(AuthFail, true, callsign, err)
+		return ResultError(InvalidCidPassword, true, callsign, err)
 	}
 	if user.Rating == Ban.Index() {
-		return ResultError(UserBaned, true, callsign, nil)
+		return ResultError(CidSuspended, true, callsign, nil)
 	}
-	if !ch.userOperation.VerifyUserPassword(user, password) {
-		return ResultError(AuthFail, true, callsign, nil)
+	if !session.userOperation.VerifyUserPassword(user, password) {
+		return ResultError(InvalidCidPassword, true, callsign, nil)
 	}
 
 	// 重设重连客户端的User
 	if client != nil {
 		client.SetUser(user)
 	}
-	ch.user = user
+	session.user = user
 
 	return nil
 }
 
 // handleAddAtc 处理管制员登录
-func (ch *ConnectionHandler) handleAddAtc(data []string, rawLine []byte) *Result {
+func (session *Session) handleAddAtc(data []string, rawLine []byte) *Result {
 	// #AA 2352_OBS SERVER 2352 2352 123456  1  9  1  0  29.86379 119.49287 100
 	// [0] [   1  ] [  2 ] [ 3] [ 4] [  5 ] [6][7][8][9] [  10  ] [   11  ] [12]
 	callsign := data[0]
 	cid := data[3]
 	password := data[4]
 	protocol := utils.StrToInt(data[6], 0)
-	result := ch.verifyUserInfo(callsign, protocol, cid, password)
+	result := session.verifyUserInfo(callsign, protocol, cid, password)
 	if result != nil {
 		return result
 	}
 	reqRating := utils.StrToInt(data[5], 0)
-	if reqRating > ch.user.Rating {
+	if reqRating > session.user.Rating {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
+	}
+	facilityIdent := strings.Split(callsign, "_")
+	if len(facilityIdent) < 2 {
+		return ResultError(Custom, true, callsign, fmt.Errorf("invalid callsign %s", callsign))
+	}
+	ident := facilityIdent[len(facilityIdent)-1]
+	if facility, exist := FacilityMap[ident]; !exist {
+		return ResultError(Custom, true, callsign, fmt.Errorf("invalid callsign %s", callsign))
+	} else {
+		session.facilityIdent = facility
 	}
 	realName := data[2]
 	latitude := utils.StrToFloat(data[9], 0)
 	longitude := utils.StrToFloat(data[10], 0)
-	if ch.client == nil {
-		ch.client = ch.clientManager.NewClient(callsign, Rating(reqRating), protocol, realName, ch, true)
-		_ = ch.client.SetPosition(0, latitude, longitude)
-		_ = ch.clientManager.AddClient(ch.client)
+	if session.client == nil {
+		session.client = session.clientManager.NewClient(callsign, Rating(reqRating), protocol, realName, session, true)
+		_ = session.client.SetPosition(0, latitude, longitude)
+		_ = session.clientManager.AddClient(session.client)
 	}
-	ch.client.SendLine(makePacket(ClientQuery, "SERVER", callsign, "ATIS"))
-	go ch.clientManager.BroadcastMessage(rawLine, ch.client, BroadcastToClientInRange)
-	ch.client.SendMotd()
-	c.InfoF("[%s] ATC login successfully", callsign)
+	session.client.SendLine(makePacket(ClientQuery, global.FSDServerName, callsign, "ATIS"))
+	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
+	session.client.SendMotd()
+	session.logger.InfoF("[%s] ATC login successfully", callsign)
 	return ResultSuccess()
 }
 
 // handleAddPilot 处理客户端登录
-func (ch *ConnectionHandler) handleAddPilot(data []string, rawLine []byte) *Result {
+func (session *Session) handleAddPilot(data []string, rawLine []byte) *Result {
 	//	#AP CES2352 SERVER 2352 123456  1   9  16  Half_nothing ZGHA
 	//  [0] [  1  ] [  2 ] [ 3] [  4 ] [5] [6] [7] [       8       ]
 	callsign := data[0]
 	cid := data[2]
 	password := data[3]
 	protocol := utils.StrToInt(data[5], 0)
-	result := ch.verifyUserInfo(callsign, protocol, cid, password)
+	result := session.verifyUserInfo(callsign, protocol, cid, password)
 	if result != nil {
 		return result
 	}
@@ -109,23 +120,26 @@ func (ch *ConnectionHandler) handleAddPilot(data []string, rawLine []byte) *Resu
 	}
 	simType := utils.StrToInt(data[6], 0)
 	realName := data[7]
-	if ch.client == nil {
-		ch.client = ch.clientManager.NewClient(callsign, reqRating, protocol, realName, ch, false)
-		ch.client.SetSimType(simType)
-		_ = ch.clientManager.AddClient(ch.client)
+	if session.client == nil {
+		session.client = session.clientManager.NewClient(callsign, reqRating, protocol, realName, session, false)
+		session.client.SetSimType(simType)
+		_ = session.clientManager.AddClient(session.client)
 	}
-	go ch.clientManager.BroadcastMessage(rawLine, ch.client, BroadcastToClientInRange)
-	ch.client.SendMotd()
-	c.InfoF("[%s] client login successfully", callsign)
+	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
+	session.client.SendMotd()
+	session.logger.InfoF("[%s] client login successfully", callsign)
 	return ResultSuccess()
 }
 
 // handleAtcPosUpdate 处理管制员位置更新
-func (ch *ConnectionHandler) handleAtcPosUpdate(data []string, rawLine []byte) *Result {
+func (session *Session) handleAtcPosUpdate(data []string, rawLine []byte) *Result {
 	//  %  ZSHA_CTR 24550  6  600  5  27.28025 118.28701  0
 	// [0] [   1  ] [ 2 ] [3] [4] [5] [   6  ] [   7   ] [8]
 	callsign := data[0]
 	facility := Facility(1 << utils.StrToInt(data[2], 0))
+	if facility != session.facilityIdent {
+		return ResultError(CallsignInvalid, true, callsign, errors.New("callsign and faility mismatch"))
+	}
 	rating := Rating(utils.StrToInt(data[4], 0))
 	if !rating.CheckRatingFacility(facility) {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
@@ -134,16 +148,16 @@ func (ch *ConnectionHandler) handleAtcPosUpdate(data []string, rawLine []byte) *
 	visualRange := utils.StrToFloat(data[3], 0)
 	latitude := utils.StrToFloat(data[5], 0)
 	longitude := utils.StrToFloat(data[6], 0)
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
-	go ch.clientManager.BroadcastMessage(rawLine, ch.client, BroadcastToClientInRange)
-	ch.client.UpdateAtcPos(frequency, facility, visualRange, latitude, longitude)
+	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
+	session.client.UpdateAtcPos(frequency, facility, visualRange, latitude, longitude)
 	return ResultSuccess()
 }
 
 // handlePilotPosUpdate 处理飞行员位置更新
-func (ch *ConnectionHandler) handlePilotPosUpdate(data []string, rawLine []byte) *Result {
+func (session *Session) handlePilotPosUpdate(data []string, rawLine []byte) *Result {
 	//	@   S  CPA421 7000  1  38.96244 121.53479 87   0  4290770974 278
 	// [0] [1] [  2 ] [ 3] [4] [   5  ] [   6   ] [7] [8] [    9   ] [10]
 	transponder := utils.StrToInt(data[2], 0)
@@ -152,49 +166,49 @@ func (ch *ConnectionHandler) handlePilotPosUpdate(data []string, rawLine []byte)
 	altitude := utils.StrToInt(data[6], 0)
 	groundSpeed := utils.StrToInt(data[7], 0)
 	pbh := uint32(utils.StrToInt(data[8], 0))
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
-	go ch.clientManager.BroadcastMessage(rawLine, ch.client, BroadcastToClientInRange)
-	ch.client.UpdatePilotPos(transponder, latitude, longitude, altitude, groundSpeed, pbh)
+	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
+	session.client.UpdatePilotPos(transponder, latitude, longitude, altitude, groundSpeed, pbh)
 	return ResultSuccess()
 }
 
 // handleAtcVisPointUpdate 处理管制员视程点更新
-func (ch *ConnectionHandler) handleAtcVisPointUpdate(data []string, _ []byte) *Result {
+func (session *Session) handleAtcVisPointUpdate(data []string, _ []byte) *Result {
 	//  '  ZSHA_CTR  0  36.67349 120.45621
 	// [0] [   1  ] [2] [   3  ] [   4   ]
 	visPos := utils.StrToInt(data[1], 0)
 	latitude := utils.StrToFloat(data[2], 0)
 	longitude := utils.StrToFloat(data[3], 0)
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
-	_ = ch.client.UpdateAtcVisPoint(visPos, latitude, longitude)
+	_ = session.client.UpdateAtcVisPoint(visPos, latitude, longitude)
 	return ResultSuccess()
 }
 
 // sendFrequencyMessage 发送频率消息
-func (ch *ConnectionHandler) sendFrequencyMessage(targetStation string, rawLine []byte) *Result {
-	if ch.client == nil {
+func (session *Session) sendFrequencyMessage(targetStation string, rawLine []byte) *Result {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
 	frequency := utils.StrToInt(targetStation[1:], -1)
 	if frequency == -1 {
-		return ResultError(Syntax, false, ch.client.Callsign(), fmt.Errorf("illegal frequency %s", targetStation))
+		return ResultError(Syntax, false, targetStation, fmt.Errorf("illegal frequency %s", targetStation))
 	}
 	if frequencyValid(frequency) {
 		// 合法频率, 发给所有客户端
-		go ch.clientManager.BroadcastMessage(rawLine, ch.client, BroadcastToClientInRange)
+		go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
 	} else {
 		// 非法频率, 大概率是管制使用, 只发给管制
-		go ch.clientManager.BroadcastMessage(rawLine, ch.client, CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
+		go session.clientManager.BroadcastMessage(rawLine, session.client, CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
 	}
 	return nil
 }
 
 // handleClientQuery 处理客户端查询消息
-func (ch *ConnectionHandler) handleClientQuery(data []string, rawLine []byte) *Result {
+func (session *Session) handleClientQuery(data []string, rawLine []byte) *Result {
 	//	查询飞行计划
 	//	$CQ ZYSH_CTR SERVER FP  CPA421
 	//  [0] [  1   ] [  2 ] [3] [  4 ]
@@ -202,216 +216,266 @@ func (ch *ConnectionHandler) handleClientQuery(data []string, rawLine []byte) *R
 	//	修改飞行计划
 	//	$CQ ZYSH_CTR @94835 FA  CPA421 31100
 	//	[0] [  1   ] [  2 ] [3] [  4 ] [ 5 ]
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
+	commandLength := len(data)
+	if commandLength < 3 {
+		return ResultError(Syntax, false, "", fmt.Errorf("illegal command length %d", commandLength))
+	}
 	targetStation := data[1]
-	if targetStation == "SERVER" {
+	if targetStation == global.FSDServerName {
 		subQuery := data[2]
 		// 查询指定机组的飞行计划
-		if subQuery == "FP" {
-			targetCallsign := data[3]
-			client, ok := ch.clientManager.GetClient(targetCallsign)
-			if !ok || client.FlightPlan() == nil {
-				return ResultError(NoFlightPlan, false, ch.client.Callsign(), nil)
+		switch subQuery {
+		case ClientFlightPlan:
+			if commandLength < 4 {
+				return ResultError(Syntax, false, "", fmt.Errorf("illegal command length %d", commandLength))
 			}
-			ch.client.SendLine([]byte(ch.flightPlanOperation.ToString(client.FlightPlan(), data[0])))
+			targetCallsign := data[3]
+			client, ok := session.clientManager.GetClient(targetCallsign)
+			if !ok || client.FlightPlan() == nil {
+				return ResultError(NoFlightPlan, false, session.client.Callsign(), nil)
+			}
+			session.client.SendLine([]byte(session.flightPlanOperation.ToString(client.FlightPlan(), data[0])))
+		case AvailableAtc:
+			available := isValidAtc(data[0])
+			if available {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "ATC:Y", data[0]))
+			} else {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "ATC:N", data[0]))
+			}
+		case ClientCapacity:
+			if session.client.IsAtc() {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "CAPS:ATCINFO=1:SECPOS=1:FASTPOS=1:OBSPILOT=1"))
+			} else {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "CAPS:VERSION=1:ATCINFO=1:MODELDESC=1:ACCONFIG=1:VISUPDATE=1"))
+			}
+		case IpAddress:
+			session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "IP", session.conn.RemoteAddr().String()[0:strings.LastIndex(session.conn.RemoteAddr().String(), ":")]))
 		}
+		return ResultSuccess()
 	}
 	// 如果发送目标是一个频率
 	if strings.HasPrefix(targetStation, "@") {
-		err := ch.sendFrequencyMessage(targetStation, rawLine)
+		err := session.sendFrequencyMessage(targetStation, rawLine)
+		// 如果目标频率是94835
+		if targetStation == EuroscopeFrequency {
+			subQuery := data[2]
+			// ATIS信息更新, 需要更新服务器存储的ATIS信息
+			if subQuery == InfoUpdate {
+				session.client.ClearAtcAtisInfo()
+				session.client.SendLine(makePacket(ClientQuery, global.FSDServerName, session.callsign, AtcAtis))
+			}
+			if subQuery == Break {
+				session.client.SetBreak(true)
+			}
+			if subQuery == NoBreak {
+				session.client.SetBreak(false)
+			}
+		}
 		if err != nil {
 			return err
 		}
 	} else {
-		_ = ch.clientManager.SendMessageTo(targetStation, rawLine)
+		_ = session.clientManager.SendMessageTo(targetStation, rawLine)
 	}
 	return ResultSuccess()
 }
 
 // handleClientResponse 处理客户端回复消息
-func (ch *ConnectionHandler) handleClientResponse(data []string, rawLine []byte) *Result {
+func (session *Session) handleClientResponse(data []string, rawLine []byte) *Result {
 	//	$CR ZSHA_CTR ZSSS_APP CAPS ATCINFO=1 SECPOS=1 MODELDESC=1 ONGOINGCOORD=1 NEWINFO=1 TEAMSPEAK=1 ICAOEQ=1
 	//  [0] [   1  ] [   2  ] [ 3] [   4   ] [  5   ] [    6    ] [     7      ] [   8   ] [     9   ] [  10  ]
 	//	$CR ZSHA_CTR SERVER ATIS  T  ZSHA_CTR Shanghai Control
 	//	[0] [   1  ] [  2 ] [ 3] [4] [           5           ]
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
 	commandLength := len(data)
 	targetStation := data[1]
-	if targetStation == "SERVER" {
+	if targetStation == global.FSDServerName {
 		subQuery := data[2]
-		if subQuery == "ATIS" && commandLength >= 5 && data[3] == "T" {
-			ch.client.AddAtcAtisInfo(data[4])
+		if subQuery == "ATIS" && commandLength >= 5 {
+			if data[3] == "T" {
+				session.client.AddAtcAtisInfo(data[4])
+			}
+			if data[3] == "Z" {
+				session.client.SetLogoffTime(data[4])
+			}
 		}
 	}
 	if strings.HasPrefix(targetStation, "@") {
-		result := ch.sendFrequencyMessage(targetStation, rawLine)
+		result := session.sendFrequencyMessage(targetStation, rawLine)
 		if result != nil {
 			return result
 		}
 	} else {
-		_ = ch.clientManager.SendMessageTo(targetStation, rawLine)
+		_ = session.clientManager.SendMessageTo(targetStation, rawLine)
 	}
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) handleMessage(data []string, rawLine []byte) *Result {
+func (session *Session) handleMessage(data []string, rawLine []byte) *Result {
 	// #TM ZSHA_CTR ZSSS_APP 111
 	// [0] [   1  ] [   2  ] [3]
 	targetStation := data[1]
 	if strings.HasPrefix(targetStation, "@") {
-		result := ch.sendFrequencyMessage(targetStation, rawLine)
+		result := session.sendFrequencyMessage(targetStation, rawLine)
 		if result != nil {
 			return result
 		}
-	} else if strings.HasPrefix(targetStation, "*") {
+		return ResultSuccess()
+	}
+	if strings.HasPrefix(targetStation, "*") {
 		// 广播消息
 		if targetStation == string(AllSup) {
-			go ch.clientManager.BroadcastMessage(rawLine, ch.client, BroadcastToSup)
+			go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToSup)
+			return ResultSuccess()
 		}
-	} else {
-		_ = ch.clientManager.SendMessageTo(targetStation, rawLine)
+		if targetStation == "*" && session.client.IsAtc() && session.client.CheckRating(AllowKillRating) {
+			go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToAll)
+		}
+		return ResultSuccess()
 	}
+	_ = session.clientManager.SendMessageTo(targetStation, rawLine)
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) handlePlan(data []string, rawLine []byte) *Result {
+func (session *Session) handlePlan(data []string, rawLine []byte) *Result {
 	// $FP CPA421 SERVER  I  H/A320/L 474 ZYTL 1115  0  FL371 ZYHB  1    18   2    26  ZYCC
 	// [0] [  1 ] [  2 ] [3] [  4   ] [5] [ 6] [ 7] [8] [ 9 ] [10] [11] [12] [13] [14] [15]
 	// /V/ SEL/AHFL VENOS A588 NULRA W206 MAGBI W656 ISLUK W629 LARUN
 	// [    16    ] [                      17                       ]
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
-	if ch.client.IsAtc() {
-		return ResultError(Syntax, false, ch.client.Callsign(), fmt.Errorf("atc can not submit fligth plan"))
+	if session.client.IsAtc() {
+		return ResultError(Syntax, false, session.client.Callsign(), fmt.Errorf("atc can not submit fligth plan"))
 	}
-	if err := ch.client.UpsertFlightPlan(data); err != nil {
-		return ResultError(Syntax, false, ch.client.Callsign(), err)
+	if err := session.client.UpsertFlightPlan(data); err != nil {
+		return ResultError(Syntax, false, session.client.Callsign(), err)
 	}
-	if !ch.client.FlightPlan().Locked {
-		go ch.clientManager.BroadcastMessage(rawLine, ch.client, CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
+	if !session.client.FlightPlan().Locked {
+		go session.clientManager.BroadcastMessage(rawLine, session.client, CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
 	}
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) handleAtcEditPlan(data []string, _ []byte) *Result {
+func (session *Session) handleAtcEditPlan(data []string, _ []byte) *Result {
 	// $AM ZYSH_CTR SERVER CPA421  I  H/A320/L 474 ZYTL 1115  0  FL371 ZYHB  11  8     22   6   ZYCC
 	// [0] [   1  ] [  2 ] [  3 ] [4] [   5  ] [6] [ 7] [ 8] [9] [ 10] [11] [12] [13] [14] [15] [16]
 	// /V/ SEL/AHFL CHI19D/28 VENOS A588 NULRA W206 MAGBI W656 ISLUK W629 LARUN
 	// [     17   ] [                             18                          ]
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
-	if !ch.client.IsAtc() {
-		return ResultError(Syntax, false, ch.client.Callsign(), fmt.Errorf("only act can edit flight plan"))
+	if !session.client.IsAtc() {
+		return ResultError(Syntax, false, session.client.Callsign(), fmt.Errorf("only act can edit flight plan"))
 	}
-	if !ch.client.CheckFacility(AllowAtcFacility) {
-		return ResultError(Syntax, false, ch.client.Callsign(), fmt.Errorf("%s facility not allowed to edit plan", ch.client.Facility().String()))
+	if !session.client.CheckFacility(AllowAtcFacility) {
+		return ResultError(Syntax, false, session.client.Callsign(), fmt.Errorf("%s facility not allowed to edit plan", session.client.Facility().String()))
 	}
 	targetCallsign := data[2]
-	client, ok := ch.clientManager.GetClient(targetCallsign)
+	client, ok := session.clientManager.GetClient(targetCallsign)
 	if !ok {
-		return ResultError(SourceCallsignInvalid, false, ch.client.Callsign(), fmt.Errorf("%s not exists", targetCallsign))
+		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetCallsign))
 	}
 	if client.FlightPlan == nil {
-		return ResultError(NoFlightPlan, false, ch.client.Callsign(), fmt.Errorf("%s do not have filght plan", ch.client.Callsign()))
+		return ResultError(NoFlightPlan, false, session.client.Callsign(), fmt.Errorf("%s do not have filght plan", session.client.Callsign()))
 	}
 	client.FlightPlan().Locked = true
-	if err := ch.flightPlanOperation.UpdateFlightPlan(client.FlightPlan(), client.Callsign(), data[1:], true); err != nil {
-		return ResultError(Syntax, false, ch.client.Callsign(), err)
+	if err := session.flightPlanOperation.UpdateFlightPlan(client.FlightPlan(), client.Callsign(), data[1:], true); err != nil {
+		return ResultError(Syntax, false, session.client.Callsign(), err)
 	}
-	go ch.clientManager.BroadcastMessage([]byte(ch.flightPlanOperation.ToString(client.FlightPlan(), string(AllATC))),
-		ch.client, CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
+	go session.clientManager.BroadcastMessage([]byte(session.flightPlanOperation.ToString(client.FlightPlan(), string(AllATC))),
+		session.client, CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) handleKillClient(data []string, _ []byte) *Result {
+func (session *Session) handleKillClient(data []string, _ []byte) *Result {
 	// $!! ZSHA_CTR CPA421 test
-	if ch.client == nil {
-		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
+	if session.client == nil {
+		return ResultError(Custom, false, "", fmt.Errorf("client not register"))
 	}
-	if !(ch.client.IsAtc() && ch.client.CheckRating(AllowKillRating)) {
-		return ResultError(Syntax, false, ch.client.Callsign(), fmt.Errorf("%s facility not allowed to kill client", ch.client.Facility().String()))
+	if !(session.client.IsAtc() && session.client.CheckRating(AllowKillRating)) {
+		return ResultError(Custom, false, session.client.Callsign(), fmt.Errorf("%s rating not allowed to kill client", session.client.Rating().String()))
 	}
 	targetStation := data[1]
-	client, ok := ch.clientManager.GetClient(targetStation)
+	client, ok := session.clientManager.GetClient(targetStation)
 	if !ok {
-		return ResultError(NoCallsignFound, false, ch.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
+		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
 	}
-	client.MarkedDisconnect(false)
+	client.SendError(ResultError(Custom, true, session.client.Callsign(), fmt.Errorf("kicked from server by %04d, reason: %s", session.user.Cid, data[2])))
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) handleRequest(data []string, rawLine []byte) *Result {
+func (session *Session) handleRequest(data []string, rawLine []byte) *Result {
 	// $HO ZSSS_APP ZSHA_CTR CES2352
 	// [0] [  1   ] [   2  ] [  3  ]
 	// #PC ZSHA_CTR ZSSS_APP CCP HC CES2352
 	// $HA ZSHA_CTR ZSSS_APP CES2352
 	targetStation := data[1]
-	_ = ch.clientManager.SendMessageTo(targetStation, rawLine)
+	_ = session.clientManager.SendMessageTo(targetStation, rawLine)
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) removeClient(_ []string, _ []byte) *Result {
+func (session *Session) removeClient(_ []string, _ []byte) *Result {
 	// #DA ZGGG_CTR SERVER
-	c.InfoF("[%s] Offline", ch.client.Callsign())
+	session.logger.InfoF("[%s] Offline", session.client.Callsign())
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) handleSquawkBox(data []string, rawLine []byte) *Result {
+func (session *Session) handleSquawkBox(data []string, rawLine []byte) *Result {
 	//# SB ZSHA_CTR CES7199 FSIPIR 0 ZZZ C172 3.73453 1.32984 174.00000 3.3028DC0.98CF9A41 L1P Cessna Skyhawk 172SP
-	if ch.client == nil {
+	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
 	targetStation := data[1]
-	client, ok := ch.clientManager.GetClient(targetStation)
+	client, ok := session.clientManager.GetClient(targetStation)
 	if !ok {
-		return ResultError(SourceCallsignInvalid, false, ch.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
+		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
 	}
 	client.SendLine(rawLine)
 	return ResultSuccess()
 }
 
-func (ch *ConnectionHandler) handleCommand(commandType ClientCommand, data []string, rawLine []byte) *Result {
+func (session *Session) handleCommand(commandType ClientCommand, data []string, rawLine []byte) *Result {
 	var result = ResultSuccess()
 	if requirement, ok := CommandRequirements[commandType]; ok {
-		if err, ok := ch.checkPacketLength(data, requirement); !ok {
+		if err, ok := session.checkPacketLength(data, requirement); !ok {
 			return err
 		}
 	}
 	switch commandType {
 	case AddAtc:
-		result = ch.handleAddAtc(data, rawLine)
+		result = session.handleAddAtc(data, rawLine)
 	case AddPilot:
-		result = ch.handleAddPilot(data, rawLine)
+		result = session.handleAddPilot(data, rawLine)
 	case RequestHandoff, AcceptHandoff, ProController:
-		result = ch.handleRequest(data, rawLine)
+		result = session.handleRequest(data, rawLine)
 	case PilotPosition:
-		result = ch.handlePilotPosUpdate(data, rawLine)
+		result = session.handlePilotPosUpdate(data, rawLine)
 	case Plan:
-		result = ch.handlePlan(data, rawLine)
+		result = session.handlePlan(data, rawLine)
 	case AtcEditPlan:
-		result = ch.handleAtcEditPlan(data, rawLine)
+		result = session.handleAtcEditPlan(data, rawLine)
 	case KillClient:
-		result = ch.handleKillClient(data, rawLine)
+		result = session.handleKillClient(data, rawLine)
 	case AtcPosition:
-		result = ch.handleAtcPosUpdate(data, rawLine)
+		result = session.handleAtcPosUpdate(data, rawLine)
 	case AtcSubVisPoint:
-		result = ch.handleAtcVisPointUpdate(data, rawLine)
+		result = session.handleAtcVisPointUpdate(data, rawLine)
 	case Message:
-		result = ch.handleMessage(data, rawLine)
+		result = session.handleMessage(data, rawLine)
 	case ClientQuery:
-		result = ch.handleClientQuery(data, rawLine)
+		result = session.handleClientQuery(data, rawLine)
 	case ClientResponse:
-		result = ch.handleClientResponse(data, rawLine)
+		result = session.handleClientResponse(data, rawLine)
 	case RemoveAtc, RemovePilot:
-		ch.removeClient(data, rawLine)
+		session.removeClient(data, rawLine)
 	case SquawkBox:
-		result = ch.handleSquawkBox(data, rawLine)
+		result = session.handleSquawkBox(data, rawLine)
 	default:
 		result = ResultSuccess()
 	}

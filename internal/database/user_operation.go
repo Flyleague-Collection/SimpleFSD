@@ -5,17 +5,22 @@ import (
 	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
-	c "github.com/half-nothing/simple-fsd/internal/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserOperation struct {
-	config *c.Config
+	logger log.LoggerInterface
+	config *config.Config
 }
 
-func NewUserOperation(config *c.Config) *UserOperation {
-	return &UserOperation{config: config}
+func NewUserOperation(logger log.LoggerInterface, config *config.Config) *UserOperation {
+	return &UserOperation{
+		logger: logger,
+		config: config,
+	}
 }
 
 func (userOperation *UserOperation) GetUserByCid(cid string) (user *User, err error) {

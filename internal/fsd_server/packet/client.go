@@ -4,25 +4,35 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	c "github.com/half-nothing/simple-fsd/internal/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type Client struct {
+	socket              SessionInterface
+	logger              log.LoggerInterface
+	config              *config.Config
+	userOperation       operation.UserOperationInterface
+	flightPlanOperation operation.FlightPlanOperationInterface
 	isAtc               bool
+	isAtis              bool
+	logoffTime          string
+	isBreak             bool
 	callsign            string
 	rating              Rating
 	facility            Facility
 	user                *operation.User
 	protocol            int
 	realName            string
-	socket              ConnectionHandlerInterface
 	position            [4]Position
 	simType             int
 	transponder         string
@@ -33,30 +43,43 @@ type Client struct {
 	visualRange         float64
 	flightPlan          *operation.FlightPlan
 	atisInfo            []string
+	paths               []*PilotPath
 	clientManager       ClientManagerInterface
 	disconnect          atomic.Bool
 	motdBytes           []byte
 	reconnectTimer      *time.Timer
 	lock                sync.RWMutex
-	config              *c.Config
 	logonTime           time.Time
-	userOperation       operation.UserOperationInterface
-	flightPlanOperation operation.FlightPlanOperationInterface
 }
 
-func (cm *ClientManager) NewClient(callsign string, rating Rating, protocol int, realName string, socket ConnectionHandlerInterface, isAtc bool) ClientInterface {
-	socket.SetCallsign(callsign)
+func (cm *ClientManager) NewClient(
+	callsign string,
+	rating Rating,
+	protocol int,
+	realName string,
+	session SessionInterface,
+	isAtc bool,
+) ClientInterface {
+	session.SetCallsign(callsign)
 	var flightPlan *operation.FlightPlan = nil
-	userOperation := cm.applicationContent.UserOperation()
+	userOperation := cm.applicationContent.Operations().UserOperation()
+	flightPlanOperation := cm.applicationContent.Operations().FlightPlanOperation()
 	client := &Client{
+		logger:              cm.applicationContent.Logger(),
+		config:              cm.config,
+		userOperation:       userOperation,
+		flightPlanOperation: flightPlanOperation,
 		isAtc:               isAtc,
+		isAtis:              strings.HasSuffix(callsign, "ATIS"),
+		isBreak:             false,
+		logoffTime:          "",
 		callsign:            callsign,
 		rating:              rating,
 		facility:            0,
-		user:                socket.User(),
+		user:                session.User(),
 		protocol:            protocol,
 		realName:            realName,
-		socket:              socket,
+		socket:              session,
 		position:            [4]Position{{0, 0}, {0, 0}, {0, 0}, {0, 0}},
 		simType:             0,
 		transponder:         "2000",
@@ -70,13 +93,18 @@ func (cm *ClientManager) NewClient(callsign string, rating Rating, protocol int,
 		clientManager:       cm,
 		disconnect:          atomic.Bool{},
 		reconnectTimer:      nil,
-		lock:                sync.RWMutex{},
-		config:              cm.config,
 		logonTime:           time.Now(),
-		userOperation:       userOperation,
-		flightPlanOperation: cm.applicationContent.FlightPlanOperation(),
+		lock:                sync.RWMutex{},
 	}
 	return client
+}
+
+func (client *Client) recordPathPoint() {
+	client.paths = append(client.paths, &PilotPath{
+		Latitude:  client.position[0].Latitude,
+		Longitude: client.position[0].Longitude,
+		Altitude:  client.altitude,
+	})
 }
 
 func (client *Client) Disconnected() bool {
@@ -87,7 +115,7 @@ func (client *Client) Delete() {
 	if client.disconnect.Load() {
 		client.lock.Lock()
 		defer client.lock.Unlock()
-		c.InfoF("[%s](%s) client session deleted", client.socket.ConnId(), client.callsign)
+		client.logger.InfoF("[%s](%s) client session deleted", client.socket.ConnId(), client.callsign)
 
 		if client.reconnectTimer != nil {
 			client.reconnectTimer.Stop()
@@ -95,12 +123,12 @@ func (client *Client) Delete() {
 		}
 
 		if !client.clientManager.DeleteClient(client.callsign) {
-			c.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
+			client.logger.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
 		}
 	}
 }
 
-func (client *Client) Reconnect(socket ConnectionHandlerInterface) bool {
+func (client *Client) Reconnect(socket SessionInterface) bool {
 	client.lock.Lock()
 	defer client.lock.Unlock()
 
@@ -108,7 +136,7 @@ func (client *Client) Reconnect(socket ConnectionHandlerInterface) bool {
 		return false
 	}
 
-	c.InfoF("[%s](%s) client reconnected", client.socket.ConnId, client.callsign)
+	client.logger.InfoF("[%s](%s) client reconnected", client.socket.ConnId, client.callsign)
 
 	if client.reconnectTimer != nil {
 		client.reconnectTimer.Stop()
@@ -149,8 +177,9 @@ func (client *Client) MarkedDisconnect(immediate bool) {
 		return
 	}
 
+	client.motdBytes = client.motdBytes[:0]
 	client.reconnectTimer = time.AfterFunc(client.config.SessionCleanDuration, client.Delete)
-	c.InfoF("[%s](%s) client disconnected, reconnect window: %v", client.socket.ConnId(),
+	client.logger.InfoF("[%s](%s) client disconnected, reconnect window: %v", client.socket.ConnId(),
 		client.callsign, client.config.SessionCleanDuration)
 }
 
@@ -219,17 +248,20 @@ func (client *Client) SendError(result *Result) {
 		return
 	}
 
-	packet := makePacket(Error, "SERVER", client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, result.Errno.String())
+	var errString string
+	if result.Errno == Custom {
+		errString = result.Err.Error()
+	} else {
+		errString = result.Errno.String()
+	}
+
+	packet := makePacket(Error, global.FSDServerName, client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, errString)
 	client.SendLine(packet)
 
 	if result.Fatal {
 		client.socket.SetDisconnected(true)
 		client.disconnect.Store(true)
-		time.AfterFunc(500*time.Millisecond, func() {
-			if !client.clientManager.DeleteClient(client.callsign) {
-				c.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
-			}
-		})
+		go client.Delete()
 	}
 }
 
@@ -238,7 +270,7 @@ func (client *Client) SendLineWithoutLog(line []byte) {
 	defer client.lock.RUnlock()
 
 	if client.disconnect.Load() {
-		c.WarnF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
+		client.logger.WarnF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
 		return
 	}
 
@@ -247,28 +279,28 @@ func (client *Client) SendLineWithoutLog(line []byte) {
 	}
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
-		c.ErrorF("[%s](%s) Failed to send data: %v", client.socket.ConnId(), client.callsign, err)
+		client.logger.ErrorF("[%s](%s) Failed to send data: %v", client.socket.ConnId(), client.callsign, err)
 	}
 }
 
 func (client *Client) SendLine(line []byte) {
-	client.lock.RLock()
-	defer client.lock.RUnlock()
-
 	if client.disconnect.Load() {
-		c.DebugF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
+		client.logger.DebugF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
 		return
 	}
 
+	client.lock.RLock()
+	defer client.lock.RUnlock()
+
 	if !bytes.HasSuffix(line, splitSign) {
-		c.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line)
+		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line)
 		line = append(line, splitSign...)
 	} else {
-		c.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line[:len(line)-splitSignLen])
+		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line[:len(line)-splitSignLen])
 	}
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
-		c.WarnF("[%s](%s) Failed to send data: %v", client.socket.ConnId(), client.callsign, err)
+		client.logger.WarnF("[%s](%s) Failed to send data: %v", client.socket.ConnId(), client.callsign, err)
 	}
 }
 
@@ -278,18 +310,11 @@ func (client *Client) SendMotd() {
 		return
 	}
 
-	data := make([][]byte, 0, len(client.config.Motd)+1)
-	data = append(data, []byte(fmt.Sprintf("%sserver:%s:Welcome to use %s v%s\r\n",
-		Message, client.callsign, client.config.FSDName, c.AppVersion.String())))
-
-	for _, message := range client.config.Motd {
-		data = append(data, makePacket(Message, "fsd_server", client.callsign, message))
-	}
-
 	buffer := bytes.Buffer{}
-	for _, msg := range data {
-		buffer.Write(msg)
+	for _, message := range client.config.Motd {
+		buffer.Write(makePacket(Message, global.FSDServerName, client.callsign, message))
 	}
+
 	client.motdBytes = buffer.Bytes()
 	client.SendLine(client.motdBytes)
 }
@@ -303,6 +328,8 @@ func (client *Client) CheckRating(rating []Rating) bool {
 }
 
 func (client *Client) IsAtc() bool { return client.isAtc }
+
+func (client *Client) IsAtis() bool { return client.isAtis }
 
 func (client *Client) Callsign() string { return client.callsign }
 
@@ -338,6 +365,20 @@ func (client *Client) Heading() int {
 	_, _, heading, _ := utils.UnpackPBH(client.pbh)
 	return int(heading)
 }
+
+func (client *Client) Paths() []*PilotPath {
+	return client.paths
+}
+
+func (client *Client) LogoffTime() string {
+	return client.logoffTime
+}
+
+func (client *Client) SetLogoffTime(time string) { client.logoffTime = time }
+
+func (client *Client) IsBreak() bool { return client.isBreak }
+
+func (client *Client) SetBreak(isBreak bool) { client.isBreak = isBreak }
 
 func (client *Client) LogonTime() string {
 	return client.logonTime.Format(time.DateTime)

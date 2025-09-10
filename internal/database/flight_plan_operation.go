@@ -2,17 +2,22 @@ package database
 
 import (
 	"fmt"
-	c "github.com/half-nothing/simple-fsd/internal/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
 type FlightPlanOperation struct {
-	config *c.Config
+	logger log.LoggerInterface
+	config *config.Config
 }
 
-func NewFlightPlanOperation(config *c.Config) *FlightPlanOperation {
-	return &FlightPlanOperation{config: config}
+func NewFlightPlanOperation(logger log.LoggerInterface, config *config.Config) *FlightPlanOperation {
+	return &FlightPlanOperation{
+		logger: logger,
+		config: config,
+	}
 }
 
 func (flightPlanOperation *FlightPlanOperation) NewFlightPlan(user *User, callsign string, flightPlanData []string) (flightPlan *FlightPlan, err error) {

@@ -1,9 +1,10 @@
-package config
+package base
 
 import (
 	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"io"
 	"log/slog"
 	"os"
@@ -66,17 +67,17 @@ func (h *AsyncHandler) rotateIfNeeded() error {
 	// 关闭旧文件
 	if h.currentFile != nil {
 		if err := h.currentFile.Close(); err != nil {
-			return fmt.Errorf("关闭日志文件失败: %w", err)
+			return fmt.Errorf("closing log file failed: %w", err)
 		}
 	}
 
 	// 创建新文件
 	logPath := h.getLogPath()
-	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
-		return fmt.Errorf("创建日志目录失败: %w", err)
+	if err := os.MkdirAll(filepath.Dir(logPath), global.DefaultDirectoryPermission); err != nil {
+		return fmt.Errorf("creating log directory failed: %w", err)
 	}
 
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, global.DefaultFilePermissions)
 	if err != nil {
 		return fmt.Errorf("failed to create a log file: %w", err)
 	}
@@ -190,59 +191,77 @@ type ShutdownCallback struct {
 	handler *AsyncHandler
 }
 
-func (lc *ShutdownCallback) Invoke(ctx context.Context) error {
+func (lc *ShutdownCallback) Invoke(_ context.Context) error {
 	return lc.handler.Close()
 }
 
-func Init(config *Config) *ShutdownCallback {
-	var handler *AsyncHandler
-	if config.DebugMode {
-		handler = NewAsyncHandler("logs", slog.LevelDebug)
-	} else {
-		handler = NewAsyncHandler("logs", slog.LevelInfo)
+func NewLogger() *Logger {
+	return &Logger{
+		logger:           nil,
+		shutdownCallback: nil,
 	}
-	logger := slog.New(handler)
-	slog.SetDefault(logger)
+}
+
+type Logger struct {
+	handler          *AsyncHandler
+	logger           *slog.Logger
+	shutdownCallback *ShutdownCallback
+}
+
+func (lg *Logger) Init(debug bool) {
+	lg.handler = NewAsyncHandler("logs", slog.LevelInfo)
+	if debug {
+		lg.handler.logLevel = slog.LevelDebug
+	}
+	lg.logger = slog.New(lg.handler)
+	lg.shutdownCallback = &ShutdownCallback{handler: lg.handler}
 	slog.Debug("Logger initialized")
-	return &ShutdownCallback{handler: handler}
 }
 
-func Debug(msg string, v ...interface{}) {
-	slog.Debug(msg, v...)
+func (lg *Logger) ShutdownCallback() global.Callable {
+	return lg.shutdownCallback
 }
 
-func DebugF(msg string, v ...interface{}) {
-	slog.Debug(fmt.Sprintf(msg, v...))
+func (lg *Logger) LogHandler() *slog.Logger {
+	return lg.logger
 }
 
-func Info(msg string, v ...interface{}) {
-	slog.Info(msg, v...)
+func (lg *Logger) Debug(msg string, v ...interface{}) {
+	lg.logger.Debug(msg, v...)
 }
 
-func InfoF(msg string, v ...interface{}) {
-	slog.Info(fmt.Sprintf(msg, v...))
+func (lg *Logger) DebugF(msg string, v ...interface{}) {
+	lg.logger.Debug(fmt.Sprintf(msg, v...))
 }
 
-func Warn(msg string, v ...interface{}) {
-	slog.Warn(msg, v...)
+func (lg *Logger) Info(msg string, v ...interface{}) {
+	lg.logger.Info(msg, v...)
 }
 
-func WarnF(msg string, v ...interface{}) {
-	slog.Warn(fmt.Sprintf(msg, v...))
+func (lg *Logger) InfoF(msg string, v ...interface{}) {
+	lg.logger.Info(fmt.Sprintf(msg, v...))
 }
 
-func Error(msg string, v ...interface{}) {
-	slog.Error(msg, v...)
+func (lg *Logger) Warn(msg string, v ...interface{}) {
+	lg.logger.Warn(msg, v...)
 }
 
-func ErrorF(msg string, v ...interface{}) {
-	slog.Error(fmt.Sprintf(msg, v...))
+func (lg *Logger) WarnF(msg string, v ...interface{}) {
+	lg.logger.Warn(fmt.Sprintf(msg, v...))
 }
 
-func Fatal(msg string, v ...interface{}) {
-	slog.Log(context.Background(), LevelFatal, msg, v...)
+func (lg *Logger) Error(msg string, v ...interface{}) {
+	lg.logger.Error(msg, v...)
 }
 
-func FatalF(msg string, v ...interface{}) {
-	slog.Log(context.Background(), LevelFatal, fmt.Sprintf(msg, v...))
+func (lg *Logger) ErrorF(msg string, v ...interface{}) {
+	lg.logger.Error(fmt.Sprintf(msg, v...))
+}
+
+func (lg *Logger) Fatal(msg string, v ...interface{}) {
+	lg.logger.Log(context.Background(), LevelFatal, msg, v...)
+}
+
+func (lg *Logger) FatalF(msg string, v ...interface{}) {
+	lg.logger.Log(context.Background(), LevelFatal, fmt.Sprintf(msg, v...))
 }
