@@ -54,7 +54,7 @@ func (config *FSDServerConfig) checkValid(logger log.LoggerInterface) *ValidResu
 		return result
 	}
 
-	config.FirstMotdLine = fmt.Sprintf("Welcome to use %[1]s v%[2]s", config.FSDName, AppVersion.String())
+	config.FirstMotdLine = fmt.Sprintf(config.FirstMotdLine, config.FSDName, AppVersion.String())
 	data := make([]string, 0, 1+len(config.Motd))
 	data = append(data, config.FirstMotdLine)
 	data = append(data, config.Motd...)

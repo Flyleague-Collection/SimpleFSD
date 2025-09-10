@@ -17,6 +17,8 @@ FSD支持计划同步, 计划锁定, 网页计划提交
 ![ProjectLanguageCard]![ProjectLicense]
 ---
 
+![](./docs/image/show.png)
+
 ## 如何使用
 
 ### 使用方法

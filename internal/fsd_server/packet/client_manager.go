@@ -7,6 +7,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -15,6 +16,7 @@ import (
 )
 
 type ClientManager struct {
+	logger             log.LoggerInterface
 	clients            map[string]ClientInterface
 	lock               sync.RWMutex
 	shuttingDown       atomic.Bool
@@ -34,6 +36,7 @@ func NewClientManager(applicationContent *interfaces.ApplicationContent) *Client
 		c := applicationContent.ConfigManager().Config()
 		if clientManager == nil {
 			clientManager = &ClientManager{
+				logger:             applicationContent.Logger(),
 				clients:            make(map[string]ClientInterface),
 				shuttingDown:       atomic.Bool{},
 				config:             c,
@@ -233,7 +236,7 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 				wg.Done()
 			}()
 
-			cm.applicationContent.Logger().DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), message)
+			cm.logger.DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), message)
 			cl.SendLineWithoutLog(fullMsg)
 		}(client)
 	}

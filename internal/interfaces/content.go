@@ -23,7 +23,8 @@ func NewApplicationContent(
 		configManager: configManager,
 		cleaner:       cleaner,
 		logger:        logger,
-		operations:    db}
+		operations:    db,
+	}
 }
 
 func (app *ApplicationContent) ConfigManager() ConfigManagerInterface {

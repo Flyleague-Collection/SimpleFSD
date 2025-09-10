@@ -74,6 +74,7 @@ func (clientService *ClientService) getOnlineClient() *OnlineClients {
 				Rating:      client.Rating().Index(),
 				Facility:    client.Facility().Index(),
 				Frequency:   client.Frequency() + 100000,
+				Range:       int(client.VisualRange()),
 				OfflineTime: client.LogoffTime(),
 				IsBreak:     client.IsBreak(),
 				AtcInfo:     client.AtisInfo(),
