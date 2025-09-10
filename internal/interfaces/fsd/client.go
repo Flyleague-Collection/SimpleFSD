@@ -30,6 +30,7 @@ type ClientInterface interface {
 	CheckFacility(facility Facility) bool
 	CheckRating(rating []Rating) bool
 	IsAtc() bool
+	IsAtis() bool
 	Callsign() string
 	Rating() Rating
 	Facility() Facility
@@ -48,4 +49,8 @@ type ClientInterface interface {
 	GroundSpeed() int
 	Heading() int
 	Paths() []*PilotPath
+	LogoffTime() string
+	SetLogoffTime(time string)
+	IsBreak() bool
+	SetBreak(isBreak bool)
 }

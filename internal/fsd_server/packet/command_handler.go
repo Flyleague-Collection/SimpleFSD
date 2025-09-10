@@ -2,6 +2,7 @@
 package packet
 
 import (
+	"errors"
 	"fmt"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
@@ -43,13 +44,13 @@ func (session *Session) verifyUserInfo(callsign string, protocol int, cid UserId
 
 	user, err := cid.GetUser(session.userOperation)
 	if err != nil {
-		return ResultError(AuthFail, true, callsign, err)
+		return ResultError(InvalidCidPassword, true, callsign, err)
 	}
 	if user.Rating == Ban.Index() {
-		return ResultError(UserBaned, true, callsign, nil)
+		return ResultError(CidSuspended, true, callsign, nil)
 	}
 	if !session.userOperation.VerifyUserPassword(user, password) {
-		return ResultError(AuthFail, true, callsign, nil)
+		return ResultError(InvalidCidPassword, true, callsign, nil)
 	}
 
 	// 重设重连客户端的User
@@ -76,6 +77,16 @@ func (session *Session) handleAddAtc(data []string, rawLine []byte) *Result {
 	reqRating := utils.StrToInt(data[5], 0)
 	if reqRating > session.user.Rating {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
+	}
+	facilityIdent := strings.Split(callsign, "_")
+	if len(facilityIdent) < 2 {
+		return ResultError(Custom, true, callsign, fmt.Errorf("invalid callsign %s", callsign))
+	}
+	ident := facilityIdent[len(facilityIdent)-1]
+	if facility, exist := FacilityMap[ident]; !exist {
+		return ResultError(Custom, true, callsign, fmt.Errorf("invalid callsign %s", callsign))
+	} else {
+		session.facilityIdent = facility
 	}
 	realName := data[2]
 	latitude := utils.StrToFloat(data[9], 0)
@@ -137,6 +148,9 @@ func (session *Session) handleAtcPosUpdate(data []string, rawLine []byte) *Resul
 	// [0] [   1  ] [ 2 ] [3] [4] [5] [   6  ] [   7   ] [8]
 	callsign := data[0]
 	facility := Facility(1 << utils.StrToInt(data[2], 0))
+	if facility != session.facilityIdent {
+		return ResultError(CallsignInvalid, true, callsign, errors.New("callsign and faility mismatch"))
+	}
 	rating := Rating(utils.StrToInt(data[4], 0))
 	if !rating.CheckRatingFacility(facility) {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
@@ -192,7 +206,7 @@ func (session *Session) sendFrequencyMessage(targetStation string, rawLine []byt
 	}
 	frequency := utils.StrToInt(targetStation[1:], -1)
 	if frequency == -1 {
-		return ResultError(Syntax, false, session.client.Callsign(), fmt.Errorf("illegal frequency %s", targetStation))
+		return ResultError(Syntax, false, targetStation, fmt.Errorf("illegal frequency %s", targetStation))
 	}
 	if frequencyValid(frequency) {
 		// 合法频率, 发给所有客户端
@@ -217,43 +231,78 @@ func (session *Session) handleClientQuery(data []string, rawLine []byte) *Result
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
 	commandLength := len(data)
+	if commandLength < 3 {
+		return ResultError(Syntax, false, "", fmt.Errorf("illegal command length %d", commandLength))
+	}
 	targetStation := data[1]
 	if targetStation == global.FSDServerName {
 		subQuery := data[2]
 		// 查询指定机组的飞行计划
-		if subQuery == "FP" {
+		switch subQuery {
+		case ClientFlightPlan:
+			if commandLength < 4 {
+				return ResultError(Syntax, false, "", fmt.Errorf("illegal command length %d", commandLength))
+			}
 			targetCallsign := data[3]
 			client, ok := session.clientManager.GetClient(targetCallsign)
 			if !ok || client.FlightPlan() == nil {
 				return ResultError(NoFlightPlan, false, session.client.Callsign(), nil)
 			}
 			session.client.SendLine([]byte(session.flightPlanOperation.ToString(client.FlightPlan(), data[0])))
+		case AvailableAtc:
+			available := isValidAtc(data[0])
+			if available {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "ATC:Y", data[0]))
+			} else {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "ATC:N", data[0]))
+			}
+		case ClientCapacity:
+			if session.client.IsAtc() {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "CAPS:ATCINFO=1:SECPOS=1:FASTPOS=1:OBSPILOT=1"))
+			} else {
+				session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "CAPS:VERSION=1:ATCINFO=1:MODELDESC=1:ACCONFIG=1:VISUPDATE=1"))
+			}
+		case IpAddress:
+			session.client.SendLine(makePacket(ClientResponse, global.FSDServerName, data[0], "IP", session.conn.RemoteAddr().String()[0:strings.LastIndex(session.conn.RemoteAddr().String(), ":")]))
 		}
+		return ResultSuccess()
 	}
 	// 如果发送目标是一个频率
 	if strings.HasPrefix(targetStation, "@") {
+		err := session.sendFrequencyMessage(targetStation, rawLine)
 		// 如果目标频率是94835
-		if !session.config.SimulatorServer && targetStation == SpecialFrequency {
-			// 这里并不是发给服务器的, 所以如果客户端没有权限, 直接返回就行
-			if !session.client.CheckFacility(AllowAtcFacility) {
-				return ResultSuccess()
-			}
+		if targetStation == EuroscopeFrequency {
 			subQuery := data[2]
-			if subQuery == "FA" && commandLength >= 5 {
-				targetCallsign := data[3]
-				client, ok := session.clientManager.GetClient(targetCallsign)
-				if !ok {
-					// 这里并不是发给服务器的, 所以如果找不到指定客户端, 直接返回就行
-					return ResultSuccess()
+			if !session.config.SimulatorServer {
+				if !session.client.CheckFacility(AllowAtcFacility) {
+					return ResultError(InvalidCtrl, false, session.client.Callsign(), nil)
 				}
-				cruiseAltitude := utils.StrToInt(data[4], 0)
-				if err := session.flightPlanOperation.UpdateCruiseAltitude(client.FlightPlan(), fmt.Sprintf("FL%03d", cruiseAltitude/100)); err != nil {
-					// 这里并不是发给服务器的, 所以如果出错, 直接返回就行
-					return ResultSuccess()
+				if subQuery == EditFlightPlan && commandLength >= 5 {
+					targetCallsign := data[3]
+					client, ok := session.clientManager.GetClient(targetCallsign)
+					if !ok {
+						// 这里并不是发给服务器的, 所以如果找不到指定客户端, 直接返回就行
+						return ResultSuccess()
+					}
+					cruiseAltitude := utils.StrToInt(data[4], 0)
+					if err := session.flightPlanOperation.UpdateCruiseAltitude(client.FlightPlan(), fmt.Sprintf("FL%03d", cruiseAltitude/100)); err != nil {
+						// 这里并不是发给服务器的, 所以如果出错, 直接返回就行
+						return ResultSuccess()
+					}
 				}
+			}
+			// ATIS信息更新, 需要更新服务器存储的ATIS信息
+			if subQuery == InfoUpdate {
+				session.client.ClearAtcAtisInfo()
+				session.client.SendLine(makePacket(ClientQuery, global.FSDServerName, session.callsign, AtcAtis))
+			}
+			if subQuery == Break {
+				session.client.SetBreak(true)
+			}
+			if subQuery == NoBreak {
+				session.client.SetBreak(false)
 			}
 		}
-		err := session.sendFrequencyMessage(targetStation, rawLine)
 		if err != nil {
 			return err
 		}
@@ -276,8 +325,13 @@ func (session *Session) handleClientResponse(data []string, rawLine []byte) *Res
 	targetStation := data[1]
 	if targetStation == global.FSDServerName {
 		subQuery := data[2]
-		if subQuery == "ATIS" && commandLength >= 5 && data[3] == "T" {
-			session.client.AddAtcAtisInfo(data[4])
+		if subQuery == "ATIS" && commandLength >= 5 {
+			if data[3] == "T" {
+				session.client.AddAtcAtisInfo(data[4])
+			}
+			if data[3] == "Z" {
+				session.client.SetLogoffTime(data[4])
+			}
 		}
 	}
 	if strings.HasPrefix(targetStation, "@") {
@@ -300,14 +354,20 @@ func (session *Session) handleMessage(data []string, rawLine []byte) *Result {
 		if result != nil {
 			return result
 		}
-	} else if strings.HasPrefix(targetStation, "*") {
+		return ResultSuccess()
+	}
+	if strings.HasPrefix(targetStation, "*") {
 		// 广播消息
 		if targetStation == string(AllSup) {
 			go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToSup)
+			return ResultSuccess()
 		}
-	} else {
-		_ = session.clientManager.SendMessageTo(targetStation, rawLine)
+		if targetStation == "*" && session.client.IsAtc() && session.client.CheckRating(AllowKillRating) {
+			go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToAll)
+		}
+		return ResultSuccess()
 	}
+	_ = session.clientManager.SendMessageTo(targetStation, rawLine)
 	return ResultSuccess()
 }
 
@@ -348,7 +408,7 @@ func (session *Session) handleAtcEditPlan(data []string, _ []byte) *Result {
 	targetCallsign := data[2]
 	client, ok := session.clientManager.GetClient(targetCallsign)
 	if !ok {
-		return ResultError(SourceCallsignInvalid, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetCallsign))
+		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetCallsign))
 	}
 	if client.FlightPlan == nil {
 		return ResultError(NoFlightPlan, false, session.client.Callsign(), fmt.Errorf("%s do not have filght plan", session.client.Callsign()))
@@ -365,17 +425,17 @@ func (session *Session) handleAtcEditPlan(data []string, _ []byte) *Result {
 func (session *Session) handleKillClient(data []string, _ []byte) *Result {
 	// $!! ZSHA_CTR CPA421 test
 	if session.client == nil {
-		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
+		return ResultError(Custom, false, "", fmt.Errorf("client not register"))
 	}
 	if !(session.client.IsAtc() && session.client.CheckRating(AllowKillRating)) {
-		return ResultError(Syntax, false, session.client.Callsign(), fmt.Errorf("%s facility not allowed to kill client", session.client.Facility().String()))
+		return ResultError(Custom, false, session.client.Callsign(), fmt.Errorf("%s rating not allowed to kill client", session.client.Rating().String()))
 	}
 	targetStation := data[1]
 	client, ok := session.clientManager.GetClient(targetStation)
 	if !ok {
 		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
 	}
-	client.MarkedDisconnect(false)
+	client.SendError(ResultError(Custom, true, session.client.Callsign(), fmt.Errorf("kicked from server by %04d, reason: %s", session.user.Cid, data[2])))
 	return ResultSuccess()
 }
 
@@ -403,7 +463,7 @@ func (session *Session) handleSquawkBox(data []string, rawLine []byte) *Result {
 	targetStation := data[1]
 	client, ok := session.clientManager.GetClient(targetStation)
 	if !ok {
-		return ResultError(SourceCallsignInvalid, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
+		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
 	}
 	client.SendLine(rawLine)
 	return ResultSuccess()

@@ -6,6 +6,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -125,14 +126,14 @@ func (cm *ClientManager) SendHeartBeat() error {
 		return nil
 	}
 	randomInt := rand.Int()
-	packet := makePacket(WindDelta, "global.FSDServerName", string(AllClient), strconv.Itoa(randomInt%11-5), strconv.Itoa(randomInt%21-10))
+	packet := makePacket(WindDelta, global.FSDServerName, string(AllClient), strconv.Itoa(randomInt%11-5), strconv.Itoa(randomInt%21-10))
 	cm.BroadcastMessage(packet, nil, BroadcastToAll)
 	return nil
 }
 
 func (cm *ClientManager) AddClient(client ClientInterface) error {
 	if cm.shuttingDown.Load() {
-		return fmt.Errorf("Server shutting down")
+		return fmt.Errorf("server shutting down")
 	}
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
@@ -170,7 +171,7 @@ func (cm *ClientManager) DeleteClient(callsign string) bool {
 
 func (cm *ClientManager) SendMessageTo(callsign string, message []byte) error {
 	if cm.shuttingDown.Load() {
-		return fmt.Errorf("Server is shutting down")
+		return fmt.Errorf("server is shutting down")
 	}
 
 	client, exists := cm.GetClient(callsign)

@@ -11,6 +11,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,6 +25,9 @@ type Client struct {
 	flightPlanOperation operation.FlightPlanOperationInterface
 	historyOperation    operation.HistoryOperationInterface
 	isAtc               bool
+	isAtis              bool
+	logoffTime          string
+	isBreak             bool
 	callsign            string
 	rating              Rating
 	facility            Facility
@@ -80,6 +84,9 @@ func (cm *ClientManager) NewClient(
 		flightPlanOperation: flightPlanOperation,
 		historyOperation:    historyOperation,
 		isAtc:               isAtc,
+		isAtis:              strings.HasSuffix(callsign, "ATIS"),
+		isBreak:             false,
+		logoffTime:          "",
 		callsign:            callsign,
 		rating:              rating,
 		facility:            0,
@@ -131,18 +138,20 @@ func (client *Client) Delete() {
 			client.reconnectTimer = nil
 		}
 
-		if client.isAtc || !client.config.Server.General.SimulatorServer {
+		if client.isAtc && !client.isAtis {
+			// 不计入ATIS时长
 			if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
 				client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
 			}
-		}
-
-		if client.isAtc {
 			if err := client.userOperation.UpdateUserAtcTime(client.user, client.history.OnlineTime); err != nil {
 				client.logger.ErrorF("[%s](%s) Failed to add ATC time: %v", client.socket.ConnId(), client.callsign, err)
 			}
-		} else if !client.config.Server.General.SimulatorServer {
+		}
+		if !client.isAtc && !client.config.Server.General.SimulatorServer {
 			// 如果不是模拟机服务器, 则写入机组连线时长
+			if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
+				client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
+			}
 			if err := client.userOperation.UpdateUserPilotTime(client.user, client.history.OnlineTime); err != nil {
 				client.logger.ErrorF("[%s](%s) Failed to add pilot time: %v", client.socket.ConnId(), client.callsign, err)
 			}
@@ -278,17 +287,20 @@ func (client *Client) SendError(result *Result) {
 		return
 	}
 
-	packet := makePacket(Error, "global.FSDServerName", client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, result.Errno.String())
+	var errString string
+	if result.Errno == Custom {
+		errString = result.Err.Error()
+	} else {
+		errString = result.Errno.String()
+	}
+
+	packet := makePacket(Error, global.FSDServerName, client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, errString)
 	client.SendLine(packet)
 
 	if result.Fatal {
 		client.socket.SetDisconnected(true)
 		client.disconnect.Store(true)
-		time.AfterFunc(global.FSDDisconnectDelay, func() {
-			if !client.clientManager.DeleteClient(client.callsign) {
-				client.logger.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
-			}
-		})
+		go client.Delete()
 	}
 }
 
@@ -311,13 +323,13 @@ func (client *Client) SendLineWithoutLog(line []byte) {
 }
 
 func (client *Client) SendLine(line []byte) {
-	client.lock.RLock()
-	defer client.lock.RUnlock()
-
 	if client.disconnect.Load() {
 		client.logger.DebugF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
 		return
 	}
+
+	client.lock.RLock()
+	defer client.lock.RUnlock()
 
 	if !bytes.HasSuffix(line, splitSign) {
 		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line)
@@ -355,6 +367,8 @@ func (client *Client) CheckRating(rating []Rating) bool {
 }
 
 func (client *Client) IsAtc() bool { return client.isAtc }
+
+func (client *Client) IsAtis() bool { return client.isAtis }
 
 func (client *Client) Callsign() string { return client.callsign }
 
@@ -396,3 +410,13 @@ func (client *Client) Heading() int {
 func (client *Client) Paths() []*PilotPath {
 	return client.paths
 }
+
+func (client *Client) LogoffTime() string {
+	return client.logoffTime
+}
+
+func (client *Client) SetLogoffTime(time string) { client.logoffTime = time }
+
+func (client *Client) IsBreak() bool { return client.isBreak }
+
+func (client *Client) SetBreak(isBreak bool) { client.isBreak = isBreak }

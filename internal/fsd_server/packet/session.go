@@ -23,6 +23,7 @@ type Session struct {
 	conn                net.Conn
 	connId              string
 	callsign            string
+	facilityIdent       Facility
 	client              ClientInterface
 	clientManager       ClientManagerInterface
 	user                *operation.User
@@ -63,14 +64,19 @@ func (session *Session) SendError(result *Result) {
 		session.client.SendError(result)
 		return
 	}
-	packet := makePacket(Error, global.FSDServerName, session.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, result.Errno.String())
+
+	var errString string
+	if result.Errno == Custom {
+		errString = result.Err.Error()
+	} else {
+		errString = result.Errno.String()
+	}
+
+	packet := makePacket(Error, global.FSDServerName, session.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, errString)
 	session.logger.DebugF("[%s](%s) <- %s", session.connId, session.callsign, packet[:len(packet)-splitSignLen])
 	_, _ = session.conn.Write(packet)
 	if result.Fatal {
 		session.disconnected.Store(true)
-		time.AfterFunc(global.FSDDisconnectDelay, func() {
-			_ = session.conn.Close()
-		})
 	}
 }
 
@@ -92,17 +98,23 @@ func (session *Session) handleLine(line []byte) {
 
 func (session *Session) HandleConnection() {
 	defer func() {
-		session.logger.DebugF("[%s](%s) x Connection closed", session.connId, session.callsign)
-		if err := session.conn.Close(); err != nil && !isNetClosedError(err) {
-			session.logger.WarnF("[%s](%s) Error occurred while closing connection, details: %v", session.connId, session.callsign, err)
-		}
+		time.AfterFunc(global.FSDDisconnectDelay, func() {
+			session.logger.DebugF("[%s](%s) x Connection closed", session.connId, session.callsign)
+			if err := session.conn.Close(); err != nil && !isNetClosedError(err) {
+				session.logger.WarnF("[%s](%s) Error occurred while closing connection, details: %v", session.connId, session.callsign, err)
+			}
+		})
 	}()
 	scanner := bufio.NewScanner(session.conn)
 	scanner.Split(createSplitFunc(splitSign))
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		session.logger.DebugF("[%s](%s) -> %s", session.connId, session.callsign, line)
-		session.handleLine(line)
+		if session.client == nil {
+			session.handleLine(line)
+		} else {
+			go session.handleLine(line)
+		}
 		if session.disconnected.Load() {
 			break
 		}

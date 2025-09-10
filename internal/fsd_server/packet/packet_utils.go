@@ -53,6 +53,20 @@ func makePacket(command ClientCommand, parts ...string) []byte {
 	return result
 }
 
+var validSuffix = [6]string{"DEL", "GND", "TWR", "APP", "CTR", "FSS"}
+
+func isValidAtc(callsign string) bool {
+	if !callsignValid(callsign) {
+		return false
+	}
+	for _, prefix := range validSuffix {
+		if strings.HasSuffix(callsign, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func callsignValid(callsign string) bool {
 	if len(callsign) < CallsignMinLen || len(callsign) >= CallsignMaxLen {
 		return false

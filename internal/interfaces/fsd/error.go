@@ -7,19 +7,29 @@ const (
 	CommandOk ClientError = iota
 	CallsignInUse
 	CallsignInvalid
+	AlreadyRegistered
 	Syntax
-	SourceCallsignInvalid
-	AuthFail
+	InvalidSrcCallsign
+	InvalidCidPassword
 	NoCallsignFound
 	NoFlightPlan
+	NoWeatherProfile
 	InvalidProtocolVision
 	RequestLevelTooHigh
-	UserBaned
+	ServerFull
+	CidSuspended
+	InvalidCtrl
+	RatingTooLow
+	InvalidClient
+	AuthTimeout
+	Custom
 )
 
-var clientErrorsString = []string{"No error", "callsign in use", "Invalid callsign",
+var clientErrorsString = []string{"No error", "callsign in use", "Invalid callsign", "Already registered",
 	"Syntax error", "Invalid source callsign", "Invalid CID/password", "No such callsign", "No flightplan",
-	"Invalid protocol revision", "Requested level too high", "CID/PID was suspended"}
+	"No such weather profile", "Invalid protocol revision", "Requested level too high", "Too many clients connected",
+	"CID/PID was suspended", "Not valid control", "Rating too low for this position", "Unauthorized client software",
+	"Wrong server type", "Custom error"}
 
 func (e ClientError) String() string {
 	return clientErrorsString[e]

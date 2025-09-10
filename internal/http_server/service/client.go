@@ -66,16 +66,18 @@ func (clientService *ClientService) getOnlineClient() *OnlineClients {
 		if client.IsAtc() {
 			data.General.OnlineController++
 			controller := &OnlineController{
-				Cid:       client.User().Cid,
-				Callsign:  client.Callsign(),
-				RealName:  client.RealName(),
-				Latitude:  client.Position()[0].Latitude,
-				Longitude: client.Position()[0].Longitude,
-				Rating:    client.Rating().Index(),
-				Facility:  client.Facility().Index(),
-				Frequency: client.Frequency() + 100000,
-				AtcInfo:   client.AtisInfo(),
-				LogonTime: client.History().StartTime.Format(time.DateTime),
+				Cid:         client.User().Cid,
+				Callsign:    client.Callsign(),
+				RealName:    client.RealName(),
+				Latitude:    client.Position()[0].Latitude,
+				Longitude:   client.Position()[0].Longitude,
+				Rating:      client.Rating().Index(),
+				Facility:    client.Facility().Index(),
+				Frequency:   client.Frequency() + 100000,
+				OfflineTime: client.LogoffTime(),
+				IsBreak:     client.IsBreak(),
+				AtcInfo:     client.AtisInfo(),
+				LogonTime:   client.History().StartTime.Format(time.DateTime),
 			}
 			data.Controllers = append(data.Controllers, controller)
 		} else {

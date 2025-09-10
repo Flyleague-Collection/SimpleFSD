@@ -26,5 +26,5 @@ const (
 	KickedFromServerTemplateFileUrl = "https://raw.githubusercontent.com/Flyleague-Collection/SimpleFSD/refs/heads/main/template/kicked_from_server.template"
 
 	FSDServerName      = "SERVER"
-	FSDDisconnectDelay = time.Minute
+	FSDDisconnectDelay = 100 * time.Millisecond
 )
