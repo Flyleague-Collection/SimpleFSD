@@ -9,6 +9,7 @@ import (
 var (
 	DebugMode      = flag.Bool("debug", false, "Enable debug mode")
 	ConfigFilePath = flag.String("config", "./config.json", "Path to configuration file")
+	FlushInterval  = flag.Int64("flush_interval", 5, "Flush interval")
 )
 
 const (

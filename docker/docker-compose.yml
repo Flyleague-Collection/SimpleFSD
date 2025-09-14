@@ -1,0 +1,28 @@
+services:
+  # 服务名
+  fsd:
+    # 使用的镜像
+    image: halfnothing/simple-fsd-lite:0.6.0
+    # 容器名称
+    container_name: simple-fsd-lite
+    # 容器网络模式, 当模式为host的时候ports设置无效
+    # 仅当程序需要获取到客户端真实IP的时候需要开启
+    # network_mode: host
+    # 端口映射
+    # 宿主机端口:容器端口
+    ports:
+      - "6809:6809"
+    # 挂载卷列表
+    volumes:
+      - type: bind
+        source: ./config.json
+        target: /fsd/config.json
+      - type: bind
+        source: ./cert.txt
+        target: /fsd/cert.txt
+      - type: bind
+        source: ./whazzup.json
+        target: /fsd/whazzup.json
+      - ./logs:/fsd/logs
+    # 重启模式
+    restart: always

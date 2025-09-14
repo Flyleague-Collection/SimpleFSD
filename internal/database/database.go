@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type DBCloseCallback struct {
@@ -62,6 +63,33 @@ func readData(file *os.File) {
 	}
 }
 
+func isRunningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	if cgroup, err := os.ReadFile("/proc/1/cgroup"); err == nil {
+		content := string(cgroup)
+		if strings.Contains(content, "docker") ||
+			strings.Contains(content, "kubepods") ||
+			strings.Contains(content, "containerd") ||
+			strings.Contains(content, "crio") {
+			return true
+		}
+	}
+	containerEnvVars := []string{
+		"KUBERNETES_SERVICE_HOST",
+		"KUBERNETES_SERVICE_PORT",
+		"DOCKER",
+		"CONTAINER_ID",
+	}
+	for _, envVar := range containerEnvVars {
+		if os.Getenv(envVar) != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func ConnectDatabase(lg log.LoggerInterface, config *config.Config, _ bool) (*DBCloseCallback, *DatabaseOperations, error) {
 	if err := os.MkdirAll(filepath.Dir(config.CertFile), global.DefaultDirectoryPermission); err != nil {
 		return nil, nil, err
@@ -100,15 +128,41 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, _ bool) (*DB
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := watcher.Add(config.CertFile); err != nil {
-		return nil, nil, err
-	}
 
-	go func() {
-		for {
-			select {
-			case ev := <-watcher.Events:
-				{
+	if isRunningInDocker() {
+		go func() {
+			lastModify := time.Now()
+			if file, err := os.Stat(config.CertFile); err == nil {
+				lastModify = file.ModTime()
+			}
+			for {
+				select {
+				case <-watcher.Errors:
+					return
+				default:
+					if f, err := os.Stat(config.CertFile); err == nil {
+						if f.ModTime().After(lastModify) {
+							lastModify = f.ModTime()
+							file, err := os.Open(config.CertFile)
+							if err != nil {
+								lg.ErrorF("Error opening file %s", config.CertFile)
+							} else {
+								readData(file)
+							}
+						}
+					}
+					time.Sleep(time.Second * time.Duration(*global.FlushInterval))
+				}
+			}
+		}()
+	} else {
+		if err := watcher.Add(config.CertFile); err != nil {
+			return nil, nil, err
+		}
+		go func() {
+			for {
+				select {
+				case ev := <-watcher.Events:
 					if ev.Op&fsnotify.Write == fsnotify.Write {
 						file, err := os.Open(ev.Name)
 						if err != nil {
@@ -117,15 +171,15 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, _ bool) (*DB
 							readData(file)
 						}
 					}
-				}
-			case err := <-watcher.Errors:
-				{
-					lg.ErrorF("Error watching file, %v", err)
+				case err := <-watcher.Errors:
+					if err != nil {
+						lg.ErrorF("Error watching file, %v", err)
+					}
 					return
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return NewDBCloseCallback(lg, watcher), NewDatabaseOperations(NewUserOperation(lg, config), NewFlightPlanOperation(lg, config)), nil
 }

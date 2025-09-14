@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"os"
 	"time"
@@ -71,7 +72,7 @@ func (config *Config) CheckValid(_ log.LoggerInterface) *ValidResult {
 		return result
 	}
 
-	config.FirstMotdLine = fmt.Sprintf(config.FirstMotdLine, config.FSDName, AppVersion.String())
+	config.FirstMotdLine = fmt.Sprintf(config.FirstMotdLine, config.FSDName, global.AppVersion)
 	data := make([]string, 0, 1+len(config.Motd))
 	data = append(data, config.FirstMotdLine)
 	data = append(data, config.Motd...)

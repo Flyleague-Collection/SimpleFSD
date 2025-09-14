@@ -4,7 +4,9 @@
 FSD支持计划同步, 计划锁定  
 本分支为主分支的Lite版本, 仅保留FSD的核心功能  
 如果你想对本分支进行二次开发, 请查看[二次开发指引](./docs/development.md)  
-全功能版本请移步[主分支][Full-Branch]
+全功能版本请移步[主分支][Full-Branch]  
+[Docker Hub 仓库](https://hub.docker.com/r/halfnothing/simple-fsd-lite)  
+关于docker部署请看[使用docker部署](#使用docker部署)
 
 ---
 [![ReleaseCard]][Release]![ReleaseDataCard]![LastCommitCard]  
@@ -17,6 +19,122 @@ FSD支持计划同步, 计划锁定
 ## 如何使用
 
 ### 使用方法
+
+#### 使用docker部署
+
+##### 部署前操作
+
+由于docker的挂载逻辑, 我们需要预先获取需要的文件  
+我们通过创建一个临时的容器获取所需文件
+
+```shell
+# 运行一个临时容器
+docker run -d --name temp halfnothing/simple-fsd-lite:0.6.0
+# 分别复制需要的文件
+docker cp temp:/fsd/config.json ./config.json
+docker cp temp:/fsd/cert.txt ./cert.txt
+docker cp temp:/fsd/whazzup.json ./whazzup.json
+# 停止并删除临时容器
+docker stop temp
+docker rm temp
+```
+
+##### 如何部署
+
+1. ***(推荐)*** 使用docker-compose文件  
+   i. 复制[docker-compose文件](docker/docker-compose.yml)到任意目录  
+   ii. 在docker-compose文件同目录运行命令
+   ```shell
+   docker compose up -d  
+   ```
+   iii. 如果需要添加命令行参数
+   ```yml
+   services:
+     fsd:
+       image: halfnothing/simple-fsd-lite:0.6.0
+       # 省略部分字段
+       command:
+         - "-debug"
+   ```
+   iiii. docker-compose文件介绍  
+   ```yml
+   services:
+     # 服务名
+     fsd:
+       # 使用的镜像
+       image: halfnothing/simple-fsd-lite:0.6.0
+       # 容器名称
+       container_name: simple-fsd-lite
+       # 容器网络模式, 当模式为host的时候ports设置无效
+       # 仅当程序需要获取到客户端真实IP的时候需要开启
+       # network_mode: host
+       # 端口映射
+       # 宿主机端口:容器端口
+       ports:
+         - "6809:6809"
+       # 挂载卷列表
+       volumes:
+         - type: bind
+           source: ./config.json
+           target: /fsd/config.json
+         - type: bind
+           source: ./cert.txt
+           target: /fsd/cert.txt
+         - type: bind
+           source: ./whazzup.json
+           target: /fsd/whazzup.json
+         - ./logs:/fsd/logs
+       # 重启模式
+       restart: always
+   ```
+2. 使用docker命令  
+   i. 使用桥接模式, FSD无法获取到客户端真实IP  
+   ```shell
+   docker run -d --name simple-fsd-lite -p 6809:6809 -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json halfnothing/simple-fsd-lite:0.6.0  
+   ```
+   ii. 使用host模式, FSD可以获取到客户端真实IP  
+   ```shell
+   docker run -d --name simple-fsd-lite --network=host -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json halfnothing/simple-fsd-lite:0.6.0  
+   ```
+   iii. 如果需要添加命令行参数, 则在命令的最后添加  
+   ```shell
+   docker run -d ... halfnothing/simple-fsd-lite:0.6.0 -debug
+   ```
+3. 通过Dockerfile构建  
+   i. 手动构建  
+   ```shell
+   # 克隆本仓库
+   git clone https://github.com/Flyleague-Collection/SimpleFSD.git
+   # 进入项目目录
+   cd SimpleFSD
+   # 迁出到本分支
+   git checkout lite
+   # 运行docker构建
+   docker build -t simple-fsd-lite:latest .
+   # 运行docker容器
+   docker run -d --name simple-fsd-lite -p 6809:6809 -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json simple-fsd-lite:latest
+   # 或者以host模式运行
+   docker run -d --name simple-fsd-lite --network=host -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json simple-fsd-lite:latest
+   ```
+   ii. 自动构建  
+   ```shell
+   # 克隆本仓库
+   git clone https://github.com/Flyleague-Collection/SimpleFSD.git
+   # 进入项目目录
+   cd SimpleFSD
+   # 迁出到本分支
+   git checkout lite
+   # 进入docker目录并且修改docker-compose.yml文件
+   cd docker
+   vi docker-compose.yml
+   ```
+   将`image: halfnothing/simple-fsd-lite:0.6.0`这一行替换为`build: ".."`    
+   然后在同目录运行  
+   ```shell
+   docker compose up -d
+   ```
+
+#### 普通部署
 
 1. 获取服务器可执行文件  
    i. 在[Release]里面下载对应版本的构建  
@@ -84,11 +202,12 @@ FSD支持计划同步, 计划锁定
 
 ### 命令行参数
 
-| 参数名     | 类型     | 默认值             | 作用     |
-|:--------|:-------|:----------------|:-------|
-| -help   | ×      | ×               | 显示命令帮助 |
-| -debug  | bool   | false           | 开启调试模式 |
-| -config | string | "./config.json" | 配置文件路径 |
+| 参数名             | 类型     | 默认值             | 作用                   |
+|:----------------|:-------|:----------------|:---------------------|
+| -help           | ×      | ×               | 显示命令帮助               |
+| -debug          | bool   | false           | 开启调试模式               |
+| -config         | string | "./config.json" | 配置文件路径               |
+| -flush_interval | int    | 5               | cert.txt文件轮询时间, 单位为秒 |
 
 ### cert.txt 文件简介
 
@@ -96,6 +215,9 @@ FSD支持计划同步, 计划锁定
 用户名格式为: CID 密码 [权限等级](#fsd管制权限一览)  
 密码的加密方式请见配置文件中`encryption_type`字段  
 保存后服务端即刻生效, 不用重启
+> 当使用Docker部署的时候, 由于挂载问题, 程序无法正确收到文件修改时间  
+> 所以如果使用Docker部署, 程序会退回到轮询模式, 默认轮询时间是5s  
+> 你可以通过设置`-flush_interval`环境变量来覆写轮询时间, 详见[命令行参数](#命令行参数)  
 
 [MD5/SHA256加密网站]  
 [Bcrypt加密网站]
