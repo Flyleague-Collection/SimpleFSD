@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"net/url"
 	"runtime"
 	"time"
 )
@@ -21,6 +22,8 @@ type FSDServerConfig struct {
 	PosUpdatePoints      int                     `json:"pos_update_points"`
 	HeartbeatInterval    string                  `json:"heartbeat_interval"`
 	HeartbeatDuration    time.Duration           `json:"-"`
+	CacheTime            string                  `json:"whazzup_cache_time"`
+	CacheDuration        time.Duration           `json:"-"`
 	SessionCleanTime     string                  `json:"session_clean_time"`    // 会话保留时间
 	SessionCleanDuration time.Duration           `json:"-"`                     // 内部使用字段
 	MaxWorkers           int                     `json:"max_workers"`           // 并发线程数
@@ -36,7 +39,8 @@ func defaultFSDServerConfig() *FSDServerConfig {
 		Port:                6809,
 		AirportDataFile:     "data/airport.json",
 		PosUpdatePoints:     1,
-		HeartbeatInterval:   "60s",
+		CacheTime:           "15s",
+		HeartbeatInterval:   "40s",
 		SessionCleanTime:    "40s",
 		MaxWorkers:          128,
 		MaxBroadcastWorkers: 128,
@@ -66,7 +70,14 @@ func (config *FSDServerConfig) checkValid(logger log.LoggerInterface) *ValidResu
 		return ValidFail(errors.New("invalid json field pos_update_points, pos_update_points must larger than 0"))
 	}
 
-	if bytes, err := cachedContent(logger, config.AirportDataFile, global.AirportDataFileUrl); err != nil {
+	if duration, err := time.ParseDuration(config.CacheTime); err != nil {
+		return ValidFailWith(errors.New("invalid json field http_server.email.cache_time"), err)
+	} else {
+		config.CacheDuration = duration
+	}
+
+	fileUrl, _ := url.JoinPath(*global.DownloadPrefix, global.AirportDataFilePath)
+	if bytes, err := cachedContent(logger, config.AirportDataFile, fileUrl); err != nil {
 		logger.WarnF("fail to load airport data, airport check disable, %v", err)
 		config.AirportData = nil
 	} else if err := json.Unmarshal(bytes, &config.AirportData); err != nil {

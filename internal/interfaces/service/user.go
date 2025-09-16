@@ -15,9 +15,7 @@ type UserServiceInterface interface {
 	GetUserProfile(req *RequestUserProfile) *ApiResponse[ResponseUserProfile]
 	EditUserProfile(req *RequestUserEditProfile) *ApiResponse[ResponseUserEditProfile]
 	GetUserList(req *RequestUserList) *ApiResponse[ResponseUserList]
-	GetControllerList(req *RequestControllerList) *ApiResponse[ResponseControllerList]
 	EditUserPermission(req *RequestUserEditPermission) *ApiResponse[ResponseUserEditPermission]
-	EditUserRating(req *RequestUserEditRating) *ApiResponse[ResponseUserEditRating]
 	GetUserHistory(req *RequestGetUserHistory) *ApiResponse[ResponseGetUserHistory]
 	GetTokenWithFlushToken(req *RequestGetToken) *ApiResponse[ResponseGetToken]
 }
@@ -94,19 +92,6 @@ type ResponseUserList struct {
 	Total    int64             `json:"total"`
 }
 
-type RequestControllerList struct {
-	JwtHeader
-	Page     int `query:"page_number"`
-	PageSize int `query:"page_size"`
-}
-
-type ResponseControllerList struct {
-	Items    []*operation.User `json:"items"`
-	Page     int               `json:"page"`
-	PageSize int               `json:"page_size"`
-	Total    int64             `json:"total"`
-}
-
 type RequestUserEditProfile struct {
 	JwtHeader
 	EchoContentHeader
@@ -127,16 +112,6 @@ type RequestUserEditPermission struct {
 
 type ResponseUserEditPermission operation.User
 
-type RequestUserEditRating struct {
-	JwtHeader
-	EchoContentHeader
-	Cid       int
-	TargetUid uint `param:"uid"`
-	Rating    int  `json:"rating"`
-}
-
-type ResponseUserEditRating operation.User
-
 type RequestGetUserHistory struct {
 	JwtHeader
 	Cid int
@@ -150,6 +125,7 @@ type ResponseGetUserHistory struct {
 
 type RequestGetToken struct {
 	*Claims
+	FirstTime bool `query:"first"`
 }
 
 type ResponseGetToken struct {

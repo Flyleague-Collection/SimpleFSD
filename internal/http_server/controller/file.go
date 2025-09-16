@@ -27,7 +27,7 @@ func NewFileController(logger log.LoggerInterface, storeService StoreServiceInte
 func (controller *FileController) UploadImages(ctx echo.Context) error {
 	if file, err := ctx.FormFile("file"); err != nil {
 		controller.logger.ErrorF("FileController.UploadImages form file error: %v", err)
-		return NewErrorResponse(ctx, &ErrLackParam)
+		return NewErrorResponse(ctx, ErrLackParam)
 	} else {
 		data := &RequestUploadFile{File: file}
 		token := ctx.Get("user").(*jwt.Token)

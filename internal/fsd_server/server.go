@@ -40,10 +40,7 @@ func (dc *FsdCloseCallback) Invoke(ctx context.Context) error {
 // StartFSDServer 启动FSD服务器
 func StartFSDServer(applicationContent *ApplicationContent) {
 	config := applicationContent.ConfigManager().Config()
-	logger := applicationContent.Logger()
-
-	// 初始化客户端管理器
-	cm := packet.NewClientManager(applicationContent)
+	logger := applicationContent.Logger().FsdLogger()
 
 	// 创建TCP监听器
 	sem := make(chan struct{}, config.Server.FSDServer.MaxWorkers)
@@ -62,10 +59,7 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 		}
 	}()
 
-	applicationContent.Cleaner().Add(NewFsdCloseCallback(cm))
-
-	userOperation := applicationContent.Operations().UserOperation()
-	flightPlanOperation := applicationContent.Operations().FlightPlanOperation()
+	applicationContent.Cleaner().Add(NewFsdCloseCallback(applicationContent.ClientManager()))
 
 	// 循环接受新的连接
 	for {
@@ -80,15 +74,8 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 		// 使用信号量控制并发连接数
 		sem <- struct{}{}
 		go func(c net.Conn) {
-			connection := packet.NewSession(
-				logger,
-				config.Server.General,
-				conn,
-				cm,
-				userOperation,
-				flightPlanOperation,
-			)
-			connection.HandleConnection()
+			connection := packet.NewSession(applicationContent, conn)
+			connection.HandleConnection(config.Server.FSDServer.HeartbeatDuration)
 			// 释放信号量
 			<-sem
 		}(conn)

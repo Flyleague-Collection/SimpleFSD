@@ -36,7 +36,7 @@ func (controller *ClientController) GetClientPath(ctx echo.Context) error {
 	data := &RequestClientPath{}
 	if err := ctx.Bind(data); err != nil {
 		controller.logger.ErrorF("ClientController.GetClientPath bind error: %v", err)
-		return NewErrorResponse(ctx, &ErrLackParam)
+		return NewErrorResponse(ctx, ErrLackParam)
 	}
 	return controller.clientService.GetClientPath(data).Response(ctx)
 }
@@ -45,7 +45,7 @@ func (controller *ClientController) SendMessageToClient(ctx echo.Context) error 
 	data := &RequestSendMessageToClient{}
 	if err := ctx.Bind(data); err != nil {
 		controller.logger.ErrorF("ClientController.sendMessageToClient bind error: %v", err)
-		return NewErrorResponse(ctx, &ErrLackParam)
+		return NewErrorResponse(ctx, ErrLackParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -61,7 +61,7 @@ func (controller *ClientController) KillClient(ctx echo.Context) error {
 	data := &RequestKillClient{}
 	if err := ctx.Bind(data); err != nil {
 		controller.logger.ErrorF("ClientController.killClient bind error: %v", err)
-		return NewErrorResponse(ctx, &ErrLackParam)
+		return NewErrorResponse(ctx, ErrLackParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

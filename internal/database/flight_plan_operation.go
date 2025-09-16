@@ -113,6 +113,39 @@ func (flightPlanOperation *FlightPlanOperation) UpdateFlightPlan(flightPlan *Fli
 	})
 }
 
+func (flightPlanOperation *FlightPlanOperation) SaveFlightPlan(flightPlan *FlightPlan) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
+	defer cancel()
+	return flightPlanOperation.db.WithContext(ctx).Save(flightPlan).Error
+}
+
+func (flightPlanOperation *FlightPlanOperation) GetFlightPlans(page, pageSize int) (flightPlans []*FlightPlan, total int64, err error) {
+	flightPlans = make([]*FlightPlan, 0, pageSize)
+	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
+	defer cancel()
+	flightPlanOperation.db.WithContext(ctx).Model(&FlightPlan{}).Select("id").Count(&total)
+	err = flightPlanOperation.db.WithContext(ctx).Offset((page - 1) * pageSize).Order("cid").Limit(pageSize).Find(&flightPlans).Error
+	return
+}
+
+func (flightPlanOperation *FlightPlanOperation) LockFlightPlan(flightPlan *FlightPlan) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
+	defer cancel()
+	return flightPlanOperation.db.WithContext(ctx).Model(flightPlan).Updates(&FlightPlan{Locked: true}).Error
+}
+
+func (flightPlanOperation *FlightPlanOperation) UnlockFlightPlan(flightPlan *FlightPlan) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
+	defer cancel()
+	return flightPlanOperation.db.WithContext(ctx).Model(flightPlan).Updates(&FlightPlan{Locked: false}).Error
+}
+
+func (flightPlanOperation *FlightPlanOperation) DeleteFlightPlan(cid int) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
+	defer cancel()
+	return flightPlanOperation.db.WithContext(ctx).Delete(&FlightPlan{}, "cid = ?", cid).Error
+}
+
 func (flightPlanOperation *FlightPlanOperation) UpdateCruiseAltitude(flightPlan *FlightPlan, cruiseAltitude string) (err error) {
 	flightPlan.CruiseAltitude = cruiseAltitude
 

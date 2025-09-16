@@ -85,17 +85,17 @@ func (store *TencentCosStoreService) DeleteImageFile(file string) (*StoreInfo, e
 
 func (store *TencentCosStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUploadFile](ErrNoPermission, nil)
 	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {
-		return NewApiResponse[ResponseUploadFile](res, Unsatisfied, nil)
+		return NewApiResponse[ResponseUploadFile](res, nil)
 	}
 	accessUrl, err := url.JoinPath(store.endpoint.String(), storeInfo.RemotePath)
 	if err != nil {
-		return NewApiResponse[ResponseUploadFile](&ErrFilePathFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseUploadFile](&ErrFilePathFail, nil)
 	}
-	return NewApiResponse(&SuccessUploadFile, Unsatisfied, &ResponseUploadFile{
+	return NewApiResponse(&SuccessUploadFile, &ResponseUploadFile{
 		FileSize:   req.File.Size,
 		AccessPath: accessUrl,
 	})

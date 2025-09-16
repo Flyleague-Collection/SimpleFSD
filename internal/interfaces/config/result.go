@@ -19,7 +19,7 @@ func ValidPass() *ValidResult {
 }
 
 func ValidFail(err error) *ValidResult {
-	return &ValidResult{validType: FAIL, err: err}
+	return &ValidResult{validType: FAIL, err: err, originErr: nil}
 }
 
 func ValidFailWith(err error, originErr error) *ValidResult {
@@ -30,8 +30,12 @@ func (r *ValidResult) IsFail() bool {
 	return r.validType == FAIL
 }
 
-func (r *ValidResult) Error() error {
+func (r *ValidResult) Err() error {
 	return r.err
+}
+
+func (r *ValidResult) Error() string {
+	return r.err.Error()
 }
 
 func (r *ValidResult) OriginErr() error { return r.originErr }

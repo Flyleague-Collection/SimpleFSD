@@ -2,11 +2,14 @@
 package operation
 
 type DatabaseOperations struct {
-	userOperation       UserOperationInterface
-	flightPlanOperation FlightPlanOperationInterface
-	historyOperation    HistoryOperationInterface
-	activityOperation   ActivityOperationInterface
-	auditLogOperation   AuditLogOperationInterface
+	userOperation             UserOperationInterface             // 用户操作
+	flightPlanOperation       FlightPlanOperationInterface       // 飞行计划操作
+	historyOperation          HistoryOperationInterface          // 连线记录操作
+	activityOperation         ActivityOperationInterface         // 活动操作
+	auditLogOperation         AuditLogOperationInterface         // 审计日志操作
+	controllerOperation       ControllerOperationInterface       // 管制员操作
+	controllerRecordOperation ControllerRecordOperationInterface // 管制员履历操作
+	ticketOperation           TicketOperationInterface           // 工单操作
 }
 
 func NewDatabaseOperations(
@@ -15,13 +18,19 @@ func NewDatabaseOperations(
 	historyOperation HistoryOperationInterface,
 	activityOperation ActivityOperationInterface,
 	auditLogOperation AuditLogOperationInterface,
+	controllerOperation ControllerOperationInterface,
+	controllerRecordOperation ControllerRecordOperationInterface,
+	tickerOperation TicketOperationInterface,
 ) *DatabaseOperations {
 	return &DatabaseOperations{
-		userOperation:       userOperation,
-		flightPlanOperation: flightPlanOperation,
-		historyOperation:    historyOperation,
-		activityOperation:   activityOperation,
-		auditLogOperation:   auditLogOperation,
+		userOperation:             userOperation,
+		flightPlanOperation:       flightPlanOperation,
+		historyOperation:          historyOperation,
+		activityOperation:         activityOperation,
+		auditLogOperation:         auditLogOperation,
+		controllerOperation:       controllerOperation,
+		controllerRecordOperation: controllerRecordOperation,
+		ticketOperation:           tickerOperation,
 	}
 }
 
@@ -44,3 +53,13 @@ func (db *DatabaseOperations) ActivityOperation() ActivityOperationInterface {
 func (db *DatabaseOperations) AuditLogOperation() AuditLogOperationInterface {
 	return db.auditLogOperation
 }
+
+func (db *DatabaseOperations) ControllerOperation() ControllerOperationInterface {
+	return db.controllerOperation
+}
+
+func (db *DatabaseOperations) ControllerRecordOperation() ControllerRecordOperationInterface {
+	return db.controllerRecordOperation
+}
+
+func (db *DatabaseOperations) TicketOperation() TicketOperationInterface { return db.ticketOperation }

@@ -27,7 +27,7 @@ func (controller *EmailController) SendVerifyEmail(ctx echo.Context) error {
 	data := &RequestEmailVerifyCode{}
 	if err := ctx.Bind(data); err != nil {
 		controller.logger.ErrorF("ClientController.sendVerifyEmail bind error: %v", err)
-		return NewErrorResponse(ctx, &ErrLackParam)
+		return NewErrorResponse(ctx, ErrLackParam)
 	}
 	return controller.emailService.SendEmailVerifyCode(data).Response(ctx)
 }

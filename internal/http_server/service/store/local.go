@@ -100,13 +100,13 @@ func (store *LocalStoreService) DeleteImageFile(file string) (*StoreInfo, error)
 
 func (store *LocalStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUploadFile](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUploadFile](ErrNoPermission, nil)
 	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {
-		return NewApiResponse[ResponseUploadFile](res, Unsatisfied, nil)
+		return NewApiResponse[ResponseUploadFile](res, nil)
 	}
-	return NewApiResponse(&SuccessUploadFile, Unsatisfied, &ResponseUploadFile{
+	return NewApiResponse(&SuccessUploadFile, &ResponseUploadFile{
 		FileSize:   req.File.Size,
 		AccessPath: storeInfo.RemotePath,
 	})

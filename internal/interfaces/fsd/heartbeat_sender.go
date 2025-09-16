@@ -1,7 +1,6 @@
 package fsd
 
 import (
-	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"time"
 )
@@ -33,8 +32,6 @@ func (h *HeartbeatSender) Start() {
 	h.ticker = time.NewTicker(h.interval)
 
 	go func() {
-		defer fmt.Println("Heartbeat sender stopped")
-
 		for {
 			select {
 			case <-h.ticker.C:

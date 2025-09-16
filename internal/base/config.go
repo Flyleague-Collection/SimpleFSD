@@ -24,13 +24,21 @@ func readConfig(logger log.LoggerInterface) (*Config, *ValidResult) {
 		// 解析JSON配置
 		return nil, ValidFailWith(errors.New("the configuration file does not contain valid JSON"), err)
 	} else if result := config.CheckValid(logger); result.IsFail() {
-		return nil, result
+		if result.OriginErr() != nil && errors.Is(result.OriginErr(), ErrVersionUnmatch) && *global.UpdateConfig {
+			config.ConfigVersion = global.ConfigVersion
+			if err := saveConfig(config); err != nil {
+				return nil, ValidFailWith(errors.New("fail to save configuration file while creating configuration file"), err)
+			}
+			return readConfig(logger)
+		} else {
+			return nil, result
+		}
 	}
 	return config, ValidPass()
 }
 
 func saveConfig(config *Config) error {
-	if writer, err := os.OpenFile(*global.ConfigFilePath, os.O_WRONLY|os.O_CREATE, global.DefaultFilePermissions); err != nil {
+	if writer, err := os.OpenFile(*global.ConfigFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, global.DefaultFilePermissions); err != nil {
 		return err
 	} else if data, err := json.MarshalIndent(config, "", "\t"); err != nil {
 		return err
@@ -56,8 +64,8 @@ func NewManager(logger log.LoggerInterface) *Manager {
 }
 
 func (manager *Manager) getConfig() *Config {
-	if config, result := readConfig(manager.logger); result.IsFail() {
-		manager.logger.Fatal(result.Error().Error())
+	if config, result := readConfig(manager.logger); result != nil && result.IsFail() {
+		manager.logger.Fatal(result.Err().Error())
 		panic(result.OriginErr())
 	} else {
 		return config

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"golang.org/x/crypto/bcrypt"
@@ -98,15 +97,6 @@ func (userOperation *UserOperation) GetUsers(page, pageSize int) (users []*User,
 	return
 }
 
-func (userOperation *UserOperation) GetControllers(page, pageSize int) (users []*User, total int64, err error) {
-	users = make([]*User, 0, pageSize)
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	userOperation.db.WithContext(ctx).Model(&User{}).Select("id").Where("rating > ?", fsd.Normal).Count(&total)
-	err = userOperation.db.WithContext(ctx).Offset((page-1)*pageSize).Order("cid").Where("rating > ?", fsd.Normal).Limit(pageSize).Find(&users).Error
-	return
-}
-
 func (userOperation *UserOperation) NewUser(username string, email string, cid int, password string) (user *User, err error) {
 	encodePassword, err := bcrypt.GenerateFromPassword([]byte(password), userOperation.config.BcryptCost)
 	if err != nil {
@@ -154,15 +144,6 @@ func (userOperation *UserOperation) UpdateUserPilotTime(user *User, seconds int)
 	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
 	defer cancel()
 	return userOperation.db.WithContext(ctx).Model(user).Update("total_pilot_time", gorm.Expr("total_pilot_time + ?", seconds)).Error
-}
-
-func (userOperation *UserOperation) UpdateUserRating(user *User, rating int) error {
-	user.Rating = rating
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	return userOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Model(user).Update("rating", rating).Error
-	})
 }
 
 func (userOperation *UserOperation) UpdateUserPermission(user *User, permission Permission) error {
@@ -229,13 +210,6 @@ func (userOperation *UserOperation) GetTotalUsers() (total int64, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
 	defer cancel()
 	err = userOperation.db.WithContext(ctx).Model(&User{}).Select("id").Count(&total).Error
-	return
-}
-
-func (userOperation *UserOperation) GetTotalControllers() (total int64, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
-	defer cancel()
-	err = userOperation.db.WithContext(ctx).Model(&User{}).Select("id").Where("rating > ?", fsd.Normal).Count(&total).Error
 	return
 }
 

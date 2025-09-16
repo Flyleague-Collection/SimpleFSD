@@ -29,7 +29,7 @@ func (controller *AuditLogController) GetAuditLogs(ctx echo.Context) error {
 	data := &RequestGetAuditLog{}
 	if err := ctx.Bind(data); err != nil {
 		controller.logger.ErrorF("AuditLogController.GetAuditLogs bind error: %v", err)
-		return NewErrorResponse(ctx, &ErrLackParam)
+		return NewErrorResponse(ctx, ErrLackParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -42,7 +42,7 @@ func (controller *AuditLogController) LogUnlawfulOverreach(ctx echo.Context) err
 	data := &RequestLogUnlawfulOverreach{}
 	if err := ctx.Bind(data); err != nil {
 		controller.logger.ErrorF("AuditLogController.LogUnlawfulOverreach bind error: %v", err)
-		return NewErrorResponse(ctx, &ErrLackParam)
+		return NewErrorResponse(ctx, ErrLackParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

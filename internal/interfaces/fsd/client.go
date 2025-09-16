@@ -2,6 +2,7 @@
 package fsd
 
 import (
+	"errors"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 )
 
@@ -10,6 +11,11 @@ type PilotPath struct {
 	Longitude float64 `json:"longitude"`
 	Altitude  int     `json:"altitude"`
 }
+
+var (
+	ErrClientDisconnected = errors.New("client disconnected")
+	ErrClientSocketWrite  = errors.New("client socket write error")
+)
 
 type ClientInterface interface {
 	Disconnected() bool
@@ -24,7 +30,7 @@ type ClientInterface interface {
 	ClearAtcAtisInfo()
 	AddAtcAtisInfo(atisInfo string)
 	SendError(result *Result)
-	SendLineWithoutLog(line []byte)
+	SendLineWithoutLog(line []byte) error
 	SendLine(line []byte)
 	SendMotd()
 	CheckFacility(facility Facility) bool

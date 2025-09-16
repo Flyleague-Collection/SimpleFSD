@@ -6,23 +6,6 @@ import (
 	"time"
 )
 
-type ActivityStatus int
-
-const (
-	Open     ActivityStatus = iota // 报名中
-	InActive                       // 活动中
-	Closed                         // 已结束
-)
-
-type ActivityPilotStatus int
-
-const (
-	Signed    ActivityPilotStatus = iota // 已报名
-	Clearance                            // 已放行
-	Takeoff                              // 已起飞
-	Landing                              // 已落地
-)
-
 var (
 	ErrActivityNotFound      = errors.New("activity not found")
 	ErrFacilityNotFound      = errors.New("facility not found")

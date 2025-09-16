@@ -1,66 +1,10 @@
+// Package operation
 package operation
 
 import (
 	"gorm.io/gorm"
 	"time"
 )
-
-type User struct {
-	ID              uint             `gorm:"primarykey" json:"id"`
-	Username        string           `gorm:"size:64;uniqueIndex;not null" json:"username"`
-	Email           string           `gorm:"size:128;uniqueIndex;not null" json:"email"`
-	Cid             int              `gorm:"uniqueIndex;not null" json:"cid"`
-	Password        string           `gorm:"size:128;not null" json:"-"`
-	AvatarUrl       string           `gorm:"size:128;not null;default:''" json:"avatar_url"`
-	QQ              int              `gorm:"default:0" json:"qq"`
-	Rating          int              `gorm:"default:0" json:"rating"`
-	Permission      int64            `gorm:"default:0" json:"permission"`
-	TotalPilotTime  int              `gorm:"default:0" json:"total_pilot_time"`
-	TotalAtcTime    int              `gorm:"default:0" json:"total_atc_time"`
-	FlightPlans     []*FlightPlan    `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	OnlineHistories []*History       `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	ActivityAtc     []*ActivityATC   `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	ActivityPilot   []*ActivityPilot `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	CreatedAt       time.Time        `json:"-"`
-	UpdatedAt       time.Time        `json:"-"`
-}
-
-type FlightPlan struct {
-	ID               uint      `gorm:"primarykey" json:"id"`
-	Cid              int       `gorm:"index;not null" json:"cid"`
-	Callsign         string    `gorm:"size:16;uniqueIndex;not null" json:"callsign"`
-	FlightType       string    `gorm:"size:4;not null" json:"flight_rules"`
-	AircraftType     string    `gorm:"size:16;not null" json:"aircraft"`
-	Tas              int       `gorm:"not null" json:"cruise_tas"`
-	DepartureAirport string    `gorm:"size:4;not null" json:"departure"`
-	DepartureTime    int       `gorm:"not null" json:"departure_time"`
-	AtcDepartureTime int       `gorm:"not null" json:"-"`
-	CruiseAltitude   string    `gorm:"size:8;not null" json:"altitude"`
-	ArrivalAirport   string    `gorm:"size:4;not null" json:"arrival"`
-	RouteTimeHour    string    `gorm:"size:2;not null" json:"route_time_hour"`
-	RouteTimeMinute  string    `gorm:"size:2;not null" json:"route_time_minute"`
-	FuelTimeHour     string    `gorm:"size:2;not null" json:"fuel_time_hour"`
-	FuelTimeMinute   string    `gorm:"size:2;not null" json:"fuel_time_minute"`
-	AlternateAirport string    `gorm:"size:4;not null" json:"alternate"`
-	Remarks          string    `gorm:"type:text;not null" json:"remarks"`
-	Route            string    `gorm:"type:text;not null" json:"route"`
-	Locked           bool      `gorm:"default:0;not null" json:"-"`
-	FromWeb          bool      `gorm:"default:0;not null" json:"-"`
-	CreatedAt        time.Time `json:"-"`
-	UpdatedAt        time.Time `json:"-"`
-}
-
-type History struct {
-	ID         uint      `gorm:"primarykey" json:"-"`
-	Cid        int       `gorm:"index;not null" json:"-"`
-	Callsign   string    `gorm:"size:16;index;not null" json:"callsign"`
-	StartTime  time.Time `gorm:"not null" json:"start_time"`
-	EndTime    time.Time `gorm:"not null" json:"end_time"`
-	OnlineTime int       `gorm:"default:0;not null" json:"online_time"`
-	IsAtc      bool      `gorm:"default:0;not null" json:"-"`
-	CreatedAt  time.Time `json:"-"`
-	UpdatedAt  time.Time `json:"-"`
-}
 
 type Activity struct {
 	ID               uint                `gorm:"primarykey" json:"id"`
@@ -184,19 +128,19 @@ type ActivityPilot struct {
 	CreatedAt    time.Time `json:"-"`
 	UpdatedAt    time.Time `json:"-"`
 }
+type ActivityStatus int
 
-type AuditLog struct {
-	ID            uint          `gorm:"primarykey" json:"id"`
-	CreatedAt     time.Time     `gorm:"not null" json:"time"`
-	EventType     string        `gorm:"index:eventType;not null" json:"event_type"`
-	Subject       int           `gorm:"index:Subject;not null" json:"subject"`
-	Object        string        `gorm:"index:Object;not null" json:"object"`
-	Ip            string        `gorm:"not null" json:"ip"`
-	UserAgent     string        `gorm:"not null" json:"user_agent"`
-	ChangeDetails *ChangeDetail `gorm:"type:text;serializer:json" json:"change_details"`
-}
+const (
+	Open     ActivityStatus = iota // 报名中
+	InActive                       // 活动中
+	Closed                         // 已结束
+)
 
-type ChangeDetail struct {
-	OldValue string `json:"old_value"`
-	NewValue string `json:"new_value"`
-}
+type ActivityPilotStatus int
+
+const (
+	Signed    ActivityPilotStatus = iota // 已报名
+	Clearance                            // 已放行
+	Takeoff                              // 已起飞
+	Landing                              // 已落地
+)

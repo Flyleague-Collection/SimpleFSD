@@ -6,18 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"strconv"
 	"strings"
 	"time"
 )
 
 type UserService struct {
 	logger            log.LoggerInterface
+	messageQueue      queue.MessageQueueInterface
 	emailService      EmailServiceInterface
 	config            *config.HttpServerConfig
 	userOperation     operation.UserOperationInterface
@@ -34,9 +34,11 @@ func NewUserService(
 	auditLogOperation operation.AuditLogOperationInterface,
 	storeService StoreServiceInterface,
 	emailService EmailServiceInterface,
+	messageQueue queue.MessageQueueInterface,
 ) *UserService {
 	return &UserService{
 		logger:            logger,
+		messageQueue:      messageQueue,
 		emailService:      emailService,
 		config:            config,
 		userOperation:     userOperation,
@@ -72,35 +74,35 @@ func (userService *UserService) verifyEmailCode(email string, emailCode, cid int
 
 func (userService *UserService) UserRegister(req *RequestUserRegister) *ApiResponse[ResponseUserRegister] {
 	if req.Username == "" || req.Email == "" || req.Password == "" || req.Cid <= 0 || req.EmailCode < 1e5 {
-		return NewApiResponse[ResponseUserRegister](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserRegister](ErrIllegalParam, nil)
 	}
 	if res := userService.verifyEmailCode(req.Email, req.EmailCode, req.Cid); res != nil {
-		return NewApiResponse[ResponseUserRegister](res, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserRegister](res, nil)
 	}
 	if err := usernameValidator.CheckString(req.Username); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserRegister](err, nil)
 	}
 	if err := emailValidator.CheckString(req.Email); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserRegister](err, nil)
 	}
 	if err := passwordValidator.CheckString(req.Password); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserRegister](err, nil)
 	}
 	if err := cidValidator.CheckInt(req.Cid); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserRegister](err, nil)
 	}
 	user, err := userService.userOperation.NewUser(req.Username, req.Email, req.Cid, req.Password)
 	if err != nil {
-		return NewApiResponse[ResponseUserRegister](&ErrRegisterFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserRegister](ErrRegisterFail, nil)
 	}
-	if _, res := CallDBFuncAndCheckError[interface{}, ResponseUserRegister](func() (*interface{}, error) {
+	if _, res := CallDBFunc[interface{}, ResponseUserRegister](func() (*interface{}, error) {
 		return nil, userService.userOperation.AddUser(user)
 	}); res != nil {
 		return res
 	}
 	token := NewClaims(userService.config.JWT, user, false)
 	flushToken := NewClaims(userService.config.JWT, user, true)
-	return NewApiResponse(&SuccessRegister, Unsatisfied, &ResponseUserRegister{
+	return NewApiResponse(&SuccessRegister, &ResponseUserRegister{
 		User:       user,
 		Token:      token.GenerateKey(),
 		FlushToken: flushToken.GenerateKey(),
@@ -108,17 +110,17 @@ func (userService *UserService) UserRegister(req *RequestUserRegister) *ApiRespo
 }
 
 var (
-	ErrUsernameOrPassword = ApiStatus{StatusName: "WRONG_USERNAME_OR_PASSWORD", Description: "用户名或密码错误", HttpCode: BadRequest}
+	ErrUsernameOrPassword = ApiStatus{StatusName: "WRONG_USERNAME_OR_PASSWORD", Description: "用户名或密码错误", HttpCode: NotFound}
 	SuccessLogin          = ApiStatus{StatusName: "LOGIN_SUCCESS", Description: "登陆成功", HttpCode: Ok}
 )
 
 func (userService *UserService) UserLogin(req *RequestUserLogin) *ApiResponse[ResponseUserLogin] {
 	if req.Username == "" || req.Password == "" {
-		return NewApiResponse[ResponseUserLogin](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserLogin](ErrIllegalParam, nil)
 	}
 	userId := operation.GetUserId(req.Username)
 
-	user, res := CallDBFuncAndCheckError[operation.User, ResponseUserLogin](func() (*operation.User, error) {
+	user, res := CallDBFunc[operation.User, ResponseUserLogin](func() (*operation.User, error) {
 		return userId.GetUser(userService.userOperation)
 	})
 	if res != nil {
@@ -128,13 +130,13 @@ func (userService *UserService) UserLogin(req *RequestUserLogin) *ApiResponse[Re
 	if pass := userService.userOperation.VerifyUserPassword(user, req.Password); pass {
 		token := NewClaims(userService.config.JWT, user, false)
 		flushToken := NewClaims(userService.config.JWT, user, true)
-		return NewApiResponse(&SuccessLogin, Unsatisfied, &ResponseUserLogin{
+		return NewApiResponse(&SuccessLogin, &ResponseUserLogin{
 			User:       user,
 			Token:      token.GenerateKey(),
 			FlushToken: flushToken.GenerateKey(),
 		})
 	} else {
-		return NewApiResponse[ResponseUserLogin](&ErrUsernameOrPassword, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserLogin](&ErrUsernameOrPassword, nil)
 	}
 }
 
@@ -145,14 +147,14 @@ var (
 
 func (userService *UserService) CheckAvailability(req *RequestUserAvailability) *ApiResponse[ResponseUserAvailability] {
 	if req.Username == "" && req.Email == "" && req.Cid == "" {
-		return NewApiResponse[ResponseUserAvailability](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserAvailability](ErrIllegalParam, nil)
 	}
 	exist, _ := userService.userOperation.IsUserIdentifierTaken(nil, utils.StrToInt(req.Cid, 0), req.Username, req.Email)
 	data := ResponseUserAvailability(!exist)
 	if exist {
-		return NewApiResponse(&NameNotAvailability, Unsatisfied, &data)
+		return NewApiResponse(&NameNotAvailability, &data)
 	}
-	return NewApiResponse(&NameAvailability, Unsatisfied, &data)
+	return NewApiResponse(&NameAvailability, &data)
 }
 
 var (
@@ -161,11 +163,11 @@ var (
 
 func (userService *UserService) GetCurrentProfile(req *RequestUserCurrentProfile) *ApiResponse[ResponseUserCurrentProfile] {
 	if user, err := userService.userOperation.GetUserByUid(req.Uid); errors.Is(err, operation.ErrUserNotFound) {
-		return NewApiResponse[ResponseUserCurrentProfile](&ErrUserNotFound, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserCurrentProfile](ErrUserNotFound, nil)
 	} else if err != nil {
-		return NewApiResponse[ResponseUserCurrentProfile](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserCurrentProfile](ErrDatabaseFail, nil)
 	} else {
-		return NewApiResponse(&SuccessGetCurrentProfile, Unsatisfied, (*ResponseUserCurrentProfile)(user))
+		return NewApiResponse(&SuccessGetCurrentProfile, (*ResponseUserCurrentProfile)(user))
 	}
 }
 
@@ -186,7 +188,7 @@ func checkQQ(qq int) *ApiStatus {
 
 func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfile, skipEmailVerify bool, skipPasswordVerify bool) (*ApiStatus, *operation.User, string) {
 	if req.Username == "" && req.Email == "" && req.QQ <= 0 && req.OriginPassword == "" && req.NewPassword == "" && req.AvatarUrl == "" {
-		return &ErrIllegalParam, nil, ""
+		return ErrIllegalParam, nil, ""
 	}
 	if req.OriginPassword != "" && req.NewPassword != "" {
 		if err := passwordValidator.CheckString(req.NewPassword); err != nil {
@@ -208,7 +210,7 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 		}
 		if !skipEmailVerify {
 			if req.EmailCode <= 0 {
-				return &ErrIllegalParam, nil, ""
+				return ErrIllegalParam, nil, ""
 			}
 
 			if res := userService.verifyEmailCode(req.Email, req.EmailCode, req.Cid); res != nil {
@@ -224,9 +226,9 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 
 	user, err := userService.userOperation.GetUserByUid(req.ID)
 	if errors.Is(err, operation.ErrUserNotFound) {
-		return &ErrUserNotFound, nil, ""
+		return ErrUserNotFound, nil, ""
 	} else if err != nil {
-		return &ErrDatabaseFail, nil, ""
+		return ErrDatabaseFail, nil, ""
 	}
 
 	updateInfo := make(map[string]interface{})
@@ -236,7 +238,7 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 	if req.Username != "" || req.Email != "" {
 		exist, _ := userService.userOperation.IsUserIdentifierTaken(nil, 0, req.Username, req.Email)
 		if exist {
-			return &ErrIdentifierTaken, nil, ""
+			return ErrIdentifierTaken, nil, ""
 		}
 		if req.Username != "" && req.Username != user.Username {
 			user.Username = req.Username
@@ -271,20 +273,20 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 	if req.OriginPassword != "" || skipPasswordVerify {
 		password, err := userService.userOperation.UpdateUserPassword(user, req.OriginPassword, req.NewPassword, skipPasswordVerify)
 		if errors.Is(err, operation.ErrUserNotFound) {
-			return &ErrUserNotFound, nil, ""
+			return ErrUserNotFound, nil, ""
 		} else if errors.Is(err, operation.ErrOldPassword) {
 			return &ErrOriginPassword, nil, ""
 		} else if err != nil {
-			return &ErrDatabaseFail, nil, ""
+			return ErrDatabaseFail, nil, ""
 		}
 		updateInfo["password"] = password
 	}
 
 	if err := userService.userOperation.UpdateUserInfo(user, updateInfo); err != nil {
 		if errors.Is(err, operation.ErrUserNotFound) {
-			return &ErrUserNotFound, nil, ""
+			return ErrUserNotFound, nil, ""
 		} else {
-			return &ErrDatabaseFail, nil, ""
+			return ErrDatabaseFail, nil, ""
 		}
 	}
 
@@ -293,9 +295,9 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 
 func (userService *UserService) EditCurrentProfile(req *RequestUserEditCurrentProfile) *ApiResponse[ResponseUserEditCurrentProfile] {
 	if err, user, _ := userService.editUserProfile(req, false, false); err != nil {
-		return NewApiResponse[ResponseUserEditCurrentProfile](err, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserEditCurrentProfile](err, nil)
 	} else {
-		return NewApiResponse(&SuccessEditCurrentProfile, Unsatisfied, (*ResponseUserEditCurrentProfile)(user))
+		return NewApiResponse(&SuccessEditCurrentProfile, (*ResponseUserEditCurrentProfile)(user))
 	}
 }
 
@@ -305,22 +307,22 @@ var (
 
 func (userService *UserService) GetUserProfile(req *RequestUserProfile) *ApiResponse[ResponseUserProfile] {
 	if req.TargetUid <= 0 {
-		return NewApiResponse[ResponseUserProfile](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserProfile](ErrIllegalParam, nil)
 	}
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUserProfile](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserProfile](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.UserGetProfile) {
-		return NewApiResponse[ResponseUserProfile](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserProfile](ErrNoPermission, nil)
 	}
-	user, res := CallDBFuncAndCheckError[operation.User, ResponseUserProfile](func() (*operation.User, error) {
+	user, res := CallDBFunc[operation.User, ResponseUserProfile](func() (*operation.User, error) {
 		return userService.userOperation.GetUserByUid(req.TargetUid)
 	})
 	if res != nil {
 		return res
 	}
-	return NewApiResponse(&SuccessGetProfile, Unsatisfied, (*ResponseUserProfile)(user))
+	return NewApiResponse(&SuccessGetProfile, (*ResponseUserProfile)(user))
 }
 
 var (
@@ -329,17 +331,18 @@ var (
 
 func (userService *UserService) EditUserProfile(req *RequestUserEditProfile) *ApiResponse[ResponseUserEditProfile] {
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUserEditProfile](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserEditProfile](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.UserEditBaseInfo) {
-		return NewApiResponse[ResponseUserEditProfile](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserEditProfile](ErrNoPermission, nil)
 	}
 	req.ID = req.TargetUid
 	err, user, oldValue := userService.editUserProfile(&req.RequestUserEditCurrentProfile, true, permission.HasPermission(operation.UserSetPassword))
 	if err != nil {
-		return NewApiResponse[ResponseUserEditProfile](err, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserEditProfile](err, nil)
 	}
+
 	go func() {
 		newValue, _ := json.Marshal(user)
 		var object string
@@ -348,62 +351,38 @@ func (userService *UserService) EditUserProfile(req *RequestUserEditProfile) *Ap
 		} else {
 			object = fmt.Sprintf("%04d(%s)", user.Cid, req.NewPassword)
 		}
-		auditLog := userService.auditLogOperation.NewAuditLog(operation.UserInformationEdit, req.Cid, object,
-			req.Ip, req.UserAgent, &operation.ChangeDetail{
-				OldValue: oldValue,
-				NewValue: string(newValue),
-			})
-		err := userService.auditLogOperation.SaveAuditLog(auditLog)
-		if err != nil {
-			userService.logger.ErrorF("Fail to create audit log for user_information_edit, detail: %v", err)
-		}
+		userService.messageQueue.Publish(&queue.Message{
+			Type: queue.AuditLog,
+			Data: userService.auditLogOperation.NewAuditLog(operation.UserInformationEdit, req.Cid, object,
+				req.Ip, req.UserAgent, &operation.ChangeDetail{
+					OldValue: oldValue,
+					NewValue: string(newValue),
+				},
+			),
+		})
 	}()
-	return NewApiResponse(&SuccessEditUserProfile, Unsatisfied, (*ResponseUserEditProfile)(user))
+
+	return NewApiResponse(&SuccessEditUserProfile, (*ResponseUserEditProfile)(user))
 }
 
 var SuccessGetUsers = ApiStatus{StatusName: "GET_USER_PAGE", Description: "获取用户信息分页成功", HttpCode: Ok}
 
 func (userService *UserService) GetUserList(req *RequestUserList) *ApiResponse[ResponseUserList] {
 	if req.Page <= 0 || req.PageSize <= 0 {
-		return NewApiResponse[ResponseUserList](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserList](ErrIllegalParam, nil)
 	}
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUserList](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserList](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.UserShowList) {
-		return NewApiResponse[ResponseUserList](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserList](ErrNoPermission, nil)
 	}
 	users, total, err := userService.userOperation.GetUsers(req.Page, req.PageSize)
 	if err != nil {
-		return NewApiResponse[ResponseUserList](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserList](ErrDatabaseFail, nil)
 	}
-	return NewApiResponse(&SuccessGetUsers, Unsatisfied, &ResponseUserList{
-		Items:    users,
-		Page:     req.Page,
-		PageSize: req.PageSize,
-		Total:    total,
-	})
-}
-
-var SuccessGetControllers = ApiStatus{StatusName: "GET_CONTROLLER_PAGE", Description: "获取管制员信息分页成功", HttpCode: Ok}
-
-func (userService *UserService) GetControllerList(req *RequestControllerList) *ApiResponse[ResponseControllerList] {
-	if req.Page <= 0 || req.PageSize <= 0 {
-		return NewApiResponse[ResponseControllerList](&ErrIllegalParam, Unsatisfied, nil)
-	}
-	if req.Permission <= 0 {
-		return NewApiResponse[ResponseControllerList](&ErrNoPermission, Unsatisfied, nil)
-	}
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.UserShowList) {
-		return NewApiResponse[ResponseControllerList](&ErrNoPermission, Unsatisfied, nil)
-	}
-	users, total, err := userService.userOperation.GetControllers(req.Page, req.PageSize)
-	if err != nil {
-		return NewApiResponse[ResponseControllerList](&ErrDatabaseFail, Unsatisfied, nil)
-	}
-	return NewApiResponse(&SuccessGetControllers, Unsatisfied, &ResponseControllerList{
+	return NewApiResponse(&SuccessGetUsers, &ResponseUserList{
 		Items:    users,
 		Page:     req.Page,
 		PageSize: req.PageSize,
@@ -418,7 +397,7 @@ var (
 
 func (userService *UserService) EditUserPermission(req *RequestUserEditPermission) *ApiResponse[ResponseUserEditPermission] {
 	if req.Uid <= 0 {
-		return NewApiResponse[ResponseUserEditPermission](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseUserEditPermission](ErrIllegalParam, nil)
 	}
 	user, targetUser, res := GetUsersAndCheckPermission[ResponseUserEditPermission](userService.userOperation, req.Uid, req.TargetUid, operation.UserEditPermission)
 	if res != nil {
@@ -430,7 +409,7 @@ func (userService *UserService) EditUserPermission(req *RequestUserEditPermissio
 	for key, value := range req.Permissions {
 		if per, ok := operation.PermissionMap[key]; ok {
 			if !permission.HasPermission(per) {
-				return NewApiResponse[ResponseUserEditPermission](&ErrNoPermission, Unsatisfied, nil)
+				return NewApiResponse[ResponseUserEditPermission](ErrNoPermission, nil)
 			}
 			if value, ok := value.(bool); ok {
 				if value {
@@ -443,103 +422,59 @@ func (userService *UserService) EditUserPermission(req *RequestUserEditPermissio
 						fmt.Sprintf("%04d(%s)", targetUser.Cid, key), req.Ip, req.UserAgent, nil))
 				}
 			} else {
-				return NewApiResponse[ResponseUserEditPermission](&ErrIllegalParam, Unsatisfied, nil)
+				return NewApiResponse[ResponseUserEditPermission](ErrIllegalParam, nil)
 			}
 		} else {
-			return NewApiResponse[ResponseUserEditPermission](&ErrPermissionNodeNotExists, Unsatisfied, nil)
+			return NewApiResponse[ResponseUserEditPermission](&ErrPermissionNodeNotExists, nil)
 		}
 	}
 
-	if _, res := CallDBFuncAndCheckError[interface{}, ResponseUserEditPermission](func() (*interface{}, error) {
+	if _, res := CallDBFunc[interface{}, ResponseUserEditPermission](func() (*interface{}, error) {
 		return nil, userService.userOperation.UpdateUserPermission(targetUser, targetPermission)
 	}); res != nil {
 		return res
 	}
 
 	if userService.config.Email.Template.EnablePermissionChangeEmail {
-		if err := userService.emailService.SendPermissionChangeEmail(targetUser, user); err != nil {
-			userService.logger.ErrorF("SendPermissionChangeEmail Failed: %v", err)
-		}
+		userService.messageQueue.Publish(&queue.Message{
+			Type: queue.SendPermissionChangeEmail,
+			Data: &SendPermissionChangeData{
+				User:     targetUser,
+				Operator: user,
+			},
+		})
 	}
 
-	go func() {
-		err := userService.auditLogOperation.SaveAuditLogs(auditLogs)
-		if err != nil {
-			userService.logger.ErrorF("Fail to create audit log for user_permission_change, detail: %v", err)
-		}
-	}()
-	return NewApiResponse(&SuccessEditUserPermission, Unsatisfied, (*ResponseUserEditPermission)(targetUser))
-}
+	userService.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLogs,
+		Data: auditLogs,
+	})
 
-var (
-	ErrSameRating         = ApiStatus{StatusName: "SAME_RATING", Description: "用户已是该权限", HttpCode: BadRequest}
-	SuccessEditUserRating = ApiStatus{StatusName: "EDIT_USER_RATING", Description: "编辑用户管制权限成功", HttpCode: Ok}
-)
-
-func (userService *UserService) EditUserRating(req *RequestUserEditRating) *ApiResponse[ResponseUserEditRating] {
-	if req.Uid <= 0 || req.Rating < fsd.Ban.Index() || req.Rating > fsd.Administrator.Index() {
-		return NewApiResponse[ResponseUserEditRating](&ErrIllegalParam, Unsatisfied, nil)
-	}
-	user, targetUser, res := GetUsersAndCheckPermission[ResponseUserEditRating](userService.userOperation, req.Uid, req.TargetUid, operation.UserEditRating)
-	if res != nil {
-		return res
-	}
-	oldRating := fsd.Rating(targetUser.Rating)
-	newRating := fsd.Rating(req.Rating)
-	if oldRating == newRating {
-		return NewApiResponse[ResponseUserEditRating](&ErrSameRating, Unsatisfied, nil)
-	}
-
-	if _, res := CallDBFuncAndCheckError[interface{}, ResponseUserEditRating](func() (*interface{}, error) {
-		return nil, userService.userOperation.UpdateUserRating(targetUser, newRating.Index())
-	}); res != nil {
-		return res
-	}
-
-	go func() {
-		changeDetail := &operation.ChangeDetail{
-			OldValue: oldRating.String(),
-			NewValue: newRating.String(),
-		}
-		auditLog := userService.auditLogOperation.NewAuditLog(operation.UserRatingChange, req.Cid,
-			strconv.Itoa(targetUser.Cid), req.Ip, req.UserAgent, changeDetail)
-		err := userService.auditLogOperation.SaveAuditLog(auditLog)
-		if err != nil {
-			userService.logger.ErrorF("Fail to create audit log for user_rating_change, detail: %v", err)
-		}
-	}()
-
-	if userService.config.Email.Template.EnableRatingChangeEmail {
-		if err := userService.emailService.SendRatingChangeEmail(targetUser, user, oldRating, newRating); err != nil {
-			userService.logger.ErrorF("SendRatingChangeEmail Failed: %v", err)
-		}
-	}
-
-	return NewApiResponse(&SuccessEditUserRating, Unsatisfied, (*ResponseUserEditRating)(targetUser))
+	return NewApiResponse(&SuccessEditUserPermission, (*ResponseUserEditPermission)(targetUser))
 }
 
 var SuccessGetUserHistory = ApiStatus{StatusName: "GET_USER_HISTORY", Description: "成功获取用户历史数据", HttpCode: Ok}
 
 func (userService *UserService) GetUserHistory(req *RequestGetUserHistory) *ApiResponse[ResponseGetUserHistory] {
 	if req.Cid <= 0 {
-		return NewApiResponse[ResponseGetUserHistory](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseGetUserHistory](ErrIllegalParam, nil)
 	}
 
-	user, res := CallDBFuncAndCheckError[operation.User, ResponseGetUserHistory](func() (*operation.User, error) {
+	user, res := CallDBFunc[operation.User, ResponseGetUserHistory](func() (*operation.User, error) {
 		return userService.userOperation.GetUserByCid(req.Cid)
 	})
 	if res != nil {
 		return res
 	}
 
-	userHistory, res := CallDBFuncAndCheckError[operation.UserHistory, ResponseGetUserHistory](func() (*operation.UserHistory, error) {
+	userHistory, res := CallDBFunc[operation.UserHistory, ResponseGetUserHistory](func() (*operation.UserHistory, error) {
 		return userService.historyOperation.GetUserHistory(req.Cid)
 	})
 	if res != nil {
 		return res
 	}
 
-	return NewApiResponse(&SuccessGetUserHistory, Unsatisfied, &ResponseGetUserHistory{
+	return NewApiResponse(&SuccessGetUserHistory, &ResponseGetUserHistory{
 		TotalPilotTime: user.TotalPilotTime,
 		TotalAtcTime:   user.TotalAtcTime,
 		UserHistory:    userHistory,
@@ -550,10 +485,10 @@ var SuccessGetToken = ApiStatus{StatusName: "GET_TOKEN", Description: "成功刷
 
 func (userService *UserService) GetTokenWithFlushToken(req *RequestGetToken) *ApiResponse[ResponseGetToken] {
 	if !req.FlushToken {
-		return NewApiResponse[ResponseGetToken](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseGetToken](ErrIllegalParam, nil)
 	}
 
-	user, res := CallDBFuncAndCheckError[operation.User, ResponseGetToken](func() (*operation.User, error) {
+	user, res := CallDBFunc[operation.User, ResponseGetToken](func() (*operation.User, error) {
 		return userService.userOperation.GetUserByUid(req.Uid)
 	})
 
@@ -562,14 +497,14 @@ func (userService *UserService) GetTokenWithFlushToken(req *RequestGetToken) *Ap
 	}
 
 	var flushToken string
-	if req.ExpiresAt.Add(-2 * userService.config.JWT.ExpiresDuration).After(time.Now()) {
+	if !req.FirstTime && req.ExpiresAt.Add(-2*userService.config.JWT.ExpiresDuration).After(time.Now()) {
 		flushToken = ""
 	} else {
 		flushToken = NewClaims(userService.config.JWT, user, true).GenerateKey()
 	}
 
 	token := NewClaims(userService.config.JWT, user, false)
-	return NewApiResponse(&SuccessGetToken, Unsatisfied, &ResponseGetToken{
+	return NewApiResponse(&SuccessGetToken, &ResponseGetToken{
 		User:       user,
 		Token:      token.GenerateKey(),
 		FlushToken: flushToken,

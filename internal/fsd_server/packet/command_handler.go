@@ -7,6 +7,8 @@ import (
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strings"
 )
@@ -92,7 +94,7 @@ func (session *Session) handleAddAtc(data []string, rawLine []byte) *Result {
 	latitude := utils.StrToFloat(data[9], 0)
 	longitude := utils.StrToFloat(data[10], 0)
 	if session.client == nil {
-		session.client = session.clientManager.NewClient(callsign, Rating(reqRating), protocol, realName, session, true)
+		session.client = NewClient(session.application, callsign, Rating(reqRating), protocol, realName, session, true)
 		_ = session.client.SetPosition(0, latitude, longitude)
 		_ = session.clientManager.AddClient(session.client)
 	}
@@ -122,7 +124,7 @@ func (session *Session) handleAddPilot(data []string, rawLine []byte) *Result {
 	simType := utils.StrToInt(data[6], 0)
 	realName := data[7]
 	if session.client == nil {
-		session.client = session.clientManager.NewClient(callsign, reqRating, protocol, realName, session, false)
+		session.client = NewClient(session.application, callsign, reqRating, protocol, realName, session, false)
 		session.client.SetSimType(simType)
 		_ = session.clientManager.AddClient(session.client)
 	}
@@ -380,10 +382,10 @@ func (session *Session) handlePlan(data []string, rawLine []byte) *Result {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
 	if session.client.IsAtc() {
-		return ResultError(Syntax, false, session.client.Callsign(), fmt.Errorf("atc can not submit fligth plan"))
+		return ResultError(Syntax, false, "FLIGHT_PLAN", fmt.Errorf("atc can not submit fligth plan"))
 	}
 	if err := session.client.UpsertFlightPlan(data); err != nil {
-		return ResultError(Syntax, false, session.client.Callsign(), err)
+		return ResultError(Custom, false, "FLIGHT_PLAN", err)
 	}
 	if !session.client.FlightPlan().Locked {
 		go session.clientManager.BroadcastMessage(rawLine, session.client, CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
@@ -431,11 +433,25 @@ func (session *Session) handleKillClient(data []string, _ []byte) *Result {
 		return ResultError(Custom, false, session.client.Callsign(), fmt.Errorf("%s rating not allowed to kill client", session.client.Rating().String()))
 	}
 	targetStation := data[1]
-	client, ok := session.clientManager.GetClient(targetStation)
-	if !ok {
+	client, err := session.clientManager.KickClientFromServer(targetStation, data[2])
+	if err != nil {
 		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
 	}
-	client.SendError(ResultError(Custom, true, session.client.Callsign(), fmt.Errorf("kicked from server by %04d, reason: %s", session.user.Cid, data[2])))
+	session.application.MessageQueue().Publish(&queue.Message{
+		Type: queue.SendKickedFromServerEmail,
+		Data: &service.SendKickedFromServerData{
+			User:     client.User(),
+			Operator: session.user,
+			Reason:   data[2],
+		},
+	})
+	session.application.MessageQueue().Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: session.application.Operations().AuditLogOperation().NewAuditLog(
+			ClientKickedFsd, session.user.Cid, fmt.Sprintf("%s(%04d)", client.Callsign(), client.User().Cid),
+			session.connId, "NOT AVAILABLE", nil,
+		),
+	})
 	return ResultSuccess()
 }
 

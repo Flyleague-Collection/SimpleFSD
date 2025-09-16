@@ -29,10 +29,11 @@ type ServerLimits struct {
 }
 
 type ResponseGetServerConfig struct {
-	Limits     *ServerLimits    `json:"limits"`
-	ImageLimit *ImageLimit      `json:"image_limit"`
-	Facilities *[]FacilityModel `json:"facilities"`
-	Ratings    *[]RatingModel   `json:"ratings"`
+	Limits            *ServerLimits    `json:"limits"`
+	ImageLimit        *ImageLimit      `json:"image_limit"`
+	EmailSendInterval int              `json:"email_send_interval"`
+	Facilities        *[]FacilityModel `json:"facilities"`
+	Ratings           *[]RatingModel   `json:"ratings"`
 }
 
 type ResponseGetServerInfo struct {

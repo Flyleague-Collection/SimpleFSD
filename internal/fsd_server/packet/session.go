@@ -3,6 +3,7 @@ package packet
 import (
 	"bufio"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
@@ -24,35 +25,33 @@ type Session struct {
 	connId              string
 	callsign            string
 	facilityIdent       Facility
-	client              ClientInterface
-	clientManager       ClientManagerInterface
 	user                *operation.User
 	disconnected        atomic.Bool
+	application         *interfaces.ApplicationContent
+	client              ClientInterface
+	clientManager       ClientManagerInterface
 	config              *config.GeneralConfig
 	userOperation       operation.UserOperationInterface
 	flightPlanOperation operation.FlightPlanOperationInterface
 }
 
 func NewSession(
-	logger log.LoggerInterface,
-	config *config.GeneralConfig,
+	application *interfaces.ApplicationContent,
 	conn net.Conn,
-	cm ClientManagerInterface,
-	userOperation operation.UserOperationInterface,
-	flightPlanOperation operation.FlightPlanOperationInterface,
 ) *Session {
 	return &Session{
-		logger:              logger,
+		logger:              application.Logger().FsdLogger(),
+		application:         application,
 		conn:                conn,
 		connId:              conn.RemoteAddr().String(),
 		callsign:            "unknown",
 		client:              nil,
-		clientManager:       cm,
+		clientManager:       application.ClientManager(),
 		user:                nil,
 		disconnected:        atomic.Bool{},
-		config:              config,
-		userOperation:       userOperation,
-		flightPlanOperation: flightPlanOperation,
+		config:              application.ConfigManager().Config().Server.General,
+		userOperation:       application.Operations().UserOperation(),
+		flightPlanOperation: application.Operations().FlightPlanOperation(),
 	}
 }
 
@@ -96,7 +95,7 @@ func (session *Session) handleLine(line []byte) {
 	}
 }
 
-func (session *Session) HandleConnection() {
+func (session *Session) HandleConnection(timeout time.Duration) {
 	defer func() {
 		time.AfterFunc(global.FSDDisconnectDelay, func() {
 			session.logger.DebugF("[%s](%s) x Connection closed", session.connId, session.callsign)
@@ -107,7 +106,13 @@ func (session *Session) HandleConnection() {
 	}()
 	scanner := bufio.NewScanner(session.conn)
 	scanner.Split(createSplitFunc(splitSign))
+	_ = session.conn.SetDeadline(time.Now().Add(timeout))
 	for scanner.Scan() {
+		_ = session.conn.SetDeadline(time.Now().Add(timeout))
+		if scanner.Err() != nil {
+			session.logger.ErrorF("error while scanning, %v", scanner.Err())
+			break
+		}
 		line := scanner.Bytes()
 		session.logger.DebugF("[%s](%s) -> %s", session.connId, session.callsign, line)
 		if session.client == nil {

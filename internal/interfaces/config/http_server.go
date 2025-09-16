@@ -2,10 +2,8 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"time"
 )
 
 type HttpServerConfig struct {
@@ -15,8 +13,6 @@ type HttpServerConfig struct {
 	Port          uint             `json:"port"`
 	Address       string           `json:"-"`
 	MaxWorkers    int              `json:"max_workers"` // 并发线程数
-	CacheTime     string           `json:"whazzup_cache_time"`
-	CacheDuration time.Duration    `json:"-"`
 	ProxyType     int              `json:"proxy_type"`
 	BodyLimit     string           `json:"body_limit"`
 	Store         *HttpServerStore `json:"store"`
@@ -32,7 +28,6 @@ func defaultHttpServerConfig() *HttpServerConfig {
 		Host:          "0.0.0.0",
 		Port:          6810,
 		MaxWorkers:    128,
-		CacheTime:     "15s",
 		ServerAddress: "http://127.0.0.1:6810",
 		ProxyType:     0,
 		BodyLimit:     "10MB",
@@ -54,12 +49,6 @@ func (config *HttpServerConfig) checkValid(logger log.LoggerInterface) *ValidRes
 
 		if config.BodyLimit == "" {
 			logger.WarnF("body_limit is empty, where the length of the request body is not restricted. This is a very dangerous behavior")
-		}
-
-		if duration, err := time.ParseDuration(config.CacheTime); err != nil {
-			return ValidFailWith(errors.New("invalid json field http_server.email.cache_time"), err)
-		} else {
-			config.CacheDuration = duration
 		}
 
 		if result := config.SSL.checkValid(logger); result.IsFail() {

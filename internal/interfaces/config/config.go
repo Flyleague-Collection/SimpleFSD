@@ -23,11 +23,13 @@ func DefaultConfig() *Config {
 	}
 }
 
+var ErrVersionUnmatch = errors.New("version mismatch")
+
 func (c *Config) CheckValid(logger log.LoggerInterface) *ValidResult {
 	if version, err := newVersion(c.ConfigVersion); err != nil {
 		return ValidFailWith(errors.New("version string parse fail"), err)
 	} else if result := ConfVersion.checkVersion(version); result != AllMatch {
-		return ValidFail(fmt.Errorf("config version mismatch, expected %s, got %s", ConfVersion.String(), version.String()))
+		return ValidFailWith(fmt.Errorf("config version mismatch, expected %s, got %s", ConfVersion.String(), version.String()), ErrVersionUnmatch)
 	}
 	if result := c.Database.checkValid(logger); result.IsFail() {
 		return result

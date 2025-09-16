@@ -48,29 +48,29 @@ func (activityService *ActivityService) GetActivities(req *RequestGetActivities)
 	lastDay := targetMonth.AddDate(0, 2, 0).Add(-time.Second)
 	activities, err := activityService.activityOperation.GetActivities(firstDay, lastDay)
 	if err != nil {
-		return NewApiResponse[ResponseGetActivities](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseGetActivities](ErrDatabaseFail, nil)
 	}
-	return NewApiResponse[ResponseGetActivities](&SuccessGetActivities, Unsatisfied, &ResponseGetActivities{Items: activities})
+	return NewApiResponse[ResponseGetActivities](&SuccessGetActivities, &ResponseGetActivities{Items: activities})
 }
 
 var SuccessGetActivitiesPage = ApiStatus{StatusName: "GET_ACTIVITIES_PAGE", Description: "成功获取活动分页", HttpCode: Ok}
 
 func (activityService *ActivityService) GetActivitiesPage(req *RequestGetActivitiesPage) *ApiResponse[ResponseGetActivitiesPage] {
 	if req.Page <= 0 || req.PageSize <= 0 {
-		return NewApiResponse[ResponseGetActivitiesPage](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseGetActivitiesPage](ErrIllegalParam, nil)
 	}
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseGetActivitiesPage](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseGetActivitiesPage](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.ActivityShowList) {
-		return NewApiResponse[ResponseGetActivitiesPage](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseGetActivitiesPage](ErrNoPermission, nil)
 	}
 	activities, total, err := activityService.activityOperation.GetActivitiesPage(req.Page, req.PageSize)
 	if err != nil {
-		return NewApiResponse[ResponseGetActivitiesPage](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseGetActivitiesPage](ErrDatabaseFail, nil)
 	}
-	return NewApiResponse(&SuccessGetActivitiesPage, Unsatisfied, &ResponseGetActivitiesPage{
+	return NewApiResponse(&SuccessGetActivitiesPage, &ResponseGetActivitiesPage{
 		Items:    activities,
 		Page:     req.Page,
 		PageSize: req.PageSize,
@@ -82,32 +82,32 @@ var SuccessGetActivityInfo = ApiStatus{StatusName: "GET_ACTIVITY_INFO", Descript
 
 func (activityService *ActivityService) GetActivityInfo(req *RequestActivityInfo) *ApiResponse[ResponseActivityInfo] {
 	if req.ActivityId <= 0 {
-		return NewApiResponse[ResponseActivityInfo](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseActivityInfo](ErrIllegalParam, nil)
 	}
-	activity, res := CallDBFuncAndCheckError[operation.Activity, ResponseActivityInfo](func() (*operation.Activity, error) {
+	activity, res := CallDBFunc[operation.Activity, ResponseActivityInfo](func() (*operation.Activity, error) {
 		return activityService.activityOperation.GetActivityById(req.ActivityId)
 	})
 	if res != nil {
 		return res
 	}
-	return NewApiResponse(&SuccessGetActivityInfo, Unsatisfied, (*ResponseActivityInfo)(activity))
+	return NewApiResponse(&SuccessGetActivityInfo, (*ResponseActivityInfo)(activity))
 }
 
 var SuccessAddActivity = ApiStatus{StatusName: "ADD_ACTIVITY", Description: "成功添加活动", HttpCode: Ok}
 
 func (activityService *ActivityService) AddActivity(req *RequestAddActivity) *ApiResponse[ResponseAddActivity] {
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseAddActivity](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseAddActivity](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.ActivityPublish) {
-		return NewApiResponse[ResponseAddActivity](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseAddActivity](ErrNoPermission, nil)
 	}
 	req.Activity.Publisher = req.Cid
 	err := activityService.activityOperation.SaveActivity(req.Activity)
 	if err != nil {
 		activityService.logger.ErrorF("Error adding activity: %v", err)
-		return NewApiResponse[ResponseAddActivity](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseAddActivity](ErrDatabaseFail, nil)
 	}
 
 	go func() {
@@ -124,7 +124,7 @@ func (activityService *ActivityService) AddActivity(req *RequestAddActivity) *Ap
 		}
 	}()
 
-	return NewApiResponse[ResponseAddActivity](&SuccessAddActivity, Unsatisfied, &ResponseAddActivity{Activity: req.Activity})
+	return NewApiResponse[ResponseAddActivity](&SuccessAddActivity, &ResponseAddActivity{Activity: req.Activity})
 }
 
 var (
@@ -133,21 +133,21 @@ var (
 
 func (activityService *ActivityService) DeleteActivity(req *RequestDeleteActivity) *ApiResponse[ResponseDeleteActivity] {
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseDeleteActivity](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseDeleteActivity](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.ActivityDelete) {
-		return NewApiResponse[ResponseDeleteActivity](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseDeleteActivity](ErrNoPermission, nil)
 	}
 	activity, err := activityService.activityOperation.GetActivityById(req.ActivityId)
 	if err != nil {
 		if errors.Is(err, operation.ErrActivityNotFound) {
-			return NewApiResponse[ResponseDeleteActivity](&ErrActivityNotFound, Unsatisfied, nil)
+			return NewApiResponse[ResponseDeleteActivity](ErrActivityNotFound, nil)
 		}
-		return NewApiResponse[ResponseDeleteActivity](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseDeleteActivity](ErrDatabaseFail, nil)
 	}
 	if err := activityService.activityOperation.DeleteActivity(activity); err != nil {
-		return NewApiResponse[ResponseDeleteActivity](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseDeleteActivity](ErrDatabaseFail, nil)
 	}
 
 	go func() {
@@ -160,7 +160,7 @@ func (activityService *ActivityService) DeleteActivity(req *RequestDeleteActivit
 	}()
 
 	data := ResponseDeleteActivity(true)
-	return NewApiResponse(&SuccessDeleteActivity, Unsatisfied, &data)
+	return NewApiResponse(&SuccessDeleteActivity, &data)
 }
 
 var (
@@ -172,15 +172,15 @@ var (
 
 func (activityService *ActivityService) ControllerJoin(req *RequestControllerJoin) *ApiResponse[ResponseControllerJoin] {
 	if req.Rating <= fsd.Observer.Index() {
-		return NewApiResponse[ResponseControllerJoin](&ErrRatingTooLow, Unsatisfied, nil)
+		return NewApiResponse[ResponseControllerJoin](&ErrRatingTooLow, nil)
 	}
-	user, res := CallDBFuncAndCheckError[operation.User, ResponseControllerJoin](func() (*operation.User, error) {
+	user, res := CallDBFunc[operation.User, ResponseControllerJoin](func() (*operation.User, error) {
 		return activityService.userOperation.GetUserByUid(req.Uid)
 	})
 	if res != nil {
 		return res
 	}
-	facility, res := CallDBFuncAndCheckError[operation.ActivityFacility, ResponseControllerJoin](func() (*operation.ActivityFacility, error) {
+	facility, res := CallDBFunc[operation.ActivityFacility, ResponseControllerJoin](func() (*operation.ActivityFacility, error) {
 		return activityService.activityOperation.GetFacilityById(req.FacilityId)
 	})
 	if res != nil {
@@ -189,18 +189,18 @@ func (activityService *ActivityService) ControllerJoin(req *RequestControllerJoi
 	err := activityService.activityOperation.SignFacilityController(facility, user)
 	if err != nil {
 		if errors.Is(err, operation.ErrRatingNotAllowed) {
-			return NewApiResponse[ResponseControllerJoin](&ErrRatingTooLow, Unsatisfied, nil)
+			return NewApiResponse[ResponseControllerJoin](&ErrRatingTooLow, nil)
 		}
 		if errors.Is(err, operation.ErrFacilityAlreadyExists) {
-			return NewApiResponse[ResponseControllerJoin](&ErrFacilityAlreadyExist, Unsatisfied, nil)
+			return NewApiResponse[ResponseControllerJoin](&ErrFacilityAlreadyExist, nil)
 		}
 		if errors.Is(err, operation.ErrFacilitySigned) {
-			return NewApiResponse[ResponseControllerJoin](&ErrFacilityAlreadySigned, Unsatisfied, nil)
+			return NewApiResponse[ResponseControllerJoin](&ErrFacilityAlreadySigned, nil)
 		}
-		return NewApiResponse[ResponseControllerJoin](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseControllerJoin](ErrDatabaseFail, nil)
 	}
 	data := ResponseControllerJoin(true)
-	return NewApiResponse(&SuccessSignFacility, Unsatisfied, &data)
+	return NewApiResponse(&SuccessSignFacility, &data)
 }
 
 var (
@@ -209,7 +209,7 @@ var (
 )
 
 func (activityService *ActivityService) ControllerLeave(req *RequestControllerLeave) *ApiResponse[ResponseControllerLeave] {
-	facility, res := CallDBFuncAndCheckError[operation.ActivityFacility, ResponseControllerLeave](func() (*operation.ActivityFacility, error) {
+	facility, res := CallDBFunc[operation.ActivityFacility, ResponseControllerLeave](func() (*operation.ActivityFacility, error) {
 		return activityService.activityOperation.GetFacilityById(req.FacilityId)
 	})
 	if res != nil {
@@ -218,12 +218,12 @@ func (activityService *ActivityService) ControllerLeave(req *RequestControllerLe
 	err := activityService.activityOperation.UnsignFacilityController(facility, req.Cid)
 	if err != nil {
 		if errors.Is(err, operation.ErrFacilityNotSigned) {
-			return NewApiResponse[ResponseControllerLeave](&ErrFacilityUnSigned, Unsatisfied, nil)
+			return NewApiResponse[ResponseControllerLeave](&ErrFacilityUnSigned, nil)
 		}
-		return NewApiResponse[ResponseControllerLeave](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseControllerLeave](ErrDatabaseFail, nil)
 	}
 	data := ResponseControllerLeave(true)
-	return NewApiResponse(&SuccessUnsignFacility, Unsatisfied, &data)
+	return NewApiResponse(&SuccessUnsignFacility, &data)
 }
 
 var (
@@ -236,15 +236,15 @@ func (activityService *ActivityService) PilotJoin(req *RequestPilotJoin) *ApiRes
 	err := activityService.activityOperation.SignActivityPilot(req.ActivityId, req.Cid, req.Callsign, req.AircraftType)
 	if err != nil {
 		if errors.Is(err, operation.ErrActivityAlreadySigned) {
-			return NewApiResponse[ResponsePilotJoin](&ErrAlreadySigned, Unsatisfied, nil)
+			return NewApiResponse[ResponsePilotJoin](&ErrAlreadySigned, nil)
 		}
 		if errors.Is(err, operation.ErrCallsignAlreadyUsed) {
-			return NewApiResponse[ResponsePilotJoin](&ErrCallsignUsed, Unsatisfied, nil)
+			return NewApiResponse[ResponsePilotJoin](&ErrCallsignUsed, nil)
 		}
-		return NewApiResponse[ResponsePilotJoin](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponsePilotJoin](ErrDatabaseFail, nil)
 	}
 	data := ResponsePilotJoin(true)
-	return NewApiResponse(&SuccessSignedActivity, Unsatisfied, &data)
+	return NewApiResponse(&SuccessSignedActivity, &data)
 }
 
 var (
@@ -256,28 +256,28 @@ func (activityService *ActivityService) PilotLeave(req *RequestPilotLeave) *ApiR
 	err := activityService.activityOperation.UnsignActivityPilot(req.ActivityId, req.Cid)
 	if err != nil {
 		if errors.Is(err, operation.ErrActivityUnsigned) {
-			return NewApiResponse[ResponsePilotLeave](&ErrNoSigned, Unsatisfied, nil)
+			return NewApiResponse[ResponsePilotLeave](&ErrNoSigned, nil)
 		}
-		return NewApiResponse[ResponsePilotLeave](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponsePilotLeave](ErrDatabaseFail, nil)
 	}
 	data := ResponsePilotLeave(true)
-	return NewApiResponse(&SuccessUnsignedActivity, Unsatisfied, &data)
+	return NewApiResponse(&SuccessUnsignedActivity, &data)
 }
 
 var SuccessEditActivity = ApiStatus{StatusName: "EDIT_ACTIVITY", Description: "修改活动成功", HttpCode: Ok}
 
 func (activityService *ActivityService) EditActivity(req *RequestEditActivity) *ApiResponse[ResponseEditActivity] {
 	if req.Activity == nil {
-		return NewApiResponse[ResponseEditActivity](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivity](ErrIllegalParam, nil)
 	}
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseEditActivity](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivity](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.ActivityEdit) {
-		return NewApiResponse[ResponseEditActivity](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivity](ErrNoPermission, nil)
 	}
-	activity, res := CallDBFuncAndCheckError[operation.Activity, ResponseEditActivity](func() (*operation.Activity, error) {
+	activity, res := CallDBFunc[operation.Activity, ResponseEditActivity](func() (*operation.Activity, error) {
 		return activityService.activityOperation.GetActivityById(req.ID)
 	})
 	oldValue, _ := json.Marshal(activity)
@@ -293,7 +293,7 @@ func (activityService *ActivityService) EditActivity(req *RequestEditActivity) *
 	updateInfo := req.Activity.Diff(activity)
 	err := activityService.activityOperation.UpdateActivityInfo(activity, req.Activity, updateInfo)
 	if err != nil {
-		return NewApiResponse[ResponseEditActivity](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivity](ErrDatabaseFail, nil)
 	}
 
 	go func() {
@@ -311,50 +311,50 @@ func (activityService *ActivityService) EditActivity(req *RequestEditActivity) *
 	}()
 
 	data := ResponseEditActivity(true)
-	return NewApiResponse(&SuccessEditActivity, Unsatisfied, &data)
+	return NewApiResponse(&SuccessEditActivity, &data)
 }
 
 var SuccessEditActivityStatus = ApiStatus{StatusName: "EDIT_ACTIVITY_STATUS", Description: "成功修改活动状态", HttpCode: Ok}
 
 func (activityService *ActivityService) EditActivityStatus(req *RequestEditActivityStatus) *ApiResponse[ResponseEditActivityStatus] {
 	if req.Status < int(operation.Open) || req.Status > int(operation.Closed) {
-		return NewApiResponse[ResponseEditActivityStatus](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivityStatus](ErrIllegalParam, nil)
 	}
 
 	status := operation.ActivityStatus(req.Status)
 
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseEditActivityStatus](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivityStatus](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.ActivityEditState) {
-		return NewApiResponse[ResponseEditActivityStatus](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivityStatus](ErrNoPermission, nil)
 	}
 	err := activityService.activityOperation.SetActivityStatus(req.ActivityId, status)
 	if err != nil {
-		return NewApiResponse[ResponseEditActivityStatus](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditActivityStatus](ErrDatabaseFail, nil)
 	}
 	data := ResponseEditActivityStatus(true)
-	return NewApiResponse(&SuccessEditActivityStatus, Unsatisfied, &data)
+	return NewApiResponse(&SuccessEditActivityStatus, &data)
 }
 
 var SuccessEditPilotsStatus = ApiStatus{StatusName: "EDIT_PILOTS_STATUS", Description: "成功修改活动机组状态", HttpCode: Ok}
 
 func (activityService *ActivityService) EditPilotStatus(req *RequestEditPilotStatus) *ApiResponse[ResponseEditPilotStatus] {
 	if req.Status < int(operation.Signed) || req.Status > int(operation.Landing) {
-		return NewApiResponse[ResponseEditPilotStatus](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditPilotStatus](ErrIllegalParam, nil)
 	}
 
 	status := operation.ActivityPilotStatus(req.Status)
 
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseEditPilotStatus](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditPilotStatus](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.ActivityEditState) {
-		return NewApiResponse[ResponseEditPilotStatus](&ErrNoPermission, Unsatisfied, nil)
+	if !permission.HasPermission(operation.ActivityEditPilotState) {
+		return NewApiResponse[ResponseEditPilotStatus](ErrNoPermission, nil)
 	}
-	pilot, res := CallDBFuncAndCheckError[operation.ActivityPilot, ResponseEditPilotStatus](func() (*operation.ActivityPilot, error) {
+	pilot, res := CallDBFunc[operation.ActivityPilot, ResponseEditPilotStatus](func() (*operation.ActivityPilot, error) {
 		return activityService.activityOperation.GetActivityPilotById(req.ActivityId, req.Cid)
 	})
 	if res != nil {
@@ -362,8 +362,8 @@ func (activityService *ActivityService) EditPilotStatus(req *RequestEditPilotSta
 	}
 	err := activityService.activityOperation.SetActivityPilotStatus(pilot, status)
 	if err != nil {
-		return NewApiResponse[ResponseEditPilotStatus](&ErrDatabaseFail, Unsatisfied, nil)
+		return NewApiResponse[ResponseEditPilotStatus](ErrDatabaseFail, nil)
 	}
 	data := ResponseEditPilotStatus(true)
-	return NewApiResponse(&SuccessEditPilotsStatus, Unsatisfied, &data)
+	return NewApiResponse(&SuccessEditPilotsStatus, &data)
 }

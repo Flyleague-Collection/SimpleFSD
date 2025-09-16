@@ -11,30 +11,33 @@ import (
 )
 
 type ServerService struct {
-	logger            log.LoggerInterface
-	config            *config.ServerConfig
-	userOperation     operation.UserOperationInterface
-	activityOperation operation.ActivityOperationInterface
-	serverConfig      *utils.CachedValue[ResponseGetServerConfig]
-	serverInfo        *utils.CachedValue[ResponseGetServerInfo]
-	serverOnlineTime  *utils.CachedValue[ResponseGetTimeRating]
+	logger              log.LoggerInterface
+	config              *config.ServerConfig
+	userOperation       operation.UserOperationInterface
+	controllerOperation operation.ControllerOperationInterface
+	activityOperation   operation.ActivityOperationInterface
+	serverConfig        *utils.CachedValue[ResponseGetServerConfig]
+	serverInfo          *utils.CachedValue[ResponseGetServerInfo]
+	serverOnlineTime    *utils.CachedValue[ResponseGetTimeRating]
 }
 
 func NewServerService(
 	logger log.LoggerInterface,
 	config *config.ServerConfig,
 	userOperation operation.UserOperationInterface,
+	controllerOperation operation.ControllerOperationInterface,
 	activityOperation operation.ActivityOperationInterface,
 ) *ServerService {
 	service := &ServerService{
-		logger:            logger,
-		config:            config,
-		userOperation:     userOperation,
-		activityOperation: activityOperation,
+		logger:              logger,
+		config:              config,
+		userOperation:       userOperation,
+		controllerOperation: controllerOperation,
+		activityOperation:   activityOperation,
 	}
 	service.serverConfig = utils.NewCachedValue[ResponseGetServerConfig](0, func() *ResponseGetServerConfig { return service.getServerConfig() })
-	service.serverInfo = utils.NewCachedValue[ResponseGetServerInfo](config.HttpServer.CacheDuration, func() *ResponseGetServerInfo { return service.getServerInfo() })
-	service.serverOnlineTime = utils.NewCachedValue[ResponseGetTimeRating](config.HttpServer.CacheDuration, func() *ResponseGetTimeRating { return service.getTimeRating() })
+	service.serverInfo = utils.NewCachedValue[ResponseGetServerInfo](config.FSDServer.CacheDuration, func() *ResponseGetServerInfo { return service.getServerInfo() })
+	service.serverOnlineTime = utils.NewCachedValue[ResponseGetTimeRating](config.FSDServer.CacheDuration, func() *ResponseGetTimeRating { return service.getTimeRating() })
 	return service
 }
 
@@ -55,8 +58,9 @@ func (serverService *ServerService) getServerConfig() *ResponseGetServerConfig {
 			MaxAllowSize: int(serverService.config.HttpServer.Store.FileLimit.ImageLimit.MaxFileSize),
 			AllowedExt:   serverService.config.HttpServer.Store.FileLimit.ImageLimit.AllowedFileExt,
 		},
-		Facilities: &fsd.Facilities,
-		Ratings:    &fsd.Ratings,
+		EmailSendInterval: int(serverService.config.HttpServer.Email.SendDuration.Seconds()),
+		Facilities:        &fsd.Facilities,
+		Ratings:           &fsd.Ratings,
 	}
 }
 
@@ -66,7 +70,7 @@ func (serverService *ServerService) getServerInfo() *ResponseGetServerInfo {
 		serverService.logger.ErrorF("ServerService.GetTotalUsers error: %v", err)
 		totalUser = 0
 	}
-	totalControllers, err := serverService.userOperation.GetTotalControllers()
+	totalControllers, err := serverService.controllerOperation.GetTotalControllers()
 	if err != nil {
 		serverService.logger.ErrorF("ServerService.GetTotalControllers error: %v", err)
 		totalControllers = 0
@@ -111,17 +115,17 @@ func (serverService *ServerService) getTimeRating() *ResponseGetTimeRating {
 var SuccessGetServerConfig = ApiStatus{StatusName: "GET_SERVER_CONFIG", Description: "成功获取服务器配置", HttpCode: Ok}
 
 func (serverService *ServerService) GetServerConfig() *ApiResponse[ResponseGetServerConfig] {
-	return NewApiResponse(&SuccessGetServerConfig, Unsatisfied, serverService.serverConfig.GetValue())
+	return NewApiResponse(&SuccessGetServerConfig, serverService.serverConfig.GetValue())
 }
 
 var SuccessGetServerInfo = ApiStatus{StatusName: "GET_SERVER_INFO", Description: "成功获取服务器信息", HttpCode: Ok}
 
 func (serverService *ServerService) GetServerInfo() *ApiResponse[ResponseGetServerInfo] {
-	return NewApiResponse(&SuccessGetServerInfo, Unsatisfied, serverService.serverInfo.GetValue())
+	return NewApiResponse(&SuccessGetServerInfo, serverService.serverInfo.GetValue())
 }
 
 var SuccessGetTimeRating = ApiStatus{StatusName: "GET_TIME_RATING", Description: "成功获取服务器排行榜", HttpCode: Ok}
 
 func (serverService *ServerService) GetTimeRating() *ApiResponse[ResponseGetTimeRating] {
-	return NewApiResponse(&SuccessGetTimeRating, Unsatisfied, serverService.serverOnlineTime.GetValue())
+	return NewApiResponse(&SuccessGetTimeRating, serverService.serverOnlineTime.GetValue())
 }

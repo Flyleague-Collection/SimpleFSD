@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
@@ -54,7 +55,8 @@ type Client struct {
 	pathTrigger         *utils.OverflowTrigger
 }
 
-func (cm *ClientManager) NewClient(
+func NewClient(
+	applicationContent *interfaces.ApplicationContent,
 	callsign string,
 	rating Rating,
 	protocol int,
@@ -64,11 +66,12 @@ func (cm *ClientManager) NewClient(
 ) ClientInterface {
 	session.SetCallsign(callsign)
 	var flightPlan *operation.FlightPlan = nil
-	flightPlanOperation := cm.applicationContent.Operations().FlightPlanOperation()
-	userOperation := cm.applicationContent.Operations().UserOperation()
-	historyOperation := cm.applicationContent.Operations().HistoryOperation()
-	logger := cm.applicationContent.Logger()
-	if !isAtc && !cm.config.Server.General.SimulatorServer {
+	c := applicationContent.ConfigManager().Config()
+	flightPlanOperation := applicationContent.Operations().FlightPlanOperation()
+	userOperation := applicationContent.Operations().UserOperation()
+	historyOperation := applicationContent.Operations().HistoryOperation()
+	logger := applicationContent.Logger().FsdLogger()
+	if !isAtc && !c.Server.General.SimulatorServer {
 		var err error
 		flightPlan, err = flightPlanOperation.GetFlightPlanByCid(session.User().Cid)
 		if errors.Is(err, operation.ErrFlightPlanNotFound) {
@@ -79,7 +82,7 @@ func (cm *ClientManager) NewClient(
 	}
 	client := &Client{
 		logger:              logger,
-		config:              cm.config,
+		config:              c,
 		userOperation:       userOperation,
 		flightPlanOperation: flightPlanOperation,
 		historyOperation:    historyOperation,
@@ -106,12 +109,12 @@ func (cm *ClientManager) NewClient(
 		paths:               make([]*PilotPath, 0),
 		history:             historyOperation.NewHistory(session.User().Cid, callsign, isAtc),
 		motdBytes:           nil,
-		clientManager:       cm,
+		clientManager:       applicationContent.ClientManager(),
 		disconnect:          atomic.Bool{},
 		reconnectTimer:      nil,
 		lock:                sync.RWMutex{},
 	}
-	client.pathTrigger = utils.NewOverflowTrigger(cm.config.Server.FSDServer.PosUpdatePoints, client.recordPathPoint)
+	client.pathTrigger = utils.NewOverflowTrigger(c.Server.FSDServer.PosUpdatePoints, client.recordPathPoint)
 	return client
 }
 
@@ -128,37 +131,57 @@ func (client *Client) Disconnected() bool {
 }
 
 func (client *Client) Delete() {
-	if client.disconnect.Load() {
-		client.lock.Lock()
-		defer client.lock.Unlock()
+	if !client.disconnect.Load() {
+		return
+	}
+
+	client.lock.Lock()
+	defer client.lock.Unlock()
+
+	if client.reconnectTimer != nil {
+		client.reconnectTimer.Stop()
+		client.reconnectTimer = nil
+	}
+
+	defer func() {
 		client.logger.InfoF("[%s](%s) client session deleted", client.socket.ConnId(), client.callsign)
-
-		if client.reconnectTimer != nil {
-			client.reconnectTimer.Stop()
-			client.reconnectTimer = nil
-		}
-
-		if client.isAtc && !client.isAtis {
-			// 不计入ATIS时长
-			if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
-				client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
-			}
-			if err := client.userOperation.UpdateUserAtcTime(client.user, client.history.OnlineTime); err != nil {
-				client.logger.ErrorF("[%s](%s) Failed to add ATC time: %v", client.socket.ConnId(), client.callsign, err)
-			}
-		}
-		if !client.isAtc && !client.config.Server.General.SimulatorServer {
-			// 如果不是模拟机服务器, 则写入机组连线时长
-			if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
-				client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
-			}
-			if err := client.userOperation.UpdateUserPilotTime(client.user, client.history.OnlineTime); err != nil {
-				client.logger.ErrorF("[%s](%s) Failed to add pilot time: %v", client.socket.ConnId(), client.callsign, err)
-			}
-		}
-
 		if !client.clientManager.DeleteClient(client.callsign) {
 			client.logger.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
+		}
+	}()
+
+	// 模拟机服务器不用执行后续操作
+	if client.config.Server.General.SimulatorServer {
+		return
+	}
+
+	// 不计入ATIS时长
+	if client.isAtis {
+		return
+	}
+
+	if client.isAtc {
+		// 写入管制连线时长
+		if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
+			client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
+		}
+		if err := client.userOperation.UpdateUserAtcTime(client.user, client.history.OnlineTime); err != nil {
+			client.logger.ErrorF("[%s](%s) Failed to add ATC time: %v", client.socket.ConnId(), client.callsign, err)
+		}
+	} else {
+		// 写入机组连线时长
+		if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
+			client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
+		}
+		if err := client.userOperation.UpdateUserPilotTime(client.user, client.history.OnlineTime); err != nil {
+			client.logger.ErrorF("[%s](%s) Failed to add pilot time: %v", client.socket.ConnId(), client.callsign, err)
+		}
+	}
+
+	if client.flightPlan != nil {
+		err := client.flightPlanOperation.UnlockFlightPlan(client.flightPlan)
+		if err != nil {
+			client.logger.ErrorF("[%s](%s) Failed to unlock flight plan", client.socket.ConnId(), client.callsign)
 		}
 	}
 }
@@ -304,13 +327,13 @@ func (client *Client) SendError(result *Result) {
 	}
 }
 
-func (client *Client) SendLineWithoutLog(line []byte) {
+func (client *Client) SendLineWithoutLog(line []byte) error {
 	client.lock.RLock()
 	defer client.lock.RUnlock()
 
 	if client.disconnect.Load() {
 		client.logger.WarnF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
-		return
+		return ErrClientDisconnected
 	}
 
 	if !bytes.HasSuffix(line, splitSign) {
@@ -319,7 +342,9 @@ func (client *Client) SendLineWithoutLog(line []byte) {
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
 		client.logger.ErrorF("[%s](%s) Failed to send data: %v", client.socket.ConnId(), client.callsign, err)
+		return ErrClientSocketWrite
 	}
+	return nil
 }
 
 func (client *Client) SendLine(line []byte) {

@@ -2,58 +2,147 @@ package packet
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"math/rand"
-	"strconv"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type ClientManager struct {
-	logger             log.LoggerInterface
-	clients            map[string]ClientInterface
-	lock               sync.RWMutex
-	shuttingDown       atomic.Bool
-	config             *config.Config
-	heartbeatSender    *HeartbeatSender
-	clientSlicePool    sync.Pool
-	applicationContent *interfaces.ApplicationContent
+	logger          log.LoggerInterface
+	clients         map[string]ClientInterface
+	lock            sync.RWMutex
+	shuttingDown    atomic.Bool
+	config          *config.Config
+	clientSlicePool sync.Pool
+	whazzupContent  *utils.CachedValue[OnlineClients]
 }
 
-var (
-	clientManager *ClientManager
-	once          sync.Once
-)
-
-func NewClientManager(applicationContent *interfaces.ApplicationContent) *ClientManager {
-	once.Do(func() {
-		c := applicationContent.ConfigManager().Config()
-		if clientManager == nil {
-			clientManager = &ClientManager{
-				logger:             applicationContent.Logger(),
-				clients:            make(map[string]ClientInterface),
-				shuttingDown:       atomic.Bool{},
-				config:             c,
-				applicationContent: applicationContent,
-				clientSlicePool: sync.Pool{
-					New: func() interface{} {
-						return make([]ClientInterface, 0, 128)
-					},
-				},
-			}
-			clientManager.heartbeatSender = NewHeartbeatSender(applicationContent.Logger(), c.Server.FSDServer.HeartbeatDuration, clientManager.SendHeartBeat)
-		}
-	})
+func NewClientManager(logger log.LoggerInterface, config *config.Config) *ClientManager {
+	clientManager := &ClientManager{
+		logger:       logger,
+		clients:      make(map[string]ClientInterface),
+		shuttingDown: atomic.Bool{},
+		config:       config,
+		clientSlicePool: sync.Pool{
+			New: func() interface{} {
+				return make([]ClientInterface, 0, 128)
+			},
+		},
+	}
+	clientManager.whazzupContent = utils.NewCachedValue[OnlineClients](config.Server.FSDServer.CacheDuration, func() *OnlineClients { return clientManager.getWhazzupContent() })
 	return clientManager
 }
 
-func (cm *ClientManager) PutSlice(clients []ClientInterface) {
+func (cm *ClientManager) sendRawMessageTo(from int, to string, message string) error {
+	client, exists := cm.GetClient(to)
+	if !exists {
+		return ErrCallsignNotFound
+	}
+
+	bytes := makePacket(Message, fmt.Sprintf("(%04d)", from), to, message)
+
+	client.SendLine(bytes)
+	return nil
+}
+
+func (cm *ClientManager) HandleSendMessageToClientMessage(message *queue.Message) error {
+	if val, ok := message.Data.(*SendRawMessageData); ok {
+		return cm.sendRawMessageTo(val.From, val.To, val.Message)
+	}
+	return queue.ErrMessageDataType
+}
+
+func (cm *ClientManager) KickClientFromServer(callsign string, reason string) (ClientInterface, error) {
+	client, exists := cm.GetClient(callsign)
+	if !exists {
+		return nil, ErrCallsignNotFound
+	}
+	client.SendError(ResultError(Custom, true, callsign, fmt.Errorf("you were kicked from the server, reason: %s", reason)))
+	return client, nil
+}
+
+func (cm *ClientManager) HandleKickClientFromServerMessage(message *queue.Message) error {
+	if val, ok := message.Data.(*KickClientData); ok {
+		_, err := cm.KickClientFromServer(val.Callsign, val.Reason)
+		return err
+	}
+	return queue.ErrMessageDataType
+}
+
+func (cm *ClientManager) GetWhazzupContent() *OnlineClients {
+	return cm.whazzupContent.GetValue()
+}
+
+func (cm *ClientManager) getWhazzupContent() *OnlineClients {
+	data := &OnlineClients{
+		General: OnlineGeneral{
+			Version:          3,
+			ConnectedClients: 0,
+			OnlinePilot:      0,
+			OnlineController: 0,
+		},
+		Pilots:      make([]*OnlinePilot, 0),
+		Controllers: make([]*OnlineController, 0),
+	}
+
+	clientCopy := cm.GetClientSnapshot()
+	defer cm.putSlice(clientCopy)
+
+	for _, client := range clientCopy {
+		if client == nil || client.Disconnected() {
+			continue
+		}
+		data.General.ConnectedClients++
+		if client.IsAtc() {
+			data.General.OnlineController++
+			controller := &OnlineController{
+				Cid:         client.User().Cid,
+				Callsign:    client.Callsign(),
+				RealName:    client.RealName(),
+				Latitude:    client.Position()[0].Latitude,
+				Longitude:   client.Position()[0].Longitude,
+				Rating:      client.Rating().Index(),
+				Facility:    client.Facility().Index(),
+				Frequency:   client.Frequency() + 100000,
+				Range:       int(client.VisualRange()),
+				OfflineTime: client.LogoffTime(),
+				IsBreak:     client.IsBreak(),
+				AtcInfo:     client.AtisInfo(),
+				LogonTime:   client.History().StartTime.Format(time.DateTime),
+			}
+			data.Controllers = append(data.Controllers, controller)
+		} else {
+			data.General.OnlinePilot++
+			pilot := &OnlinePilot{
+				Cid:         client.User().Cid,
+				Callsign:    client.Callsign(),
+				RealName:    client.RealName(),
+				Latitude:    client.Position()[0].Latitude,
+				Longitude:   client.Position()[0].Longitude,
+				Transponder: client.Transponder(),
+				Heading:     client.Heading(),
+				Altitude:    client.Altitude(),
+				GroundSpeed: client.GroundSpeed(),
+				FlightPlan:  client.FlightPlan(),
+				LogonTime:   client.History().StartTime.Format(time.DateTime),
+			}
+			data.Pilots = append(data.Pilots, pilot)
+		}
+	}
+
+	data.General.GenerateTime = time.Now().Format(time.DateTime)
+
+	return data
+}
+
+func (cm *ClientManager) putSlice(clients []ClientInterface) {
 	cm.clientSlicePool.Put(clients)
 }
 
@@ -64,10 +153,8 @@ func (cm *ClientManager) Shutdown(ctx context.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	cm.heartbeatSender.Stop()
-
 	clients := cm.GetClientSnapshot()
-	defer cm.PutSlice(clients)
+	defer cm.putSlice(clients)
 
 	done := make(chan struct{})
 	go func() {
@@ -124,16 +211,6 @@ func (cm *ClientManager) disconnectClients(clients []ClientInterface) {
 	wg.Wait()
 }
 
-func (cm *ClientManager) SendHeartBeat() error {
-	if cm.shuttingDown.Load() {
-		return nil
-	}
-	randomInt := rand.Int()
-	packet := makePacket(WindDelta, global.FSDServerName, string(AllClient), strconv.Itoa(randomInt%11-5), strconv.Itoa(randomInt%21-10))
-	cm.BroadcastMessage(packet, nil, BroadcastToAll)
-	return nil
-}
-
 func (cm *ClientManager) AddClient(client ClientInterface) error {
 	if cm.shuttingDown.Load() {
 		return fmt.Errorf("server shutting down")
@@ -186,25 +263,13 @@ func (cm *ClientManager) SendMessageTo(callsign string, message []byte) error {
 	return nil
 }
 
-func (cm *ClientManager) SendRawMessageTo(from int, to string, message string) error {
-	client, exists := cm.GetClient(to)
-	if !exists {
-		return ErrCallsignNotFound
-	}
-
-	bytes := makePacket(Message, fmt.Sprintf("(%04d)", from), to, message)
-
-	client.SendLine(bytes)
-	return nil
-}
-
 func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInterface, filter BroadcastFilter) {
 	if cm.shuttingDown.Load() || len(message) == 0 {
 		return
 	}
 
 	clients := cm.GetClientSnapshot()
-	defer cm.PutSlice(clients) // 重置并放回池中
+	defer cm.putSlice(clients) // 重置并放回池中
 
 	if len(clients) == 0 {
 		return
@@ -237,7 +302,10 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 			}()
 
 			cm.logger.DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), message)
-			cl.SendLineWithoutLog(fullMsg)
+			err := cl.SendLineWithoutLog(fullMsg)
+			if err != nil && errors.Is(err, ErrClientSocketWrite) {
+				cl.MarkedDisconnect(false)
+			}
 		}(client)
 	}
 

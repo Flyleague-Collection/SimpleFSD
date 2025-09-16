@@ -11,7 +11,14 @@ const (
 	UserSetPassword
 	UserEditBaseInfo
 	UserEditPermission
-	UserEditRating
+	ControllerShowList
+	ControllerEditRating
+	ControllerShowRecord
+	ControllerCreateRecord
+	ControllerDeleteRecord
+	ControllerChangeUnderMonitor
+	ControllerChangeSolo
+	ControllerChangeGuest
 	ActivityPublish
 	ActivityShowList
 	ActivityEdit
@@ -19,29 +26,48 @@ const (
 	ActivityEditPilotState
 	ActivityDelete
 	AuditLogShow
+	TicketShowList
+	TicketReply
+	TicketRemove
+	FlightPlanShowList
+	FlightPlanChangeLock
+	FlightPlanDelete
 	ClientManagerEntry
 	ClientSendMessage
 	ClientKill
 )
 
 var PermissionMap = map[string]Permission{
-	"AdminEntry":             AdminEntry,
-	"UserShowList":           UserShowList,
-	"UserGetProfile":         UserGetProfile,
-	"UserSetPassword":        UserSetPassword,
-	"UserEditBaseInfo":       UserEditBaseInfo,
-	"UserEditPermission":     UserEditPermission,
-	"UserEditRating":         UserEditRating,
-	"ActivityPublish":        ActivityPublish,
-	"ActivityShowList":       ActivityShowList,
-	"ActivityEdit":           ActivityEdit,
-	"ActivityEditState":      ActivityEditState,
-	"ActivityEditPilotState": ActivityEditPilotState,
-	"ActivityDelete":         ActivityDelete,
-	"AuditLogShow":           AuditLogShow,
-	"ClientManagerEntry":     ClientManagerEntry,
-	"ClientSendMessage":      ClientSendMessage,
-	"ClientKill":             ClientKill,
+	"AdminEntry":                   AdminEntry,
+	"UserShowList":                 UserShowList,
+	"UserGetProfile":               UserGetProfile,
+	"UserSetPassword":              UserSetPassword,
+	"UserEditBaseInfo":             UserEditBaseInfo,
+	"UserEditPermission":           UserEditPermission,
+	"ControllerShowList":           ControllerShowList,
+	"ControllerEditRating":         ControllerEditRating,
+	"ControllerShowRecord":         ControllerShowRecord,
+	"ControllerCreateRecord":       ControllerCreateRecord,
+	"ControllerDeleteRecord":       ControllerDeleteRecord,
+	"ControllerChangeUnderMonitor": ControllerChangeUnderMonitor,
+	"ControllerChangeSolo":         ControllerChangeSolo,
+	"ControllerChangeGuest":        ControllerChangeGuest,
+	"ActivityPublish":              ActivityPublish,
+	"ActivityShowList":             ActivityShowList,
+	"ActivityEdit":                 ActivityEdit,
+	"ActivityEditState":            ActivityEditState,
+	"ActivityEditPilotState":       ActivityEditPilotState,
+	"ActivityDelete":               ActivityDelete,
+	"AuditLogShow":                 AuditLogShow,
+	"TicketShowList":               TicketShowList,
+	"TicketReply":                  TicketReply,
+	"TicketRemove":                 TicketRemove,
+	"FlightPlanShowList":           FlightPlanShowList,
+	"FlightPlanChangeLock":         FlightPlanChangeLock,
+	"FlightPlanDelete":             FlightPlanDelete,
+	"ClientManagerEntry":           ClientManagerEntry,
+	"ClientSendMessage":            ClientSendMessage,
+	"ClientKill":                   ClientKill,
 }
 
 func (p *Permission) IsValid() bool {

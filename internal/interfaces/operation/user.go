@@ -5,7 +5,37 @@ import (
 	"errors"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"gorm.io/gorm"
+	"time"
 )
+
+type User struct {
+	ID                    uint                `gorm:"primarykey" json:"id"`
+	Username              string              `gorm:"size:64;uniqueIndex;not null" json:"username"`
+	Email                 string              `gorm:"size:128;uniqueIndex;not null" json:"email"`
+	Cid                   int                 `gorm:"uniqueIndex;not null" json:"cid"`
+	Password              string              `gorm:"size:128;not null" json:"-"`
+	AvatarUrl             string              `gorm:"size:128;not null;default:''" json:"avatar_url"`
+	QQ                    int                 `gorm:"default:0" json:"qq"`
+	Rating                int                 `gorm:"default:0" json:"rating"`
+	Guest                 bool                `gorm:"default:false" json:"guest"`
+	UnderMonitor          bool                `gorm:"default:false;not null" json:"under_monitor"`
+	UnderSolo             bool                `gorm:"default:false;not null" json:"under_solo"`
+	SoloUntil             time.Time           `json:"solo_until"`
+	Permission            int64               `gorm:"default:0" json:"permission"`
+	TotalPilotTime        int                 `gorm:"default:0" json:"total_pilot_time"`
+	TotalAtcTime          int                 `gorm:"default:0" json:"total_atc_time"`
+	FlightPlans           []*FlightPlan       `gorm:"foreignKey:Cid;references:Cid" json:"-"`
+	OnlineHistories       []*History          `gorm:"foreignKey:Cid;references:Cid" json:"-"`
+	ActivityAtc           []*ActivityATC      `gorm:"foreignKey:Cid;references:Cid" json:"-"`
+	ActivityPilot         []*ActivityPilot    `gorm:"foreignKey:Cid;references:Cid" json:"-"`
+	AuditLogs             []*AuditLog         `gorm:"foreignKey:Subject;references:Cid" json:"-"`
+	ControllerRecordsTo   []*ControllerRecord `gorm:"foreignKey:Cid;references:Cid" json:"-"`
+	ControllerRecordsFrom []*ControllerRecord `gorm:"foreignKey:Operator;references:Cid" json:"-"`
+	Opener                []*Ticket           `gorm:"foreignKey:Opener;references:Cid" json:"-"`
+	Closer                []*Ticket           `gorm:"foreignKey:Closer;references:Cid" json:"-"`
+	CreatedAt             time.Time           `json:"-"`
+	UpdatedAt             time.Time           `json:"-"`
+}
 
 var (
 	// ErrUserNotFound 用户不存在
@@ -65,8 +95,6 @@ type UserOperationInterface interface {
 	UpdateUserAtcTime(user *User, seconds int) (err error)
 	// UpdateUserPilotTime 更新用户连线飞行时间, 当err为nil时表示更新成功
 	UpdateUserPilotTime(user *User, seconds int) (err error)
-	// UpdateUserRating 更新用户管制权限, 当err为nil时表示更新成功
-	UpdateUserRating(user *User, rating int) (err error)
 	// UpdateUserPermission 更新用户飞控权限, 当err为nil时表示更新成功
 	UpdateUserPermission(user *User, permission Permission) (err error)
 	// UpdateUserInfo 批量更新用户信息, 当err为nil时表示更新成功
@@ -80,7 +108,5 @@ type UserOperationInterface interface {
 	// IsUserIdentifierTaken 检查给定用户三元组的一致性约束, err为nil且taken为true时表示一致性约束检查通过
 	IsUserIdentifierTaken(tx *gorm.DB, cid int, username, email string) (taken bool, err error)
 	GetTotalUsers() (total int64, err error)
-	GetTotalControllers() (total int64, err error)
-	GetControllers(page, pageSize int) (users []*User, total int64, err error)
 	GetTimeRatings() (pilots []*User, controllers []*User, err error)
 }

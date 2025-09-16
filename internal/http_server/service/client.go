@@ -8,16 +8,14 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
-	"github.com/half-nothing/simple-fsd/internal/utils"
-	"time"
 )
 
 type ClientService struct {
 	logger            log.LoggerInterface
-	onlineClient      *utils.CachedValue[OnlineClients]
 	clientManager     fsd.ClientManagerInterface
-	emailService      EmailServiceInterface
+	messageQueue      queue.MessageQueueInterface
 	config            *config.HttpServerConfig
 	userOperation     operation.UserOperationInterface
 	auditLogOperation operation.AuditLogOperationInterface
@@ -29,84 +27,21 @@ func NewClientService(
 	userOperation operation.UserOperationInterface,
 	auditLogOperation operation.AuditLogOperationInterface,
 	clientManager fsd.ClientManagerInterface,
-	emailService EmailServiceInterface,
+	messageQueue queue.MessageQueueInterface,
 ) *ClientService {
 	service := &ClientService{
 		logger:            logger,
 		clientManager:     clientManager,
-		emailService:      emailService,
 		config:            config,
 		userOperation:     userOperation,
 		auditLogOperation: auditLogOperation,
+		messageQueue:      messageQueue,
 	}
-	service.onlineClient = utils.NewCachedValue[OnlineClients](config.CacheDuration, func() *OnlineClients { return service.getOnlineClient() })
 	return service
 }
 
-func (clientService *ClientService) getOnlineClient() *OnlineClients {
-	data := &OnlineClients{
-		General: OnlineGeneral{
-			Version:          3,
-			ConnectedClients: 0,
-			OnlinePilot:      0,
-			OnlineController: 0,
-		},
-		Pilots:      make([]*OnlinePilot, 0),
-		Controllers: make([]*OnlineController, 0),
-	}
-
-	clientCopy := clientService.clientManager.GetClientSnapshot()
-	defer clientService.clientManager.PutSlice(clientCopy)
-
-	for _, client := range clientCopy {
-		if client == nil || client.Disconnected() {
-			continue
-		}
-		data.General.ConnectedClients++
-		if client.IsAtc() {
-			data.General.OnlineController++
-			controller := &OnlineController{
-				Cid:         client.User().Cid,
-				Callsign:    client.Callsign(),
-				RealName:    client.RealName(),
-				Latitude:    client.Position()[0].Latitude,
-				Longitude:   client.Position()[0].Longitude,
-				Rating:      client.Rating().Index(),
-				Facility:    client.Facility().Index(),
-				Frequency:   client.Frequency() + 100000,
-				Range:       int(client.VisualRange()),
-				OfflineTime: client.LogoffTime(),
-				IsBreak:     client.IsBreak(),
-				AtcInfo:     client.AtisInfo(),
-				LogonTime:   client.History().StartTime.Format(time.DateTime),
-			}
-			data.Controllers = append(data.Controllers, controller)
-		} else {
-			data.General.OnlinePilot++
-			pilot := &OnlinePilot{
-				Cid:         client.User().Cid,
-				Callsign:    client.Callsign(),
-				RealName:    client.RealName(),
-				Latitude:    client.Position()[0].Latitude,
-				Longitude:   client.Position()[0].Longitude,
-				Transponder: client.Transponder(),
-				Heading:     client.Heading(),
-				Altitude:    client.Altitude(),
-				GroundSpeed: client.GroundSpeed(),
-				FlightPlan:  client.FlightPlan(),
-				LogonTime:   client.History().StartTime.Format(time.DateTime),
-			}
-			data.Pilots = append(data.Pilots, pilot)
-		}
-	}
-
-	data.General.GenerateTime = time.Now().Format(time.DateTime)
-
-	return data
-}
-
-func (clientService *ClientService) GetOnlineClient() *OnlineClients {
-	return clientService.onlineClient.GetValue()
+func (clientService *ClientService) GetOnlineClient() *fsd.OnlineClients {
+	return clientService.clientManager.GetWhazzupContent()
 }
 
 var (
@@ -117,42 +52,47 @@ var (
 
 func (clientService *ClientService) SendMessageToClient(req *RequestSendMessageToClient) *ApiResponse[ResponseSendMessageToClient] {
 	if req.Uid <= 0 || req.SendTo == "" || req.Message == "" {
-		return NewApiResponse[ResponseSendMessageToClient](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseSendMessageToClient](ErrIllegalParam, nil)
 	}
 	if req.Permission <= 0 {
-		return NewApiResponse[ResponseSendMessageToClient](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseSendMessageToClient](ErrNoPermission, nil)
 	}
 	permission := operation.Permission(req.Permission)
 	if !permission.HasPermission(operation.ClientSendMessage) {
-		return NewApiResponse[ResponseSendMessageToClient](&ErrNoPermission, Unsatisfied, nil)
-	}
-	if err := clientService.clientManager.SendRawMessageTo(req.Cid, req.SendTo, req.Message); err != nil {
-		if errors.Is(err, fsd.ErrCallsignNotFound) {
-			return NewApiResponse[ResponseSendMessageToClient](&ErrCallsignNotFound, Unsatisfied, nil)
-		}
-		return NewApiResponse[ResponseSendMessageToClient](&ErrSendMessage, Unsatisfied, nil)
+		return NewApiResponse[ResponseSendMessageToClient](ErrNoPermission, nil)
 	}
 
-	go func() {
-		auditLog := clientService.auditLogOperation.NewAuditLog(operation.ClientMessage, req.Cid,
-			fmt.Sprintf("%s(%s)", req.SendTo, req.Message), req.Ip, req.UserAgent, nil)
-		err := clientService.auditLogOperation.SaveAuditLog(auditLog)
-		if err != nil {
-			clientService.logger.ErrorF("Fail to create audit log for client_message, detail: %v", err)
+	if err := clientService.messageQueue.SyncPublish(&queue.Message{
+		Type: queue.SendMessageToClient,
+		Data: &fsd.SendRawMessageData{
+			From:    req.Cid,
+			To:      req.SendTo,
+			Message: req.Message,
+		},
+	}); err != nil {
+		if errors.Is(err, fsd.ErrCallsignNotFound) {
+			return NewApiResponse[ResponseSendMessageToClient](&ErrCallsignNotFound, nil)
 		}
-	}()
+		return NewApiResponse[ResponseSendMessageToClient](&ErrSendMessage, nil)
+	}
+
+	clientService.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: clientService.auditLogOperation.NewAuditLog(operation.ClientMessage, req.Cid,
+			fmt.Sprintf("%s(%s)", req.SendTo, req.Message), req.Ip, req.UserAgent, nil),
+	})
 
 	data := ResponseSendMessageToClient(true)
-	return NewApiResponse[ResponseSendMessageToClient](&SuccessSendMessage, Unsatisfied, &data)
+	return NewApiResponse[ResponseSendMessageToClient](&SuccessSendMessage, &data)
 }
 
 var SuccessKillClient = ApiStatus{StatusName: "KILL_CLIENT", Description: "成功踢出客户端", HttpCode: Ok}
 
 func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiResponse[ResponseKillClient] {
 	if req.Uid <= 0 || req.TargetCallsign == "" {
-		return NewApiResponse[ResponseKillClient](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseKillClient](ErrIllegalParam, nil)
 	}
-	user, res := CallDBFuncAndCheckError[operation.User, ResponseKillClient](func() (*operation.User, error) {
+	user, res := CallDBFunc[operation.User, ResponseKillClient](func() (*operation.User, error) {
 		return clientService.userOperation.GetUserByUid(req.Uid)
 	})
 	if res != nil {
@@ -160,33 +100,33 @@ func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiRespo
 	}
 	permission := operation.Permission(user.Permission)
 	if !permission.HasPermission(operation.ClientKill) {
-		return NewApiResponse[ResponseKillClient](&ErrNoPermission, Unsatisfied, nil)
+		return NewApiResponse[ResponseKillClient](ErrNoPermission, nil)
 	}
 	client, ok := clientService.clientManager.GetClient(req.TargetCallsign)
 	if !ok {
-		return NewApiResponse[ResponseKillClient](&ErrCallsignNotFound, Unsatisfied, nil)
+		return NewApiResponse[ResponseKillClient](&ErrCallsignNotFound, nil)
 	}
 	client.MarkedDisconnect(false)
 
-	go func() {
-		if clientService.config.Email.Template.EnableKickedFromServerEmail {
-			if err := clientService.emailService.SendKickedFromServerEmail(client.User(), user, req.Reason); err != nil {
-				clientService.logger.ErrorF("SendRatingChangeEmail Failed: %v", err)
-			}
-		}
-	}()
+	if clientService.config.Email.Template.EnableKickedFromServerEmail {
+		clientService.messageQueue.Publish(&queue.Message{
+			Type: queue.SendKickedFromServerEmail,
+			Data: &SendKickedFromServerData{
+				User:     client.User(),
+				Operator: user,
+				Reason:   req.Reason,
+			},
+		})
+	}
 
-	go func() {
-		auditLog := clientService.auditLogOperation.NewAuditLog(operation.ClientKicked, req.Cid,
-			fmt.Sprintf("%s(%s)", req.TargetCallsign, req.Reason), req.Ip, req.UserAgent, nil)
-		err := clientService.auditLogOperation.SaveAuditLog(auditLog)
-		if err != nil {
-			clientService.logger.ErrorF("Fail to create audit log for client_kicked, detail: %v", err)
-		}
-	}()
+	clientService.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: clientService.auditLogOperation.NewAuditLog(operation.ClientKicked, req.Cid,
+			fmt.Sprintf("%s(%s)", req.TargetCallsign, req.Reason), req.Ip, req.UserAgent, nil),
+	})
 
 	data := ResponseKillClient(true)
-	return NewApiResponse[ResponseKillClient](&SuccessKillClient, Unsatisfied, &data)
+	return NewApiResponse[ResponseKillClient](&SuccessKillClient, &data)
 }
 
 var (
@@ -196,12 +136,12 @@ var (
 
 func (clientService *ClientService) GetClientPath(req *RequestClientPath) *ApiResponse[ResponseClientPath] {
 	if req.Callsign == "" {
-		return NewApiResponse[ResponseClientPath](&ErrIllegalParam, Unsatisfied, nil)
+		return NewApiResponse[ResponseClientPath](ErrIllegalParam, nil)
 	}
 	client, exist := clientService.clientManager.GetClient(req.Callsign)
 	if !exist {
-		return NewApiResponse[ResponseClientPath](&ErrClientNotFound, Unsatisfied, nil)
+		return NewApiResponse[ResponseClientPath](&ErrClientNotFound, nil)
 	}
 	data := ResponseClientPath(client.Paths())
-	return NewApiResponse(&SuccessGetClientPath, Unsatisfied, &data)
+	return NewApiResponse(&SuccessGetClientPath, &data)
 }

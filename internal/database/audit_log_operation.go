@@ -19,7 +19,7 @@ func NewAuditLogOperation(logger log.LoggerInterface, db *gorm.DB, queryTimeout 
 	return &AuditLogOperation{logger: logger, db: db, queryTimeout: queryTimeout}
 }
 
-func (auditLogOperation *AuditLogOperation) NewAuditLog(eventType EventType, subject int, object, ip, userAgent string, changeDetails *ChangeDetail) (auditLog *AuditLog) {
+func (auditLogOperation *AuditLogOperation) NewAuditLog(eventType AuditEventType, subject int, object, ip, userAgent string, changeDetails *ChangeDetail) (auditLog *AuditLog) {
 	return &AuditLog{
 		EventType:     string(eventType),
 		Subject:       subject,
