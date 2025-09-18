@@ -1,18 +1,23 @@
 // Package operation
 package operation
 
-import "time"
+import (
+	"errors"
+	"gorm.io/gorm"
+	"time"
+)
 
 type Ticket struct {
-	ID        uint      `gorm:"primarykey" json:"id"`
-	Opener    int       `gorm:"index:opener;not null" json:"creator"`
-	Type      int       `gorm:"not null" json:"type"`
-	Title     string    `gorm:"not null" json:"title"`
-	Content   string    `gorm:"not null" json:"content"`
-	Reply     string    `gorm:"not null" json:"reply"`
-	Closer    int       `gorm:"index:closer;not null" json:"closer"`
-	CreatedAt time.Time `gorm:"not null" json:"open_at"`
-	UpdateAt  time.Time `gorm:"not null" json:"close_at"`
+	ID        uint           `gorm:"primarykey" json:"id"`
+	Opener    int            `gorm:"index:opener;not null" json:"creator"`
+	Type      int            `gorm:"not null" json:"type"`
+	Title     string         `gorm:"not null" json:"title"`
+	Content   string         `gorm:"not null" json:"content"`
+	Reply     string         `gorm:"not null" json:"reply"`
+	Closer    int            `gorm:"index:closer;not null" json:"closer"`
+	CreatedAt time.Time      `json:"open_at"`
+	UpdatedAt time.Time      `json:"close_at"`
+	DeletedAt gorm.DeletedAt `json:"-"`
 }
 
 type TicketType int
@@ -29,12 +34,10 @@ func IsValidTicketType(s int) bool {
 	return int(Feature) <= s && s <= int(Other)
 }
 
-func ToTicketType(s int) TicketType {
-	if !IsValidTicketType(s) {
-		return OtherType
-	}
-	return TicketType(s)
-}
+var (
+	ErrTicketNotFound      = errors.New("ticket not found")
+	ErrTicketAlreadyClosed = errors.New("ticket already closed")
+)
 
 type TicketOperationInterface interface {
 	NewTicket(opener int, ticketType TicketType, title string, content string) (ticket *Ticket)

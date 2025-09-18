@@ -62,9 +62,10 @@ func (controller *UserController) CheckUserAvailability(ctx echo.Context) error 
 }
 
 func (controller *UserController) GetCurrentUserProfile(ctx echo.Context) error {
+	data := &RequestUserCurrentProfile{}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
-	data := &RequestUserCurrentProfile{Uid: claim.Uid}
+	data.Uid = claim.Uid
 	return controller.service.GetCurrentProfile(data).Response(ctx)
 }
 
@@ -103,7 +104,7 @@ func (controller *UserController) EditProfile(ctx echo.Context) error {
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
 	data.Uid = claim.Uid
-	data.Cid = claim.Cid
+	data.JwtHeader.Cid = claim.Cid
 	data.Permission = claim.Permission
 	data.Ip = ctx.RealIP()
 	data.UserAgent = ctx.Request().UserAgent()
@@ -151,6 +152,10 @@ func (controller *UserController) GetUserHistory(ctx echo.Context) error {
 
 func (controller *UserController) GetToken(ctx echo.Context) error {
 	data := &RequestGetToken{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.ErrorF("UserController.GetToken bind error: %v", err)
+		return NewErrorResponse(ctx, ErrLackParam)
+	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
 	data.Claims = claim

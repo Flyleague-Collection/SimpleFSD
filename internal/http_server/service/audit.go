@@ -1,4 +1,5 @@
 // Package service
+// 存放 AuditServiceInterface 的实现
 package service
 
 import (
@@ -37,24 +38,23 @@ func (auditLogService *AudioLogService) HandleAuditLogsMessage(message *queue.Me
 	return queue.ErrMessageDataType
 }
 
-var SuccessGetAuditLog = ApiStatus{StatusName: "GET_AUDIT_LOG", Description: "成功获取审计日志", HttpCode: Ok}
+var SuccessGetAuditLog = NewApiStatus("GET_AUDIT_LOG", "成功获取审计日志", Ok)
 
 func (auditLogService *AudioLogService) GetAuditLogPage(req *RequestGetAuditLog) *ApiResponse[ResponseGetAuditLog] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseGetAuditLog](ErrIllegalParam, nil)
 	}
-	if req.Permission <= 0 {
-		return NewApiResponse[ResponseGetAuditLog](ErrNoPermission, nil)
+
+	if res := CheckPermission[ResponseGetAuditLog](req.Permission, operation.AuditLogShow); res != nil {
+		return res
 	}
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.AuditLogShow) {
-		return NewApiResponse[ResponseGetAuditLog](ErrNoPermission, nil)
-	}
+
 	auditLogs, total, err := auditLogService.auditOperation.GetAuditLogs(req.Page, req.PageSize)
-	if err != nil {
-		return NewApiResponse[ResponseGetAuditLog](ErrDatabaseFail, nil)
+	if res := CheckDatabaseError[ResponseGetAuditLog](err); res != nil {
+		return res
 	}
-	return NewApiResponse(&SuccessGetAuditLog, &ResponseGetAuditLog{
+
+	return NewApiResponse(SuccessGetAuditLog, &ResponseGetAuditLog{
 		Items:    auditLogs,
 		Page:     req.Page,
 		PageSize: req.PageSize,
@@ -62,15 +62,22 @@ func (auditLogService *AudioLogService) GetAuditLogPage(req *RequestGetAuditLog)
 	})
 }
 
-var SuccessLogUnlawfulOverreach = ApiStatus{StatusName: "LOG_UNLAWFUL_OVERREACH", Description: "成功记录非法访问", HttpCode: Ok}
+var SuccessLogUnlawfulOverreach = NewApiStatus("LOG_UNLAWFUL_OVERREACH", "成功记录非法访问", Ok)
 
 func (auditLogService *AudioLogService) LogUnlawfulOverreach(req *RequestLogUnlawfulOverreach) *ApiResponse[ResponseLogUnlawfulOverreach] {
-	auditLog := auditLogService.auditOperation.NewAuditLog(operation.UnlawfulOverreach, req.Cid, req.AccessPath,
-		req.Ip, req.UserAgent, nil)
-	err := auditLogService.auditOperation.SaveAuditLog(auditLog)
-	if err != nil {
+	auditLog := auditLogService.auditOperation.NewAuditLog(
+		operation.UnlawfulOverreach,
+		req.Cid,
+		req.AccessPath,
+		req.Ip,
+		req.UserAgent,
+		nil,
+	)
+
+	if err := auditLogService.auditOperation.SaveAuditLog(auditLog); err != nil {
 		auditLogService.logger.ErrorF("Fail to create audit log for unlawful_overreach, detail: %v", err)
 	}
+
 	data := ResponseLogUnlawfulOverreach(true)
-	return NewApiResponse(&SuccessLogUnlawfulOverreach, &data)
+	return NewApiResponse(SuccessLogUnlawfulOverreach, &data)
 }

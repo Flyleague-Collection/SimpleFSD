@@ -77,7 +77,7 @@ func (h *AsyncHandler) Handle(_ context.Context, r slog.Record) error {
 		level = color.HiRedString("FATAL")
 	}
 
-	// 基础格式：时间 | 记录器 | 级别 | 消息
+	// 时间 | 记录器 | 级别 | 消息
 	line := fmt.Sprintf(
 		"%s | %-4s | %-5s | %s",
 		color.GreenString(r.Time.Format("2006-01-02T15:04:05")),
@@ -86,12 +86,10 @@ func (h *AsyncHandler) Handle(_ context.Context, r slog.Record) error {
 		color.CyanString(r.Message),
 	)
 
-	// 处理固定字段
 	for _, attr := range h.attrs {
 		line += color.CyanString(fmt.Sprintf(" %s=%v", attr.Key, attr.Value))
 	}
 
-	// 处理动态字段
 	r.Attrs(func(attr slog.Attr) bool {
 		line += color.CyanString(fmt.Sprintf(" %s=%v", attr.Key, attr.Value))
 		return true

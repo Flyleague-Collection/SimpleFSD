@@ -137,13 +137,17 @@ func (flightPlanOperation *FlightPlanOperation) LockFlightPlan(flightPlan *Fligh
 func (flightPlanOperation *FlightPlanOperation) UnlockFlightPlan(flightPlan *FlightPlan) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
 	defer cancel()
-	return flightPlanOperation.db.WithContext(ctx).Model(flightPlan).Updates(&FlightPlan{Locked: false}).Error
+	return flightPlanOperation.db.WithContext(ctx).Model(flightPlan).Select("locked").Updates(&FlightPlan{Locked: false}).Error
 }
 
 func (flightPlanOperation *FlightPlanOperation) DeleteFlightPlan(cid int) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
 	defer cancel()
-	return flightPlanOperation.db.WithContext(ctx).Delete(&FlightPlan{}, "cid = ?", cid).Error
+	result := flightPlanOperation.db.WithContext(ctx).Delete(&FlightPlan{}, "cid = ?", cid)
+	if result.RowsAffected == 0 {
+		return ErrFlightPlanNotFound
+	}
+	return result.Error
 }
 
 func (flightPlanOperation *FlightPlanOperation) UpdateCruiseAltitude(flightPlan *FlightPlan, cruiseAltitude string) (err error) {
@@ -176,9 +180,10 @@ func (flightPlanOperation *FlightPlanOperation) UpdateCruiseAltitude(flightPlan 
 }
 
 func (flightPlanOperation *FlightPlanOperation) ToString(flightPlan *FlightPlan, receiver string) string {
-	return fmt.Sprintf("$FP%s:%s:%s:%s:%d:%s:%d:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s\r\n",
+	return fmt.Sprintf("$FP%s:%s:%s:%s:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\r\n",
 		flightPlan.Callsign, receiver, flightPlan.FlightType, flightPlan.AircraftType, flightPlan.Tas,
-		flightPlan.DepartureAirport, flightPlan.DepartureTime, flightPlan.AtcDepartureTime, flightPlan.CruiseAltitude,
+		flightPlan.DepartureAirport, fmt.Sprintf("%04d", flightPlan.DepartureTime),
+		fmt.Sprintf("%04d", flightPlan.AtcDepartureTime), flightPlan.CruiseAltitude,
 		flightPlan.ArrivalAirport, flightPlan.RouteTimeHour, flightPlan.RouteTimeMinute, flightPlan.FuelTimeHour,
 		flightPlan.FuelTimeMinute, flightPlan.AlternateAirport, flightPlan.Remarks, flightPlan.Route)
 }

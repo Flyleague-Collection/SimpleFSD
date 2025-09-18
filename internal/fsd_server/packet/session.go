@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
@@ -30,7 +29,8 @@ type Session struct {
 	application         *interfaces.ApplicationContent
 	client              ClientInterface
 	clientManager       ClientManagerInterface
-	config              *config.GeneralConfig
+	refuseOutRange      bool
+	isSimulatorServer   bool
 	userOperation       operation.UserOperationInterface
 	flightPlanOperation operation.FlightPlanOperationInterface
 }
@@ -39,6 +39,7 @@ func NewSession(
 	application *interfaces.ApplicationContent,
 	conn net.Conn,
 ) *Session {
+	config := application.ConfigManager().Config()
 	return &Session{
 		logger:              application.Logger().FsdLogger(),
 		application:         application,
@@ -49,7 +50,8 @@ func NewSession(
 		clientManager:       application.ClientManager(),
 		user:                nil,
 		disconnected:        atomic.Bool{},
-		config:              application.ConfigManager().Config().Server.General,
+		refuseOutRange:      config.Server.FSDServer.RangeLimit.RefuseOutRange,
+		isSimulatorServer:   config.Server.General.SimulatorServer,
 		userOperation:       application.Operations().UserOperation(),
 		flightPlanOperation: application.Operations().FlightPlanOperation(),
 	}

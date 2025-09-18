@@ -1,4 +1,5 @@
 // Package service
+// 存放 ControllerServiceInterface 的实现
 package service
 
 import (
@@ -44,24 +45,23 @@ func NewControllerService(
 	}
 }
 
-var SuccessGetControllers = ApiStatus{StatusName: "GET_CONTROLLER_PAGE", Description: "获取管制员信息分页成功", HttpCode: Ok}
+var SuccessGetControllers = NewApiStatus("GET_CONTROLLER_PAGE", "获取管制员信息分页成功", Ok)
 
 func (controllerService *ControllerService) GetControllerList(req *RequestControllerList) *ApiResponse[ResponseControllerList] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseControllerList](ErrIllegalParam, nil)
 	}
-	if req.Permission <= 0 {
-		return NewApiResponse[ResponseControllerList](ErrNoPermission, nil)
+
+	if res := CheckPermission[ResponseControllerList](req.Permission, operation.ControllerShowList); res != nil {
+		return res
 	}
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.UserShowList) {
-		return NewApiResponse[ResponseControllerList](ErrNoPermission, nil)
-	}
+
 	users, total, err := controllerService.controllerOperation.GetControllers(req.Page, req.PageSize)
-	if err != nil {
-		return NewApiResponse[ResponseControllerList](ErrDatabaseFail, nil)
+	if res := CheckDatabaseError[ResponseControllerList](err); res != nil {
+		return res
 	}
-	return NewApiResponse(&SuccessGetControllers, &ResponseControllerList{
+
+	return NewApiResponse(SuccessGetControllers, &ResponseControllerList{
 		Items:    users,
 		Page:     req.Page,
 		PageSize: req.PageSize,
@@ -69,19 +69,19 @@ func (controllerService *ControllerService) GetControllerList(req *RequestContro
 	})
 }
 
-var SuccessGetCurrentControllerRecord = ApiStatus{StatusName: "GET_CURRENT_CONTROLLER_RECORD", Description: "获取管制员履历成功", HttpCode: Ok}
+var SuccessGetCurrentControllerRecord = NewApiStatus("GET_CURRENT_CONTROLLER_RECORD", "获取管制员履历成功", Ok)
 
 func (controllerService *ControllerService) GetCurrentControllerRecord(req *RequestGetCurrentControllerRecord) *ApiResponse[ResponseGetCurrentControllerRecord] {
-	if req.Uid <= 0 {
+	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseGetCurrentControllerRecord](ErrIllegalParam, nil)
 	}
 
-	records, total, err := controllerService.controllerRecordOperation.GetControllerRecords(req.Cid, req.Page, req.PageSize)
-	if err != nil {
-		return NewApiResponse[ResponseGetCurrentControllerRecord](ErrDatabaseFail, nil)
+	records, total, err := controllerService.controllerRecordOperation.GetControllerRecords(req.Uid, req.Page, req.PageSize)
+	if res := CheckDatabaseError[ResponseGetCurrentControllerRecord](err); res != nil {
+		return res
 	}
 
-	return NewApiResponse(&SuccessGetCurrentControllerRecord, &ResponseGetCurrentControllerRecord{
+	return NewApiResponse(SuccessGetCurrentControllerRecord, &ResponseGetCurrentControllerRecord{
 		Items:    records,
 		Total:    total,
 		Page:     req.Page,
@@ -90,21 +90,20 @@ func (controllerService *ControllerService) GetCurrentControllerRecord(req *Requ
 }
 
 func (controllerService *ControllerService) GetControllerRecord(req *RequestGetControllerRecord) *ApiResponse[ResponseGetControllerRecord] {
-	if req.Uid <= 0 || req.TargetCid <= 0 {
+	if req.TargetUid <= 0 || req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseGetControllerRecord](ErrIllegalParam, nil)
 	}
 
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.ControllerShowRecord) {
-		return NewApiResponse[ResponseGetControllerRecord](ErrNoPermission, nil)
+	if res := CheckPermission[ResponseGetControllerRecord](req.Permission, operation.ControllerShowRecord); res != nil {
+		return res
 	}
 
-	records, total, err := controllerService.controllerRecordOperation.GetControllerRecords(req.TargetCid, req.Page, req.PageSize)
-	if err != nil {
-		return NewApiResponse[ResponseGetControllerRecord](ErrDatabaseFail, nil)
+	records, total, err := controllerService.controllerRecordOperation.GetControllerRecords(req.TargetUid, req.Page, req.PageSize)
+	if res := CheckDatabaseError[ResponseGetControllerRecord](err); res != nil {
+		return res
 	}
 
-	return NewApiResponse(&SuccessGetCurrentControllerRecord, &ResponseGetControllerRecord{
+	return NewApiResponse(SuccessGetCurrentControllerRecord, &ResponseGetControllerRecord{
 		Items:    records,
 		Total:    total,
 		Page:     req.Page,
@@ -113,26 +112,34 @@ func (controllerService *ControllerService) GetControllerRecord(req *RequestGetC
 }
 
 var (
-	ErrSameRating                 = ApiStatus{StatusName: "SAME_RATING", Description: "用户已是该权限", HttpCode: BadRequest}
-	SuccessUpdateControllerRating = ApiStatus{StatusName: "UPDATE_CONTROLLER_RATING", Description: "编辑用户管制权限成功", HttpCode: Ok}
+	ErrSameRating                 = NewApiStatus("SAME_RATING", "用户已是该权限", BadRequest)
+	SuccessUpdateControllerRating = NewApiStatus("UPDATE_CONTROLLER_RATING", "编辑用户管制权限成功", Ok)
 )
 
 func (controllerService *ControllerService) UpdateControllerRating(req *RequestUpdateControllerRating) *ApiResponse[ResponseUpdateControllerRating] {
-	if req.Uid <= 0 || req.TargetUid < 0 || req.Rating < fsd.Ban.Index() || req.Rating > fsd.Administrator.Index() {
+	if req.TargetUid <= 0 || !fsd.IsValidRating(req.Rating) {
 		return NewApiResponse[ResponseUpdateControllerRating](ErrIllegalParam, nil)
 	}
-	user, targetUser, res := GetUsersAndCheckPermission[ResponseUpdateControllerRating](controllerService.userOperation, req.Uid, req.TargetUid, operation.ControllerEditRating)
+
+	user, targetUser, res := GetTargetUserAndCheckPermissionFromDatabase[ResponseUpdateControllerRating](
+		controllerService.userOperation,
+		req.Uid,
+		req.TargetUid,
+		operation.ControllerEditRating,
+	)
 	if res != nil {
 		return res
 	}
+
 	oldRating := fsd.Rating(targetUser.Rating)
 	newRating := fsd.Rating(req.Rating)
+
 	if oldRating == newRating {
-		return NewApiResponse[ResponseUpdateControllerRating](&ErrSameRating, nil)
+		return NewApiResponse[ResponseUpdateControllerRating](ErrSameRating, nil)
 	}
 
-	if _, res := CallDBFunc[interface{}, ResponseUpdateControllerRating](func() (*interface{}, error) {
-		return nil, controllerService.controllerOperation.SetControllerRating(targetUser, newRating.Index())
+	if res := CallDBFuncWithoutRet[ResponseUpdateControllerRating](func() error {
+		return controllerService.controllerOperation.SetControllerRating(targetUser, newRating.Index())
 	}); res != nil {
 		return res
 	}
@@ -140,7 +147,7 @@ func (controllerService *ControllerService) UpdateControllerRating(req *RequestU
 	if controllerService.config.Email.Template.EnableRatingChangeEmail {
 		controllerService.messageQueue.Publish(&queue.Message{
 			Type: queue.SendRatingChangeEmail,
-			Data: &SendRatingChangeData{
+			Data: &RatingChangeEmailData{
 				User:      targetUser,
 				Operator:  user,
 				OldRating: oldRating,
@@ -151,8 +158,13 @@ func (controllerService *ControllerService) UpdateControllerRating(req *RequestU
 
 	controllerService.messageQueue.Publish(&queue.Message{
 		Type: queue.AuditLog,
-		Data: controllerService.auditLogOperation.NewAuditLog(operation.ControllerRatingChange, req.Cid,
-			strconv.Itoa(targetUser.Cid), req.Ip, req.UserAgent, &operation.ChangeDetail{
+		Data: controllerService.auditLogOperation.NewAuditLog(
+			operation.ControllerRatingChange,
+			req.Cid,
+			fmt.Sprintf("%04d", targetUser.Cid),
+			req.Ip,
+			req.UserAgent,
+			&operation.ChangeDetail{
 				OldValue: oldRating.String(),
 				NewValue: newRating.String(),
 			},
@@ -160,20 +172,25 @@ func (controllerService *ControllerService) UpdateControllerRating(req *RequestU
 	})
 
 	data := ResponseUpdateControllerRating(true)
-	return NewApiResponse(&SuccessUpdateControllerRating, &data)
+	return NewApiResponse(SuccessUpdateControllerRating, &data)
 }
 
 var (
-	ErrNoChangeRequired       = NewApiStatus("NO_CHANGE_REQUIRED", "已经处于UnderMonitor", Conflict)
+	ErrNoChangeRequired       = NewApiStatus("NO_CHANGE_REQUIRED", "状态无需修改", Conflict)
 	SuccessChangeUnderMonitor = NewApiStatus("CHANGE_UNDER_MONITOR", "修改状态成功", Ok)
 )
 
 func (controllerService *ControllerService) UpdateControllerUnderMonitor(req *RequestUpdateControllerUnderMonitor) *ApiResponse[ResponseUpdateControllerUnderMonitor] {
-	if req.Uid <= 0 || req.TargetUid < 0 {
+	if req.TargetUid <= 0 {
 		return NewApiResponse[ResponseUpdateControllerUnderMonitor](ErrIllegalParam, nil)
 	}
 
-	targetUser, res := GetUserAndCheckPermission[ResponseUpdateControllerUnderMonitor](controllerService.userOperation, req.Permission, req.TargetUid, operation.ControllerChangeUnderMonitor)
+	targetUser, res := GetTargetUserAndCheckPermission[ResponseUpdateControllerUnderMonitor](
+		controllerService.userOperation,
+		req.Permission,
+		req.TargetUid,
+		operation.ControllerChangeUnderMonitor,
+	)
 	if res != nil {
 		return res
 	}
@@ -210,11 +227,16 @@ func (controllerService *ControllerService) UpdateControllerUnderMonitor(req *Re
 var SuccessUpdateControllerSolo = NewApiStatus("UPDATE_CONTROLLER_SOLO", "修改SOLO状态成功", Ok)
 
 func (controllerService *ControllerService) UpdateControllerUnderSolo(req *RequestUpdateControllerUnderSolo) *ApiResponse[ResponseUpdateControllerUnderSolo] {
-	if req.Uid <= 0 || req.TargetUid < 0 {
+	if req.TargetUid <= 0 || (req.Solo && (req.EndTime.IsZero() || req.EndTime.Before(time.Now()))) {
 		return NewApiResponse[ResponseUpdateControllerUnderSolo](ErrIllegalParam, nil)
 	}
 
-	targetUser, res := GetUserAndCheckPermission[ResponseUpdateControllerUnderSolo](controllerService.userOperation, req.Permission, req.TargetUid, operation.ControllerChangeSolo)
+	targetUser, res := GetTargetUserAndCheckPermission[ResponseUpdateControllerUnderSolo](
+		controllerService.userOperation,
+		req.Permission,
+		req.TargetUid,
+		operation.ControllerChangeSolo,
+	)
 	if res != nil {
 		return res
 	}
@@ -266,11 +288,16 @@ func (controllerService *ControllerService) UpdateControllerUnderSolo(req *Reque
 var SuccessUpdateControllerGuest = NewApiStatus("UPDATE_CONTROLLER_GUEST", "修改客座状态成功", Ok)
 
 func (controllerService *ControllerService) UpdateControllerGuest(req *RequestUpdateControllerGuest) *ApiResponse[ResponseUpdateControllerGuest] {
-	if req.Uid <= 0 || req.TargetUid < 0 {
+	if req.TargetUid <= 0 || !fsd.IsValidRating(req.Rating) {
 		return NewApiResponse[ResponseUpdateControllerGuest](ErrIllegalParam, nil)
 	}
 
-	targetUser, res := GetUserAndCheckPermission[ResponseUpdateControllerGuest](controllerService.userOperation, req.Permission, req.TargetUid, operation.ControllerChangeGuest)
+	targetUser, res := GetTargetUserAndCheckPermission[ResponseUpdateControllerGuest](
+		controllerService.userOperation,
+		req.Permission,
+		req.TargetUid,
+		operation.ControllerChangeGuest,
+	)
 	if res != nil {
 		return res
 	}
@@ -322,7 +349,7 @@ func (controllerService *ControllerService) UpdateControllerGuest(req *RequestUp
 var SuccessAddControllerRecord = NewApiStatus("ADD_CONTROLLER_RECORD", "添加管制员履历成功", Ok)
 
 func (controllerService *ControllerService) AddControllerRecord(req *RequestAddControllerRecord) *ApiResponse[ResponseAddControllerRecord] {
-	if req.Uid <= 0 || req.TargetCid < 0 || req.Content == "" || !operation.IsValidControllerRecordType(req.Type) {
+	if req.TargetUid <= 0 || req.Content == "" || !operation.IsValidControllerRecordType(req.Type) {
 		return NewApiResponse[ResponseAddControllerRecord](ErrIllegalParam, nil)
 	}
 
@@ -330,9 +357,16 @@ func (controllerService *ControllerService) AddControllerRecord(req *RequestAddC
 		return res
 	}
 
-	controllerRecordType := operation.ToControllerRecordType(req.Type)
+	targetUser, res := CallDBFunc[*operation.User, ResponseAddControllerRecord](func() (*operation.User, error) {
+		return controllerService.userOperation.GetUserByUid(req.TargetUid)
+	})
+	if res != nil {
+		return res
+	}
 
-	record := controllerService.controllerRecordOperation.NewControllerRecord(req.TargetCid, req.Cid, controllerRecordType, req.Content)
+	controllerRecordType := operation.ControllerRecordType(req.Type)
+
+	record := controllerService.controllerRecordOperation.NewControllerRecord(req.TargetUid, req.Cid, controllerRecordType, req.Content)
 
 	if res := CallDBFuncWithoutRet[ResponseAddControllerRecord](func() error {
 		return controllerService.controllerRecordOperation.SaveControllerRecord(record)
@@ -346,11 +380,11 @@ func (controllerService *ControllerService) AddControllerRecord(req *RequestAddC
 		Data: controllerService.auditLogOperation.NewAuditLog(
 			operation.ControllerRecordCreated,
 			req.Cid,
-			fmt.Sprintf("%04d", req.TargetCid),
+			fmt.Sprintf("%04d", targetUser.Cid),
 			req.Ip,
 			req.UserAgent,
 			&operation.ChangeDetail{
-				OldValue: "NOT AVAILABLE",
+				OldValue: operation.ValueNotAvailable,
 				NewValue: string(newValue),
 			},
 		),
@@ -363,7 +397,7 @@ func (controllerService *ControllerService) AddControllerRecord(req *RequestAddC
 var SuccessDeleteControllerRecord = NewApiStatus("DELETE_CONTROLLER_RECORD", "删除管制员履历成功", Ok)
 
 func (controllerService *ControllerService) DeleteControllerRecord(req *RequestDeleteControllerRecord) *ApiResponse[ResponseDeleteControllerRecord] {
-	if req.Uid <= 0 || req.TargetRecord < 0 {
+	if req.TargetRecord <= 0 {
 		return NewApiResponse[ResponseDeleteControllerRecord](ErrIllegalParam, nil)
 	}
 
@@ -371,8 +405,8 @@ func (controllerService *ControllerService) DeleteControllerRecord(req *RequestD
 		return res
 	}
 
-	record, res := CallDBFunc[operation.ControllerRecord, ResponseDeleteControllerRecord](func() (*operation.ControllerRecord, error) {
-		return controllerService.controllerRecordOperation.GetControllerRecord(req.TargetRecord)
+	record, res := CallDBFunc[*operation.ControllerRecord, ResponseDeleteControllerRecord](func() (*operation.ControllerRecord, error) {
+		return controllerService.controllerRecordOperation.GetControllerRecord(req.TargetRecord, req.TargetUid)
 	})
 	if res != nil {
 		return res
@@ -395,7 +429,7 @@ func (controllerService *ControllerService) DeleteControllerRecord(req *RequestD
 			req.UserAgent,
 			&operation.ChangeDetail{
 				OldValue: string(oldValue),
-				NewValue: "NOT AVAILABLE",
+				NewValue: operation.ValueNotAvailable,
 			},
 		),
 	})

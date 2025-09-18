@@ -17,23 +17,22 @@ type ImageLimit struct {
 }
 
 type ServerLimits struct {
-	UsernameLengthMin int  `json:"username_length_min"`
-	UsernameLengthMax int  `json:"username_length_max"`
-	PasswordLengthMin int  `json:"password_length_min"`
-	PasswordLengthMax int  `json:"password_length_max"`
-	EmailLengthMin    int  `json:"email_length_min"`
-	EmailLengthMax    int  `json:"email_length_max"`
-	CidMin            int  `json:"cid_min"`
-	CidMax            int  `json:"cid_max"`
-	SimulatorServer   bool `json:"simulator_server"`
+	UsernameLengthMin int `json:"username_length_min"`
+	UsernameLengthMax int `json:"username_length_max"`
+	PasswordLengthMin int `json:"password_length_min"`
+	PasswordLengthMax int `json:"password_length_max"`
+	EmailLengthMin    int `json:"email_length_min"`
+	EmailLengthMax    int `json:"email_length_max"`
+	CidMin            int `json:"cid_min"`
+	CidMax            int `json:"cid_max"`
 }
 
 type ResponseGetServerConfig struct {
 	Limits            *ServerLimits    `json:"limits"`
 	ImageLimit        *ImageLimit      `json:"image_limit"`
 	EmailSendInterval int              `json:"email_send_interval"`
-	Facilities        *[]FacilityModel `json:"facilities"`
-	Ratings           *[]RatingModel   `json:"ratings"`
+	Facilities        []*FacilityModel `json:"facilities"`
+	Ratings           []*RatingModel   `json:"ratings"`
 }
 
 type ResponseGetServerInfo struct {
@@ -43,11 +42,12 @@ type ResponseGetServerInfo struct {
 }
 
 type OnlineTime struct {
-	Cid  int `json:"cid"`
-	Time int `json:"time"`
+	Cid       int    `json:"cid"`
+	AvatarUrl string `json:"avatar_url"`
+	Time      int    `json:"time"`
 }
 
 type ResponseGetTimeRating struct {
-	Pilots      []OnlineTime `json:"pilots"`
-	Controllers []OnlineTime `json:"controllers"`
+	Pilots      []*OnlineTime `json:"pilots"`
+	Controllers []*OnlineTime `json:"controllers"`
 }

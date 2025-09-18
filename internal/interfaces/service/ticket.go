@@ -4,33 +4,33 @@ package service
 import "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 
 type TicketServiceInterface interface {
-	GetTickets(req *RequestGetTicket) *ApiResponse[ResponseGetTicket]
-	GetUserTicket(req *RequestGetUserTicket) *ApiResponse[ResponseGetUserTicket]
+	GetTickets(req *RequestGetTickets) *ApiResponse[ResponseGetTickets]
+	GetUserTickets(req *RequestGetUserTickets) *ApiResponse[ResponseGetUserTickets]
 	CreateTicket(req *RequestCreateTicket) *ApiResponse[ResponseCreateTicket]
 	CloseTicket(req *RequestCloseTicket) *ApiResponse[ResponseCloseTicket]
 	DeleteTicket(req *RequestDeleteTicket) *ApiResponse[ResponseDeleteTicket]
 }
 
-type RequestGetTicket struct {
+type RequestGetTickets struct {
 	JwtHeader
 	Page     int `query:"page_number"`
 	PageSize int `query:"page_size"`
 }
 
-type ResponseGetTicket struct {
+type ResponseGetTickets struct {
 	Items    []*operation.Ticket `json:"items"`
 	Page     int                 `json:"page"`
 	PageSize int                 `json:"page_size"`
 	Total    int64               `json:"total"`
 }
 
-type RequestGetUserTicket struct {
+type RequestGetUserTickets struct {
 	JwtHeader
 	Page     int `query:"page_number"`
 	PageSize int `query:"page_size"`
 }
 
-type ResponseGetUserTicket struct {
+type ResponseGetUserTickets struct {
 	Items    []*operation.Ticket `json:"items"`
 	Page     int                 `json:"page"`
 	PageSize int                 `json:"page_size"`

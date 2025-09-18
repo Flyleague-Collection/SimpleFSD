@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+var (
+	ErrRecordNotFound = NewApiStatus("RECORD_NOT_FOUND", "管制员履历不存在", NotFound)
+)
+
 type ControllerServiceInterface interface {
 	GetControllerList(req *RequestControllerList) *ApiResponse[ResponseControllerList]
 	GetCurrentControllerRecord(req *RequestGetCurrentControllerRecord) *ApiResponse[ResponseGetCurrentControllerRecord]
@@ -46,9 +50,9 @@ type ResponseGetCurrentControllerRecord struct {
 
 type RequestGetControllerRecord struct {
 	JwtHeader
-	TargetCid int `param:"cid"`
-	Page      int `query:"page_number"`
-	PageSize  int `query:"page_size"`
+	TargetUid uint `param:"uid"`
+	Page      int  `query:"page_number"`
+	PageSize  int  `query:"page_size"`
 }
 
 type ResponseGetControllerRecord struct {
@@ -99,7 +103,7 @@ type ResponseUpdateControllerGuest bool
 type RequestAddControllerRecord struct {
 	JwtHeader
 	EchoContentHeader
-	TargetCid int    `param:"cid"`
+	TargetUid uint   `param:"uid"`
 	Type      int    `json:"type"`
 	Content   string `json:"content"`
 }
@@ -109,6 +113,7 @@ type ResponseAddControllerRecord bool
 type RequestDeleteControllerRecord struct {
 	JwtHeader
 	EchoContentHeader
+	TargetUid    uint `param:"uid"`
 	TargetRecord uint `param:"rid"`
 }
 

@@ -1,7 +1,7 @@
 // Package operation
 package operation
 
-type Permission int64
+type Permission uint64
 
 // 权限节点上限是64, 超过64需要使用切片
 const (
@@ -76,7 +76,7 @@ func (p *Permission) IsValid() bool {
 }
 
 func (p *Permission) HasPermission(perm Permission) bool {
-	return *p&perm != 0
+	return *p&perm == perm
 }
 
 func (p *Permission) Grant(perm Permission) {

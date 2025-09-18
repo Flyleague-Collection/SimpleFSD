@@ -93,6 +93,8 @@ func main() {
 		return
 	}
 
+	fsd.SyncRangeLimit(config.Server.FSDServer.RangeLimit)
+
 	mainLogger.Info("Connecting to database...")
 	shutdownCallback, databaseOperation, err := database.ConnectDatabase(mainLogger, config, *global.DebugMode)
 	if err != nil {

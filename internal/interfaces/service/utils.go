@@ -52,7 +52,7 @@ type Claims struct {
 	Uid        uint   `json:"uid"`
 	Cid        int    `json:"cid"`
 	Username   string `json:"username"`
-	Permission int64  `json:"permission"`
+	Permission uint64 `json:"permission"`
 	Rating     int    `json:"rating"`
 	FlushToken bool   `json:"flushToken"`
 	config     *config.JWTConfig
@@ -66,7 +66,7 @@ type EchoContentHeader struct {
 
 type JwtHeader struct {
 	Uid        uint
-	Permission int64
+	Permission uint64
 	Cid        int
 }
 
@@ -112,13 +112,16 @@ var (
 	ErrActivityNotFound      = NewApiStatus("ACTIVITY_NOT_FOUND", "活动不存在", NotFound)
 	ErrFlightPlanNotFound    = NewApiStatus("FLIGHT_PLAN_NOT_FOUND", "飞行计划不存在", NotFound)
 	ErrFlightPlanLocked      = NewApiStatus("FLIGHT_PLAN_LOCKED", "飞行计划已锁定", Conflict)
+	ErrTicketNotFound        = NewApiStatus("TICKET_NOT_FOUND", "工单不存在", NotFound)
+	ErrTicketAlreadyClosed   = NewApiStatus("TICKET_ALREADY_CLOSED", "工单已回复", Conflict)
 	ErrFacilityNotFound      = NewApiStatus("FACILITY_NOT_FOUND", "管制席位不存在", NotFound)
 	ErrRegisterFail          = NewApiStatus("REGISTER_FAIL", "注册失败", ServerInternalError)
 	ErrIdentifierTaken       = NewApiStatus("USER_EXISTS", "用户已存在", BadRequest)
 	ErrMissingOrMalformedJwt = NewApiStatus("MISSING_OR_MALFORMED_JWT", "缺少JWT令牌或者令牌格式错误", BadRequest)
 	ErrInvalidOrExpiredJwt   = NewApiStatus("INVALID_OR_EXPIRED_JWT", "无效或过期的JWT令牌", Unauthorized)
 	ErrInvalidJwtType        = NewApiStatus("INVALID_JWT_TYPE", "非法的JWT令牌类型", Unauthorized)
-	ErrUnknown               = NewApiStatus("UNKNOWN_JWT_ERROR", "未知的JWT解析错误", ServerInternalError)
+	ErrUnknownJwtError       = NewApiStatus("UNKNOWN_JWT_ERROR", "未知的JWT解析错误", ServerInternalError)
+	ErrUnknownServerError    = NewApiStatus("UNKNOWN_ERROR", "未知服务器错误", ServerInternalError)
 )
 
 func NewErrorResponse(ctx echo.Context, codeStatus *ApiStatus) error {
@@ -134,7 +137,7 @@ func NewApiResponse[T any](codeStatus *ApiStatus, data *T) *ApiResponse[T] {
 	}
 }
 
-func checkDatabaseError[T any](err error) *ApiResponse[T] {
+func CheckDatabaseError[T any](err error) *ApiResponse[T] {
 	switch {
 	case errors.Is(err, operation.ErrIdentifierCheck):
 		return NewApiResponse[T](ErrRegisterFail, nil)
@@ -146,8 +149,18 @@ func checkDatabaseError[T any](err error) *ApiResponse[T] {
 		return NewApiResponse[T](ErrActivityNotFound, nil)
 	case errors.Is(err, operation.ErrFlightPlanNotFound):
 		return NewApiResponse[T](ErrFlightPlanNotFound, nil)
+	case errors.Is(err, operation.ErrTicketNotFound):
+		return NewApiResponse[T](ErrTicketNotFound, nil)
+	case errors.Is(err, operation.ErrTicketAlreadyClosed):
+		return NewApiResponse[T](ErrTicketAlreadyClosed, nil)
 	case errors.Is(err, operation.ErrFacilityNotFound):
 		return NewApiResponse[T](ErrFacilityNotFound, nil)
+	case errors.Is(err, operation.ErrActivityHasClosed):
+		return NewApiResponse[T](ErrActivityLocked, nil)
+	case errors.Is(err, operation.ErrActivityIdMismatch):
+		return NewApiResponse[T](ErrActivityIdMismatch, nil)
+	case errors.Is(err, operation.ErrControllerRecordNotFound):
+		return NewApiResponse[T](ErrRecordNotFound, nil)
 	case err != nil:
 		return NewApiResponse[T](ErrDatabaseFail, nil)
 	default:
@@ -155,53 +168,119 @@ func checkDatabaseError[T any](err error) *ApiResponse[T] {
 	}
 }
 
-func CheckPermission[T any](permission int64, perm operation.Permission) *ApiResponse[T] {
+func CheckPermission[T any](permission uint64, perm operation.Permission) *ApiResponse[T] {
+	if permission <= 0 {
+		return NewApiResponse[T](ErrNoPermission, nil)
+	}
 	userPermission := operation.Permission(permission)
-	if userPermission.HasPermission(perm) {
+	if !userPermission.HasPermission(perm) {
 		return NewApiResponse[T](ErrNoPermission, nil)
 	}
 	return nil
 }
 
+type Errorhandler[T any] func(err error) *ApiResponse[T]
+
 // CallDBFunc 调用数据库操作函数并处理错误
-func CallDBFunc[R any, T any](fc func() (*R, error)) (result *R, response *ApiResponse[T]) {
+func CallDBFunc[R any, T any](fc func() (R, error)) (result R, response *ApiResponse[T]) {
 	result, err := fc()
-	response = checkDatabaseError[T](err)
+	response = CheckDatabaseError[T](err)
+	return
+}
+
+type CallDatabaseFunc[R any, T any] struct {
+	errHandler Errorhandler[T]
+}
+
+func WithErrorHandler[R any, T any](errHandler Errorhandler[T]) *CallDatabaseFunc[R, T] {
+	return &CallDatabaseFunc[R, T]{
+		errHandler: errHandler,
+	}
+}
+
+func (callFunc *CallDatabaseFunc[R, T]) CallDBFunc(fc func() (R, error)) (result R, response *ApiResponse[T]) {
+	result, err := fc()
+	if err == nil {
+		return
+	}
+	response = callFunc.errHandler(err)
+	if response == nil {
+		response = CheckDatabaseError[T](err)
+	}
 	return
 }
 
 func CallDBFuncWithoutRet[T any](fc func() error) *ApiResponse[T] {
 	err := fc()
-	return checkDatabaseError[T](err)
+	return CheckDatabaseError[T](err)
 }
 
-// GetUsersAndCheckPermission 从数据库获取用户数据并检查权限
-func GetUsersAndCheckPermission[T any](
+type CallDatabaseFuncWithoutRet[T any] struct {
+	errHandler Errorhandler[T]
+}
+
+func WithErrorHandlerWithoutRet[T any](errHandler Errorhandler[T]) *CallDatabaseFuncWithoutRet[T] {
+	return &CallDatabaseFuncWithoutRet[T]{
+		errHandler: errHandler,
+	}
+}
+
+func (callFunc *CallDatabaseFuncWithoutRet[T]) CallDBFuncWithoutRet(fc func() error) (response *ApiResponse[T]) {
+	err := fc()
+	if err == nil {
+		return
+	}
+	response = callFunc.errHandler(err)
+	if response == nil {
+		response = CheckDatabaseError[T](err)
+	}
+	return
+}
+
+func GetTargetUserAndCheckPermissionFromDatabase[T any](
 	userOperation operation.UserOperationInterface,
 	uid uint,
 	targetUid uint,
 	perm operation.Permission,
 ) (user *operation.User, targetUser *operation.User, response *ApiResponse[T]) {
-	// 敏感操作获取实时数据
-	user, response = CallDBFunc[operation.User, T](func() (*operation.User, error) { return userOperation.GetUserByUid(uid) })
-	if response != nil {
+	if user, response = CallDBFunc[*operation.User, T](func() (*operation.User, error) {
+		return userOperation.GetUserByUid(uid)
+	}); response != nil {
 		return
 	}
 	if response = CheckPermission[T](user.Permission, perm); response != nil {
 		return
 	}
-	targetUser, response = CallDBFunc[operation.User, T](func() (*operation.User, error) { return userOperation.GetUserByUid(targetUid) })
+	targetUser, response = CallDBFunc[*operation.User, T](func() (*operation.User, error) {
+		return userOperation.GetUserByUid(targetUid)
+	})
 	return
 }
 
-func GetUserAndCheckPermission[T any](
+func GetTargetUserAndCheckPermission[T any](
 	userOperation operation.UserOperationInterface,
-	permission int64,
+	permission uint64,
 	targetUid uint,
 	perm operation.Permission,
 ) (*operation.User, *ApiResponse[T]) {
 	if res := CheckPermission[T](permission, perm); res != nil {
 		return nil, res
 	}
-	return CallDBFunc[operation.User, T](func() (*operation.User, error) { return userOperation.GetUserByUid(targetUid) })
+	return CallDBFunc[*operation.User, T](func() (*operation.User, error) {
+		return userOperation.GetUserByUid(targetUid)
+	})
+}
+
+func CheckPermissionFromDatabase[T any](
+	userOperation operation.UserOperationInterface,
+	uid uint,
+	perm operation.Permission,
+) (user *operation.User, response *ApiResponse[T]) {
+	if user, response = CallDBFunc[*operation.User, T](func() (*operation.User, error) {
+		return userOperation.GetUserByUid(uid)
+	}); response != nil {
+		return
+	}
+	response = CheckPermission[T](user.Permission, perm)
+	return
 }

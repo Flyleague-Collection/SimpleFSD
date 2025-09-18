@@ -1,4 +1,6 @@
-// Package service
+// Package store
+// 存放 service.StoreServiceInterface 的实现
+// 本文件存放阿里云OSS存储实现
 package store
 
 import (
@@ -7,6 +9,8 @@ import (
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"mime/multipart"
 	"net/url"
@@ -15,19 +19,29 @@ import (
 )
 
 type ALiYunOssStoreService struct {
-	logger     log.LoggerInterface
-	localStore StoreServiceInterface
-	config     *config.HttpServerStore
-	endpoint   *url.URL
-	client     *oss.Client
+	logger            log.LoggerInterface
+	localStore        StoreServiceInterface
+	config            *config.HttpServerStore
+	endpoint          *url.URL
+	client            *oss.Client
+	messageQueue      queue.MessageQueueInterface
+	auditLogOperation operation.AuditLogOperationInterface
 }
 
 func NewALiYunOssStoreService(
 	logger log.LoggerInterface,
 	config *config.HttpServerStore,
 	localStore StoreServiceInterface,
+	messageQueue queue.MessageQueueInterface,
+	auditLogOperation operation.AuditLogOperationInterface,
 ) *ALiYunOssStoreService {
-	service := &ALiYunOssStoreService{logger: logger, localStore: localStore, config: config}
+	service := &ALiYunOssStoreService{
+		logger:            logger,
+		localStore:        localStore,
+		config:            config,
+		messageQueue:      messageQueue,
+		auditLogOperation: auditLogOperation,
+	}
 	cfg := oss.LoadDefaultConfig().
 		WithCredentialsProvider(credentials.NewStaticCredentialsProvider(config.AccessId, config.AccessKey)).
 		WithRegion(config.Region).
@@ -52,7 +66,7 @@ func (store *ALiYunOssStoreService) SaveImageFile(file *multipart.FileHeader) (*
 	reader, err := file.Open()
 	if err != nil {
 		store.logger.ErrorF("ALiYunOssStoreService.SaveImageFile open form file error: %v", err)
-		return nil, &ErrFileUploadFail
+		return nil, ErrFileUploadFail
 	}
 
 	putRequest := &oss.PutObjectRequest{
@@ -63,10 +77,9 @@ func (store *ALiYunOssStoreService) SaveImageFile(file *multipart.FileHeader) (*
 	}
 
 	_, err = store.client.PutObject(context.TODO(), putRequest)
-
 	if err != nil {
 		store.logger.ErrorF("ALiYunOssStoreService.SaveImageFile upload image to remote storage error: %v", err)
-		return nil, &ErrFileUploadFail
+		return nil, ErrFileUploadFail
 	}
 	return storeInfo, nil
 }
@@ -76,11 +89,14 @@ func (store *ALiYunOssStoreService) DeleteImageFile(file string) (*StoreInfo, er
 	if err != nil {
 		return nil, err
 	}
+
 	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
+
 	delRequest := &oss.DeleteObjectRequest{
 		Bucket: oss.Ptr(store.config.Bucket),
 		Key:    oss.Ptr(storeInfo.RemotePath),
 	}
+
 	_, err = store.client.DeleteObject(context.TODO(), delRequest)
 	if err != nil {
 		store.logger.ErrorF("ALiYunOssStoreService.DeleteImageFile delete image from remote storage error: %v", err)
@@ -90,18 +106,29 @@ func (store *ALiYunOssStoreService) DeleteImageFile(file string) (*StoreInfo, er
 }
 
 func (store *ALiYunOssStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
-	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUploadFile](ErrNoPermission, nil)
-	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {
 		return NewApiResponse[ResponseUploadFile](res, nil)
 	}
+
 	accessUrl, err := url.JoinPath(store.endpoint.String(), storeInfo.RemotePath)
 	if err != nil {
-		return NewApiResponse[ResponseUploadFile](&ErrFilePathFail, nil)
+		return NewApiResponse[ResponseUploadFile](ErrFilePathFail, nil)
 	}
-	return NewApiResponse(&SuccessUploadFile, &ResponseUploadFile{
+
+	store.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: store.auditLogOperation.NewAuditLog(
+			operation.FileUpload,
+			req.Cid,
+			storeInfo.RemotePath,
+			req.Ip,
+			req.UserAgent,
+			nil,
+		),
+	})
+
+	return NewApiResponse(SuccessUploadFile, &ResponseUploadFile{
 		FileSize:   req.File.Size,
 		AccessPath: accessUrl,
 	})

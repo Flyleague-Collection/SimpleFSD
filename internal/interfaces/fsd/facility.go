@@ -27,7 +27,7 @@ const (
 	FSS
 )
 
-var Facilities = []FacilityModel{
+var Facilities = []*FacilityModel{
 	{0, "Pilot", "Pilot"},
 	{1, "OBS", "Observer"},
 	{2, "DEL", "Clearance Delivery"},
@@ -40,6 +40,8 @@ var Facilities = []FacilityModel{
 
 var facilitiesIndex = map[Facility]int{Pilot: 0, OBS: 1, DEL: 2, GND: 3, TWR: 4, APP: 5, CTR: 6, FSS: 7}
 
+var facilityRangeLimit = map[Facility]int{Pilot: 50, OBS: 300, DEL: 20, GND: 20, TWR: 50, APP: 150, CTR: 600, FSS: 600}
+
 func (f Facility) String() string {
 	return Facilities[int(math.Log2(float64(f)))].ShortName
 }
@@ -49,7 +51,11 @@ func (f Facility) Index() int {
 }
 
 func (f Facility) CheckFacility(facility Facility) bool {
-	return f&facility != 0
+	return f&facility == facility
+}
+
+func (f Facility) GetRangeLimit() int {
+	return facilityRangeLimit[f]
 }
 
 func (r Rating) CheckRatingFacility(facility Facility) bool {
@@ -62,10 +68,20 @@ func SyncRatingConfig(config *config.Config) error {
 	}
 	for rating, facility := range config.Rating {
 		r := utils.StrToInt(rating, int(Ban)-1)
-		if r < int(Ban) || r > int(Administrator) {
+		if !IsValidRating(r) {
 			return fmt.Errorf("illegal permission value %s", rating)
 		}
 		RatingFacilityMap[Rating(r)] = Facility(facility)
 	}
 	return nil
+}
+
+func SyncRangeLimit(config *config.FsdRangeLimit) {
+	facilityRangeLimit[OBS] = config.Observer
+	facilityRangeLimit[DEL] = config.Delivery
+	facilityRangeLimit[GND] = config.Ground
+	facilityRangeLimit[TWR] = config.Tower
+	facilityRangeLimit[APP] = config.Approach
+	facilityRangeLimit[CTR] = config.Center
+	facilityRangeLimit[FSS] = config.FSS
 }

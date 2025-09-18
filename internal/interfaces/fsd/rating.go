@@ -25,7 +25,7 @@ const (
 	Administrator
 )
 
-var Ratings = []RatingModel{
+var Ratings = []*RatingModel{
 	{-1, "Baned", "Suspended"},
 	{0, "Normal", "Normal"},
 	{1, "OBS", "Observer"},
@@ -48,4 +48,8 @@ func (r Rating) String() string {
 
 func (r Rating) Index() int {
 	return int(r)
+}
+
+func IsValidRating(r int) bool {
+	return int(Ban) <= r && r <= int(Administrator)
 }

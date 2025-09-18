@@ -18,6 +18,9 @@ type ChangeDetail struct {
 	OldValue string `json:"old_value"`
 	NewValue string `json:"new_value"`
 }
+
+const ValueNotAvailable = "NOT AVAILABLE"
+
 type AuditEventType string
 
 const (
@@ -35,7 +38,7 @@ const (
 	TicketClose             AuditEventType = "TicketClose"
 	TicketDeleted           AuditEventType = "TicketDeleted"
 	ControllerRecordCreated AuditEventType = "ControllerRecordCreated"
-	ControllerRecordDeleted AuditEventType = "ControllerRecordUpdated"
+	ControllerRecordDeleted AuditEventType = "ControllerRecordDeleted"
 	ControllerRatingChange  AuditEventType = "ControllerRatingChange"
 	ControllerUMChange      AuditEventType = "ControllerUMChange"
 	ControllerSoloChange    AuditEventType = "ControllerSoloChange"
@@ -43,6 +46,7 @@ const (
 	FlightPlanDeleted       AuditEventType = "FlightPlanDeleted"
 	FlightPlanLock          AuditEventType = "FlightPlanLock"
 	FlightPlanUnlock        AuditEventType = "FlightPlanUnlock"
+	FileUpload              AuditEventType = "FileUpload"
 )
 
 type AuditLogOperationInterface interface {

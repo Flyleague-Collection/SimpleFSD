@@ -1,4 +1,6 @@
-// Package service
+// Package store
+// 存放 service.StoreServiceInterface 的实现
+// 本文件存放腾讯云COS存储实现
 package store
 
 import (
@@ -6,6 +8,8 @@ import (
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/tencentyun/cos-go-sdk-v5"
 	"mime/multipart"
@@ -16,19 +20,29 @@ import (
 )
 
 type TencentCosStoreService struct {
-	logger     log.LoggerInterface
-	localStore StoreServiceInterface
-	config     *config.HttpServerStore
-	endpoint   *url.URL
-	client     *cos.Client
+	logger            log.LoggerInterface
+	localStore        StoreServiceInterface
+	config            *config.HttpServerStore
+	endpoint          *url.URL
+	client            *cos.Client
+	messageQueue      queue.MessageQueueInterface
+	auditLogOperation operation.AuditLogOperationInterface
 }
 
 func NewTencentCosStoreService(
 	logger log.LoggerInterface,
 	config *config.HttpServerStore,
 	localStore StoreServiceInterface,
+	messageQueue queue.MessageQueueInterface,
+	auditLogOperation operation.AuditLogOperationInterface,
 ) *TencentCosStoreService {
-	service := &TencentCosStoreService{logger: logger, localStore: localStore, config: config}
+	service := &TencentCosStoreService{
+		logger:            logger,
+		localStore:        localStore,
+		config:            config,
+		messageQueue:      messageQueue,
+		auditLogOperation: auditLogOperation,
+	}
 	bucketUrl, _ := url.Parse(fmt.Sprintf("https://%s.cos.%s.myqcloud.com", config.Bucket, strings.ToLower(config.Region)))
 	serviceUrl, _ := url.Parse(fmt.Sprintf("https://cos.%s.myqcloud.com", strings.ToLower(config.Region)))
 	baseUrl := &cos.BaseURL{BucketURL: bucketUrl, ServiceURL: serviceUrl}
@@ -57,13 +71,13 @@ func (store *TencentCosStoreService) SaveImageFile(file *multipart.FileHeader) (
 	reader, err := file.Open()
 	if err != nil {
 		store.logger.ErrorF("TencentCosStoreService.SaveImageFile open form file errors: %v", err)
-		return nil, &ErrFileUploadFail
+		return nil, ErrFileUploadFail
 	}
 
 	_, err = store.client.Object.Put(context.Background(), storeInfo.RemotePath, reader, nil)
 	if err != nil {
 		store.logger.ErrorF("TencentCosStoreService.SaveImageFile upload image to remote storage error: %v", err)
-		return nil, &ErrFileUploadFail
+		return nil, ErrFileUploadFail
 	}
 	return storeInfo, nil
 }
@@ -73,6 +87,7 @@ func (store *TencentCosStoreService) DeleteImageFile(file string) (*StoreInfo, e
 	if err != nil {
 		return nil, err
 	}
+
 	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
 
 	_, err = store.client.Object.Delete(context.Background(), storeInfo.RemotePath)
@@ -84,18 +99,29 @@ func (store *TencentCosStoreService) DeleteImageFile(file string) (*StoreInfo, e
 }
 
 func (store *TencentCosStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
-	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUploadFile](ErrNoPermission, nil)
-	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {
 		return NewApiResponse[ResponseUploadFile](res, nil)
 	}
+
 	accessUrl, err := url.JoinPath(store.endpoint.String(), storeInfo.RemotePath)
 	if err != nil {
-		return NewApiResponse[ResponseUploadFile](&ErrFilePathFail, nil)
+		return NewApiResponse[ResponseUploadFile](ErrFilePathFail, nil)
 	}
-	return NewApiResponse(&SuccessUploadFile, &ResponseUploadFile{
+
+	store.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: store.auditLogOperation.NewAuditLog(
+			operation.FileUpload,
+			req.Cid,
+			storeInfo.RemotePath,
+			req.Ip,
+			req.UserAgent,
+			nil,
+		),
+	})
+
+	return NewApiResponse(SuccessUploadFile, &ResponseUploadFile{
 		FileSize:   req.File.Size,
 		AccessPath: accessUrl,
 	})

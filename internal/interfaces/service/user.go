@@ -28,11 +28,7 @@ type RequestUserRegister struct {
 	EmailCode int    `json:"email_code"`
 }
 
-type ResponseUserRegister struct {
-	User       *operation.User `json:"user"`
-	Token      string          `json:"token"`
-	FlushToken string          `json:"flush_token"`
-}
+type ResponseUserRegister bool
 
 type RequestUserLogin struct {
 	Username string `json:"username"`
@@ -54,10 +50,10 @@ type RequestUserAvailability struct {
 type ResponseUserAvailability bool
 
 type RequestUserCurrentProfile struct {
-	Uid uint
+	JwtHeader
 }
 
-type ResponseUserCurrentProfile operation.User
+type ResponseUserCurrentProfile *operation.User
 
 type RequestUserEditCurrentProfile struct {
 	ID             uint   `json:"id"`
@@ -71,13 +67,14 @@ type RequestUserEditCurrentProfile struct {
 	NewPassword    string `json:"new_password"`
 }
 
-type ResponseUserEditCurrentProfile operation.User
+type ResponseUserEditCurrentProfile bool
+
 type RequestUserProfile struct {
 	JwtHeader
 	TargetUid uint `param:"uid"`
 }
 
-type ResponseUserProfile operation.User
+type ResponseUserProfile *operation.User
 
 type RequestUserList struct {
 	JwtHeader
@@ -95,26 +92,23 @@ type ResponseUserList struct {
 type RequestUserEditProfile struct {
 	JwtHeader
 	EchoContentHeader
-	Cid       int
 	TargetUid uint `param:"uid"`
 	RequestUserEditCurrentProfile
 }
 
-type ResponseUserEditProfile operation.User
+type ResponseUserEditProfile bool
 
 type RequestUserEditPermission struct {
 	JwtHeader
 	EchoContentHeader
-	Cid         int
 	TargetUid   uint     `param:"uid"`
 	Permissions echo.Map `json:"permissions"`
 }
 
-type ResponseUserEditPermission operation.User
+type ResponseUserEditPermission bool
 
 type RequestGetUserHistory struct {
 	JwtHeader
-	Cid int
 }
 
 type ResponseGetUserHistory struct {
@@ -129,7 +123,6 @@ type RequestGetToken struct {
 }
 
 type ResponseGetToken struct {
-	User       *operation.User `json:"user"`
-	Token      string          `json:"token"`
-	FlushToken string          `json:"flush_token"`
+	Token      string `json:"token"`
+	FlushToken string `json:"flush_token"`
 }

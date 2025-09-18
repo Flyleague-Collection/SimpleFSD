@@ -135,7 +135,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 			case errors.Is(err, echojwt.ErrJWTInvalid):
 				data = service.NewApiResponse[any](service.ErrInvalidOrExpiredJwt, nil)
 			default:
-				data = service.NewApiResponse[any](service.ErrUnknown, nil)
+				data = service.NewApiResponse[any](service.ErrUnknownJwtError, nil)
 			}
 			return data.Response(c)
 		},
@@ -163,15 +163,6 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	impl.InitValidator(config.Server.HttpServer.Limits)
 
-	var storeService service.StoreServiceInterface
-	storeService = store.NewLocalStoreService(logger, httpConfig.Store)
-	switch httpConfig.Store.StoreType {
-	case 1:
-		storeService = store.NewALiYunOssStoreService(logger, httpConfig.Store, storeService)
-	case 2:
-		storeService = store.NewTencentCosStoreService(logger, httpConfig.Store, storeService)
-	}
-
 	userOperation := applicationContent.Operations().UserOperation()
 	controllerOperation := applicationContent.Operations().ControllerOperation()
 	controllerRecordOperation := applicationContent.Operations().ControllerRecordOperation()
@@ -196,10 +187,19 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	clientManager := applicationContent.ClientManager()
 
-	userService := impl.NewUserService(logger, httpConfig, userOperation, historyOperation, auditLogOperation, storeService, emailService, messageQueue)
+	var storeService service.StoreServiceInterface
+	storeService = store.NewLocalStoreService(logger, httpConfig.Store, messageQueue, auditLogOperation)
+	switch httpConfig.Store.StoreType {
+	case 1:
+		storeService = store.NewALiYunOssStoreService(logger, httpConfig.Store, storeService, messageQueue, auditLogOperation)
+	case 2:
+		storeService = store.NewTencentCosStoreService(logger, httpConfig.Store, storeService, messageQueue, auditLogOperation)
+	}
+
+	userService := impl.NewUserService(logger, httpConfig, messageQueue, userOperation, historyOperation, auditLogOperation, storeService, emailService)
 	clientService := impl.NewClientService(logger, httpConfig, userOperation, auditLogOperation, clientManager, messageQueue)
 	serverService := impl.NewServerService(logger, config.Server, userOperation, controllerOperation, activityOperation)
-	activityService := impl.NewActivityService(logger, httpConfig, userOperation, activityOperation, auditLogOperation, storeService)
+	activityService := impl.NewActivityService(logger, httpConfig, messageQueue, userOperation, activityOperation, auditLogOperation, storeService)
 	controllerService := impl.NewControllerService(logger, httpConfig, messageQueue, userOperation, controllerOperation, controllerRecordOperation, auditLogOperation)
 	ticketService := impl.NewTicketService(logger, messageQueue, userOperation, ticketOperation, auditLogOperation)
 	flightPlanService := impl.NewFlightPlanService(logger, messageQueue, userOperation, flightPlanOperation, auditLogOperation)
@@ -238,9 +238,9 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	controllerGroup := apiGroup.Group("/controllers")
 	controllerGroup.GET("", controllerController.GetControllers, jwtMiddleware, requireNoFlushToken)
 	controllerGroup.GET("/records/self", controllerController.GetCurrentControllerRecord, jwtMiddleware, requireNoFlushToken)
-	controllerGroup.GET("/records/:cid", controllerController.GetControllerRecord, jwtMiddleware, requireNoFlushToken)
-	controllerGroup.POST("/records/:cid", controllerController.AddControllerRecord, jwtMiddleware, requireNoFlushToken)
-	controllerGroup.DELETE("/records/:rid", controllerController.DeleteControllerRecord, jwtMiddleware, requireNoFlushToken)
+	controllerGroup.GET("/records/:uid", controllerController.GetControllerRecord, jwtMiddleware, requireNoFlushToken)
+	controllerGroup.POST("/records/:uid", controllerController.AddControllerRecord, jwtMiddleware, requireNoFlushToken)
+	controllerGroup.DELETE("/records/:uid/:rid", controllerController.DeleteControllerRecord, jwtMiddleware, requireNoFlushToken)
 	controllerGroup.PUT("/:uid/rating", controllerController.UpdateControllerRating, jwtMiddleware, requireNoFlushToken)
 	controllerGroup.PUT("/:uid/um", controllerController.SetControllerUnderMonitor, jwtMiddleware, requireNoFlushToken)
 	controllerGroup.DELETE("/:uid/um", controllerController.UnsetControllerUnderMonitor, jwtMiddleware, requireNoFlushToken)
@@ -263,24 +263,24 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	activityGroup := apiGroup.Group("/activities")
 	activityGroup.GET("", activityController.GetActivities, jwtMiddleware, requireNoFlushToken)
-	activityGroup.GET("/details", activityController.GetActivitiesPage, jwtMiddleware, requireNoFlushToken)
-	activityGroup.GET("/:id", activityController.GetActivityInfo, jwtMiddleware, requireNoFlushToken)
+	activityGroup.GET("/pages", activityController.GetActivitiesPage, jwtMiddleware, requireNoFlushToken)
+	activityGroup.GET("/:activity_id", activityController.GetActivityInfo, jwtMiddleware, requireNoFlushToken)
 	activityGroup.POST("", activityController.AddActivity, jwtMiddleware, requireNoFlushToken)
-	activityGroup.DELETE("/:id", activityController.DeleteActivity, jwtMiddleware, requireNoFlushToken)
-	activityGroup.POST("/:id/controllers/:facility_id", activityController.ControllerJoin, jwtMiddleware, requireNoFlushToken)
-	activityGroup.DELETE("/:id/controllers/:facility_id", activityController.ControllerLeave, jwtMiddleware, requireNoFlushToken)
-	activityGroup.POST("/:id/pilots", activityController.PilotJoin, jwtMiddleware, requireNoFlushToken)
-	activityGroup.DELETE("/:id/pilots", activityController.PilotLeave, jwtMiddleware, requireNoFlushToken)
-	activityGroup.PUT("/:id/status", activityController.EditActivityStatus, jwtMiddleware, requireNoFlushToken)
-	activityGroup.PUT("/:id/pilots/:pilot_id/status", activityController.EditPilotStatus, jwtMiddleware, requireNoFlushToken)
-	activityGroup.PUT("/:id", activityController.EditActivity, jwtMiddleware, requireNoFlushToken)
+	activityGroup.DELETE("/:activity_id", activityController.DeleteActivity, jwtMiddleware, requireNoFlushToken)
+	activityGroup.POST("/:activity_id/controllers/:facility_id", activityController.ControllerJoin, jwtMiddleware, requireNoFlushToken)
+	activityGroup.DELETE("/:activity_id/controllers/:facility_id", activityController.ControllerLeave, jwtMiddleware, requireNoFlushToken)
+	activityGroup.POST("/:activity_id/pilots", activityController.PilotJoin, jwtMiddleware, requireNoFlushToken)
+	activityGroup.DELETE("/:activity_id/pilots", activityController.PilotLeave, jwtMiddleware, requireNoFlushToken)
+	activityGroup.PUT("/:activity_id/status", activityController.EditActivityStatus, jwtMiddleware, requireNoFlushToken)
+	activityGroup.PUT("/:activity_id/pilots/:user_id/status", activityController.EditPilotStatus, jwtMiddleware, requireNoFlushToken)
+	activityGroup.PUT("/:activity_id", activityController.EditActivity, jwtMiddleware, requireNoFlushToken)
 
 	ticketGroup := apiGroup.Group("/tickets")
 	ticketGroup.GET("", ticketController.GetTickets, jwtMiddleware, requireNoFlushToken)
 	ticketGroup.GET("/self", ticketController.GetUserTickets, jwtMiddleware, requireNoFlushToken)
 	ticketGroup.POST("", ticketController.CreateTicket, jwtMiddleware, requireNoFlushToken)
 	ticketGroup.PUT("/:tid", ticketController.CloseTicket, jwtMiddleware, requireNoFlushToken)
-	ticketGroup.DELETE("/:tid", ticketController.CloseTicket, jwtMiddleware, requireNoFlushToken)
+	ticketGroup.DELETE("/:tid", ticketController.DeleteTicket, jwtMiddleware, requireNoFlushToken)
 
 	flightPlanGroup := apiGroup.Group("/plans")
 	flightPlanGroup.POST("", flightPlanController.SubmitFlightPlan, jwtMiddleware, requireNoFlushToken)

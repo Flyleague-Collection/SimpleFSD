@@ -9,32 +9,30 @@ import (
 )
 
 type User struct {
-	ID                    uint                `gorm:"primarykey" json:"id"`
-	Username              string              `gorm:"size:64;uniqueIndex;not null" json:"username"`
-	Email                 string              `gorm:"size:128;uniqueIndex;not null" json:"email"`
-	Cid                   int                 `gorm:"uniqueIndex;not null" json:"cid"`
-	Password              string              `gorm:"size:128;not null" json:"-"`
-	AvatarUrl             string              `gorm:"size:128;not null;default:''" json:"avatar_url"`
-	QQ                    int                 `gorm:"default:0" json:"qq"`
-	Rating                int                 `gorm:"default:0" json:"rating"`
-	Guest                 bool                `gorm:"default:false" json:"guest"`
-	UnderMonitor          bool                `gorm:"default:false;not null" json:"under_monitor"`
-	UnderSolo             bool                `gorm:"default:false;not null" json:"under_solo"`
-	SoloUntil             time.Time           `json:"solo_until"`
-	Permission            int64               `gorm:"default:0" json:"permission"`
-	TotalPilotTime        int                 `gorm:"default:0" json:"total_pilot_time"`
-	TotalAtcTime          int                 `gorm:"default:0" json:"total_atc_time"`
-	FlightPlans           []*FlightPlan       `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	OnlineHistories       []*History          `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	ActivityAtc           []*ActivityATC      `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	ActivityPilot         []*ActivityPilot    `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	AuditLogs             []*AuditLog         `gorm:"foreignKey:Subject;references:Cid" json:"-"`
-	ControllerRecordsTo   []*ControllerRecord `gorm:"foreignKey:Cid;references:Cid" json:"-"`
-	ControllerRecordsFrom []*ControllerRecord `gorm:"foreignKey:Operator;references:Cid" json:"-"`
-	Opener                []*Ticket           `gorm:"foreignKey:Opener;references:Cid" json:"-"`
-	Closer                []*Ticket           `gorm:"foreignKey:Closer;references:Cid" json:"-"`
-	CreatedAt             time.Time           `json:"-"`
-	UpdatedAt             time.Time           `json:"-"`
+	ID                uint                `gorm:"primarykey" json:"id"`
+	Username          string              `gorm:"size:64;uniqueIndex;not null" json:"username"`
+	Email             string              `gorm:"size:128;uniqueIndex;not null" json:"email"`
+	Cid               int                 `gorm:"uniqueIndex;not null" json:"cid"`
+	Password          string              `gorm:"size:128;not null" json:"-"`
+	AvatarUrl         string              `gorm:"size:128;not null;default:''" json:"avatar_url"`
+	QQ                int                 `gorm:"default:0" json:"qq"`
+	Rating            int                 `gorm:"default:0" json:"rating"`
+	Guest             bool                `gorm:"default:false" json:"guest"`
+	UnderMonitor      bool                `gorm:"default:false;not null" json:"under_monitor"`
+	UnderSolo         bool                `gorm:"default:false;not null" json:"under_solo"`
+	SoloUntil         time.Time           `gorm:"default:null" json:"solo_until"`
+	Permission        uint64              `gorm:"default:0" json:"permission"`
+	TotalPilotTime    int                 `gorm:"default:0" json:"total_pilot_time"`
+	TotalAtcTime      int                 `gorm:"default:0" json:"total_atc_time"`
+	FlightPlans       []*FlightPlan       `gorm:"foreignKey:Cid;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	OnlineHistories   []*History          `gorm:"foreignKey:Cid;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	ActivityAtc       []*ActivityATC      `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	ActivityPilot     []*ActivityPilot    `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	AuditLogs         []*AuditLog         `gorm:"foreignKey:Subject;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	ControllerRecords []*ControllerRecord `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	Opener            []*Ticket           `gorm:"foreignKey:Opener;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	CreatedAt         time.Time           `json:"-"`
+	UpdatedAt         time.Time           `json:"-"`
 }
 
 var (
@@ -98,7 +96,7 @@ type UserOperationInterface interface {
 	// UpdateUserPermission 更新用户飞控权限, 当err为nil时表示更新成功
 	UpdateUserPermission(user *User, permission Permission) (err error)
 	// UpdateUserInfo 批量更新用户信息, 当err为nil时表示更新成功
-	UpdateUserInfo(user *User, info map[string]interface{}) (err error)
+	UpdateUserInfo(user *User, info *User) (err error)
 	// UpdateUserPassword 更新用户密码(不写入数据库, 仅验证), 当err为nil时返回值encodePassword有效
 	UpdateUserPassword(user *User, originalPassword, newPassword string, skipVerify bool) (encodePassword []byte, err error)
 	// SaveUser 保存用户数据, 强制整个用户结构体到数据库, 谨慎使用, 当err为nil时表示更新成功

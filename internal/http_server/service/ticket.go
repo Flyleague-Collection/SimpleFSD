@@ -1,4 +1,5 @@
 // Package service
+// 存放 TicketServiceInterface 的实现
 package service
 
 import (
@@ -34,23 +35,23 @@ func NewTicketService(
 	}
 }
 
-var SuccessGetAllTickets = NewApiStatus("GET_ALL_TICKETS", "成功获取工单数据", Ok)
+var SuccessGetTickets = NewApiStatus("GET_TICKETS", "成功获取工单数据", Ok)
 
-func (ticketService *TicketService) GetTickets(req *RequestGetTicket) *ApiResponse[ResponseGetTicket] {
-	if req.Uid < 0 || req.Page <= 0 || req.PageSize <= 0 {
-		return NewApiResponse[ResponseGetTicket](ErrIllegalParam, nil)
+func (ticketService *TicketService) GetTickets(req *RequestGetTickets) *ApiResponse[ResponseGetTickets] {
+	if req.Page <= 0 || req.PageSize <= 0 {
+		return NewApiResponse[ResponseGetTickets](ErrIllegalParam, nil)
 	}
 
-	if res := CheckPermission[ResponseGetTicket](req.Permission, operation.TicketShowList); res != nil {
+	if res := CheckPermission[ResponseGetTickets](req.Permission, operation.TicketShowList); res != nil {
 		return res
 	}
 
 	records, total, err := ticketService.ticketOperation.GetTickets(req.Page, req.PageSize)
-	if err != nil {
-		return NewApiResponse[ResponseGetTicket](ErrDatabaseFail, nil)
+	if res := CheckDatabaseError[ResponseGetTickets](err); res != nil {
+		return res
 	}
 
-	return NewApiResponse(SuccessGetAllTickets, &ResponseGetTicket{
+	return NewApiResponse(SuccessGetTickets, &ResponseGetTickets{
 		Items:    records,
 		Total:    total,
 		Page:     req.Page,
@@ -60,16 +61,17 @@ func (ticketService *TicketService) GetTickets(req *RequestGetTicket) *ApiRespon
 
 var SuccessGetUserTickets = NewApiStatus("GET_USER_TICKETS", "成功获取用户工单数据", Ok)
 
-func (ticketService *TicketService) GetUserTicket(req *RequestGetUserTicket) *ApiResponse[ResponseGetUserTicket] {
-	if req.Uid < 0 || req.Page <= 0 || req.PageSize <= 0 {
-		return NewApiResponse[ResponseGetUserTicket](ErrIllegalParam, nil)
-	}
-	records, total, err := ticketService.ticketOperation.GetUserTickets(req.Cid, req.Page, req.PageSize)
-	if err != nil {
-		return NewApiResponse[ResponseGetUserTicket](ErrDatabaseFail, nil)
+func (ticketService *TicketService) GetUserTickets(req *RequestGetUserTickets) *ApiResponse[ResponseGetUserTickets] {
+	if req.Page <= 0 || req.PageSize <= 0 {
+		return NewApiResponse[ResponseGetUserTickets](ErrIllegalParam, nil)
 	}
 
-	return NewApiResponse(SuccessGetUserTickets, &ResponseGetUserTicket{
+	records, total, err := ticketService.ticketOperation.GetUserTickets(req.Cid, req.Page, req.PageSize)
+	if res := CheckDatabaseError[ResponseGetUserTickets](err); res != nil {
+		return res
+	}
+
+	return NewApiResponse(SuccessGetUserTickets, &ResponseGetUserTickets{
 		Items:    records,
 		Total:    total,
 		Page:     req.Page,
@@ -80,11 +82,11 @@ func (ticketService *TicketService) GetUserTicket(req *RequestGetUserTicket) *Ap
 var SuccessCreateTicket = NewApiStatus("CREATE_TICKET", "成功创建工单", Ok)
 
 func (ticketService *TicketService) CreateTicket(req *RequestCreateTicket) *ApiResponse[ResponseCreateTicket] {
-	if req.Uid <= 0 || req.Content == "" || !operation.IsValidTicketType(req.Type) {
+	if req.Title == "" || req.Content == "" || !operation.IsValidTicketType(req.Type) {
 		return NewApiResponse[ResponseCreateTicket](ErrIllegalParam, nil)
 	}
 
-	ticketType := operation.ToTicketType(req.Type)
+	ticketType := operation.TicketType(req.Type)
 
 	ticket := ticketService.ticketOperation.NewTicket(req.Cid, ticketType, req.Title, req.Content)
 
@@ -104,7 +106,7 @@ func (ticketService *TicketService) CreateTicket(req *RequestCreateTicket) *ApiR
 			req.Ip,
 			req.UserAgent,
 			&operation.ChangeDetail{
-				OldValue: "NOT AVAILABLE",
+				OldValue: operation.ValueNotAvailable,
 				NewValue: string(newValue),
 			},
 		),
@@ -117,7 +119,7 @@ func (ticketService *TicketService) CreateTicket(req *RequestCreateTicket) *ApiR
 var SuccessCloseTicket = NewApiStatus("CLOSE_TICKET", "成功关闭工单", Ok)
 
 func (ticketService *TicketService) CloseTicket(req *RequestCloseTicket) *ApiResponse[ResponseCloseTicket] {
-	if req.Uid <= 0 || req.TicketId <= 0 || req.Reply == "" {
+	if req.TicketId <= 0 || req.Reply == "" {
 		return NewApiResponse[ResponseCloseTicket](ErrIllegalParam, nil)
 	}
 
@@ -140,7 +142,7 @@ func (ticketService *TicketService) CloseTicket(req *RequestCloseTicket) *ApiRes
 			req.Ip,
 			req.UserAgent,
 			&operation.ChangeDetail{
-				OldValue: "NOT AVAILABLE",
+				OldValue: operation.ValueNotAvailable,
 				NewValue: req.Reply,
 			},
 		),
@@ -153,7 +155,7 @@ func (ticketService *TicketService) CloseTicket(req *RequestCloseTicket) *ApiRes
 var SuccessDeleteTicket = NewApiStatus("DELETE_TICKET", "成功删除工单", Ok)
 
 func (ticketService *TicketService) DeleteTicket(req *RequestDeleteTicket) *ApiResponse[ResponseDeleteTicket] {
-	if req.Uid <= 0 || req.TicketId <= 0 {
+	if req.TicketId <= 0 {
 		return NewApiResponse[ResponseDeleteTicket](ErrIllegalParam, nil)
 	}
 

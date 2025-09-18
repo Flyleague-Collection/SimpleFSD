@@ -1,4 +1,5 @@
 // Package service
+// 存放工具函数
 package service
 
 import (
@@ -43,25 +44,25 @@ func InitValidator(config *config.HttpServerLimit) {
 	usernameValidator = &FieldValidator{
 		Min:      config.UsernameLengthMin,
 		Max:      config.UsernameLengthMax,
-		ErrShort: &ApiStatus{StatusName: "USERNAME_TOO_SHORT", Description: "用户名过短", HttpCode: BadRequest},
-		ErrLong:  &ApiStatus{StatusName: "USERNAME_TOO_LONG", Description: "用户名过长", HttpCode: BadRequest},
+		ErrShort: NewApiStatus("USERNAME_TOO_SHORT", "用户名过短", BadRequest),
+		ErrLong:  NewApiStatus("USERNAME_TOO_LONG", "用户名过长", BadRequest),
 	}
 	passwordValidator = &FieldValidator{
 		Min:      config.PasswordLengthMin,
 		Max:      config.PasswordLengthMax,
-		ErrShort: &ApiStatus{StatusName: "PASSWORD_TOO_SHORT", Description: "密码长度过短", HttpCode: BadRequest},
-		ErrLong:  &ApiStatus{StatusName: "PASSWORD_TOO_LONG", Description: "密码长度过长", HttpCode: BadRequest},
+		ErrShort: NewApiStatus("PASSWORD_TOO_SHORT", "密码长度过短", BadRequest),
+		ErrLong:  NewApiStatus("PASSWORD_TOO_LONG", "密码长度过长", BadRequest),
 	}
 	emailValidator = &FieldValidator{
 		Min:      config.EmailLengthMin,
 		Max:      config.EmailLengthMax,
-		ErrShort: &ApiStatus{StatusName: "EMAIL_TOO_SHORT", Description: "邮箱过短", HttpCode: BadRequest},
-		ErrLong:  &ApiStatus{StatusName: "EMAIL_TOO_LONG", Description: "邮箱过长", HttpCode: BadRequest},
+		ErrShort: NewApiStatus("EMAIL_TOO_SHORT", "邮箱过短", BadRequest),
+		ErrLong:  NewApiStatus("EMAIL_TOO_LONG", "邮箱过长", BadRequest),
 	}
 	cidValidator = &FieldValidator{
 		Min:      config.CidMin,
 		Max:      config.CidMax,
-		ErrShort: &ApiStatus{StatusName: "CID_TOO_SHORT", Description: "cid过短", HttpCode: BadRequest},
-		ErrLong:  &ApiStatus{StatusName: "CID_TOO_LONG", Description: "cid过长", HttpCode: BadRequest},
+		ErrShort: NewApiStatus("CID_TOO_SHORT", "cid过短", BadRequest),
+		ErrLong:  NewApiStatus("CID_TOO_LONG", "cid过长", BadRequest),
 	}
 }

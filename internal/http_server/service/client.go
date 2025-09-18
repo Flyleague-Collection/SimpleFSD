@@ -1,4 +1,5 @@
 // Package service
+// 存放 ClientServiceInterface 的实现
 package service
 
 import (
@@ -40,26 +41,23 @@ func NewClientService(
 	return service
 }
 
-func (clientService *ClientService) GetOnlineClient() *fsd.OnlineClients {
+func (clientService *ClientService) GetOnlineClients() *fsd.OnlineClients {
 	return clientService.clientManager.GetWhazzupContent()
 }
 
 var (
-	ErrSendMessage      = ApiStatus{StatusName: "FAIL_SEND_MESSAGE", Description: "发送消息失败", HttpCode: ServerInternalError}
-	ErrCallsignNotFound = ApiStatus{StatusName: "CALLSIGN_NOT_FOUND", Description: "发送目标不在线", HttpCode: NotFound}
-	SuccessSendMessage  = ApiStatus{StatusName: "SEND_MESSAGE", Description: "发送成功", HttpCode: Ok}
+	ErrSendMessage     = NewApiStatus("FAIL_SEND_MESSAGE", "发送消息失败", ServerInternalError)
+	ErrClientNotFound  = NewApiStatus("CLIENT_NOT_FOUND", "指定客户端不存在", NotFound)
+	SuccessSendMessage = NewApiStatus("SEND_MESSAGE", "发送成功", Ok)
 )
 
 func (clientService *ClientService) SendMessageToClient(req *RequestSendMessageToClient) *ApiResponse[ResponseSendMessageToClient] {
 	if req.Uid <= 0 || req.SendTo == "" || req.Message == "" {
 		return NewApiResponse[ResponseSendMessageToClient](ErrIllegalParam, nil)
 	}
-	if req.Permission <= 0 {
-		return NewApiResponse[ResponseSendMessageToClient](ErrNoPermission, nil)
-	}
-	permission := operation.Permission(req.Permission)
-	if !permission.HasPermission(operation.ClientSendMessage) {
-		return NewApiResponse[ResponseSendMessageToClient](ErrNoPermission, nil)
+
+	if res := CheckPermission[ResponseSendMessageToClient](req.Permission, operation.ClientSendMessage); res != nil {
+		return res
 	}
 
 	if err := clientService.messageQueue.SyncPublish(&queue.Message{
@@ -71,47 +69,52 @@ func (clientService *ClientService) SendMessageToClient(req *RequestSendMessageT
 		},
 	}); err != nil {
 		if errors.Is(err, fsd.ErrCallsignNotFound) {
-			return NewApiResponse[ResponseSendMessageToClient](&ErrCallsignNotFound, nil)
+			return NewApiResponse[ResponseSendMessageToClient](ErrClientNotFound, nil)
 		}
-		return NewApiResponse[ResponseSendMessageToClient](&ErrSendMessage, nil)
+		return NewApiResponse[ResponseSendMessageToClient](ErrSendMessage, nil)
 	}
 
 	clientService.messageQueue.Publish(&queue.Message{
 		Type: queue.AuditLog,
-		Data: clientService.auditLogOperation.NewAuditLog(operation.ClientMessage, req.Cid,
-			fmt.Sprintf("%s(%s)", req.SendTo, req.Message), req.Ip, req.UserAgent, nil),
+		Data: clientService.auditLogOperation.NewAuditLog(
+			operation.ClientMessage,
+			req.Cid,
+			fmt.Sprintf("%s(%s)", req.SendTo, req.Message),
+			req.Ip,
+			req.UserAgent,
+			nil,
+		),
 	})
 
 	data := ResponseSendMessageToClient(true)
-	return NewApiResponse[ResponseSendMessageToClient](&SuccessSendMessage, &data)
+	return NewApiResponse[ResponseSendMessageToClient](SuccessSendMessage, &data)
 }
 
-var SuccessKillClient = ApiStatus{StatusName: "KILL_CLIENT", Description: "成功踢出客户端", HttpCode: Ok}
+var SuccessKillClient = NewApiStatus("KILL_CLIENT", "成功踢出客户端", Ok)
 
 func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiResponse[ResponseKillClient] {
 	if req.Uid <= 0 || req.TargetCallsign == "" {
 		return NewApiResponse[ResponseKillClient](ErrIllegalParam, nil)
 	}
-	user, res := CallDBFunc[operation.User, ResponseKillClient](func() (*operation.User, error) {
-		return clientService.userOperation.GetUserByUid(req.Uid)
-	})
+
+	user, res := CheckPermissionFromDatabase[ResponseKillClient](clientService.userOperation, req.Uid, operation.ClientKill)
 	if res != nil {
 		return res
 	}
-	permission := operation.Permission(user.Permission)
-	if !permission.HasPermission(operation.ClientKill) {
-		return NewApiResponse[ResponseKillClient](ErrNoPermission, nil)
+
+	client, err := clientService.clientManager.KickClientFromServer(req.TargetCallsign, req.Reason)
+	if err != nil {
+		// KickClientFromServer目前仅返回ErrCallsignNotFound错误
+		if errors.Is(err, fsd.ErrCallsignNotFound) {
+			return NewApiResponse[ResponseKillClient](ErrClientNotFound, nil)
+		}
+		return NewApiResponse[ResponseKillClient](ErrUnknownServerError, nil)
 	}
-	client, ok := clientService.clientManager.GetClient(req.TargetCallsign)
-	if !ok {
-		return NewApiResponse[ResponseKillClient](&ErrCallsignNotFound, nil)
-	}
-	client.MarkedDisconnect(false)
 
 	if clientService.config.Email.Template.EnableKickedFromServerEmail {
 		clientService.messageQueue.Publish(&queue.Message{
 			Type: queue.SendKickedFromServerEmail,
-			Data: &SendKickedFromServerData{
+			Data: &KickedFromServerEmailData{
 				User:     client.User(),
 				Operator: user,
 				Reason:   req.Reason,
@@ -121,27 +124,32 @@ func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiRespo
 
 	clientService.messageQueue.Publish(&queue.Message{
 		Type: queue.AuditLog,
-		Data: clientService.auditLogOperation.NewAuditLog(operation.ClientKicked, req.Cid,
-			fmt.Sprintf("%s(%s)", req.TargetCallsign, req.Reason), req.Ip, req.UserAgent, nil),
+		Data: clientService.auditLogOperation.NewAuditLog(
+			operation.ClientKicked,
+			req.Cid,
+			fmt.Sprintf("%s(%s)", req.TargetCallsign, req.Reason),
+			req.Ip,
+			req.UserAgent,
+			nil,
+		),
 	})
 
 	data := ResponseKillClient(true)
-	return NewApiResponse[ResponseKillClient](&SuccessKillClient, &data)
+	return NewApiResponse[ResponseKillClient](SuccessKillClient, &data)
 }
 
-var (
-	ErrClientNotFound    = ApiStatus{StatusName: "CLIENT_NOT_FOUND", Description: "指定客户端不存在", HttpCode: NotFound}
-	SuccessGetClientPath = ApiStatus{StatusName: "GET_CLIENT_PATH", Description: "获取指定客户端飞行路径", HttpCode: Ok}
-)
+var SuccessGetClientPath = NewApiStatus("GET_CLIENT_PATH", "获取客户端飞行路径", Ok)
 
-func (clientService *ClientService) GetClientPath(req *RequestClientPath) *ApiResponse[ResponseClientPath] {
+func (clientService *ClientService) GetClientFlightPath(req *RequestClientPath) *ApiResponse[ResponseClientPath] {
 	if req.Callsign == "" {
 		return NewApiResponse[ResponseClientPath](ErrIllegalParam, nil)
 	}
+
 	client, exist := clientService.clientManager.GetClient(req.Callsign)
 	if !exist {
-		return NewApiResponse[ResponseClientPath](&ErrClientNotFound, nil)
+		return NewApiResponse[ResponseClientPath](ErrClientNotFound, nil)
 	}
+
 	data := ResponseClientPath(client.Paths())
-	return NewApiResponse(&SuccessGetClientPath, &data)
+	return NewApiResponse(SuccessGetClientPath, &data)
 }

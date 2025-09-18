@@ -3,9 +3,11 @@ package database
 
 import (
 	"context"
+	"errors"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"time"
 )
 
@@ -46,6 +48,11 @@ func (ticketOperation *TicketOperation) GetTicket(id uint) (ticket *Ticket, err 
 	defer cancel()
 	ticket = &Ticket{}
 	err = ticketOperation.db.WithContext(ctx).First(ticket, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = ErrTicketNotFound
+		}
+	}
 	return
 }
 
@@ -54,7 +61,7 @@ func (ticketOperation *TicketOperation) GetTickets(page, pageSize int) (tickets 
 	ctx, cancel := context.WithTimeout(context.Background(), ticketOperation.queryTimeout)
 	defer cancel()
 	ticketOperation.db.WithContext(ctx).Model(&Ticket{}).Select("id").Count(&total)
-	err = ticketOperation.db.WithContext(ctx).Offset((page - 1) * pageSize).Order("open_at desc").Limit(pageSize).Find(&tickets).Error
+	err = ticketOperation.db.WithContext(ctx).Offset((page - 1) * pageSize).Order("created_at desc").Limit(pageSize).Find(&tickets).Error
 	return
 }
 
@@ -63,18 +70,29 @@ func (ticketOperation *TicketOperation) GetUserTickets(cid, page, pageSize int) 
 	ctx, cancel := context.WithTimeout(context.Background(), ticketOperation.queryTimeout)
 	defer cancel()
 	ticketOperation.db.WithContext(ctx).Model(&Ticket{}).Select("id").Where("opener = ?", cid).Count(&total)
-	err = ticketOperation.db.WithContext(ctx).Offset((page-1)*pageSize).Order("open_at desc").Where("opener = ?", cid).Limit(pageSize).Find(&tickets).Error
+	err = ticketOperation.db.WithContext(ctx).Offset((page-1)*pageSize).Order("created_at desc").Where("opener = ?", cid).Limit(pageSize).Find(&tickets).Error
 	return
 }
 
 func (ticketOperation *TicketOperation) CloseTicket(ticketId uint, closer int, content string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ticketOperation.queryTimeout)
 	defer cancel()
-	return ticketOperation.db.WithContext(ctx).Model(ticketId).Updates(&Ticket{Closer: closer, Reply: content}).Error
+	ticket, err := ticketOperation.GetTicket(ticketId)
+	if err != nil {
+		return err
+	}
+	if ticket.Closer != 0 {
+		return ErrTicketAlreadyClosed
+	}
+	return ticketOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(&Ticket{ID: ticketId}).Updates(&Ticket{Closer: closer, Reply: content}).Error
 }
 
 func (ticketOperation *TicketOperation) DeleteTicket(id uint) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ticketOperation.queryTimeout)
 	defer cancel()
-	return ticketOperation.db.WithContext(ctx).Delete(&Ticket{}, id).Error
+	result := ticketOperation.db.WithContext(ctx).Delete(&Ticket{}, id)
+	if result.RowsAffected == 0 {
+		return ErrTicketNotFound
+	}
+	return result.Error
 }

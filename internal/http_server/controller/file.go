@@ -32,8 +32,11 @@ func (controller *FileController) UploadImages(ctx echo.Context) error {
 		data := &RequestUploadFile{File: file}
 		token := ctx.Get("user").(*jwt.Token)
 		claim := token.Claims.(*Claims)
+		data.Cid = claim.Cid
 		data.Uid = claim.Uid
 		data.Permission = claim.Permission
+		data.Ip = ctx.RealIP()
+		data.UserAgent = ctx.Request().UserAgent()
 		return controller.storeService.SaveUploadImages(data).Response(ctx)
 	}
 }

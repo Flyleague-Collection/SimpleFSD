@@ -3,6 +3,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"gorm.io/gorm"
@@ -23,12 +24,12 @@ func NewControllerRecordOperation(logger log.LoggerInterface, db *gorm.DB, query
 	}
 }
 
-func (controllerRecordOperation *ControllerRecordOperation) NewControllerRecord(cid, operator int, recordType ControllerRecordType, content string) (record *ControllerRecord) {
+func (controllerRecordOperation *ControllerRecordOperation) NewControllerRecord(uid uint, operatorCid int, recordType ControllerRecordType, content string) (record *ControllerRecord) {
 	return &ControllerRecord{
-		Cid:      cid,
-		Operator: operator,
-		Type:     int(recordType),
-		Content:  content,
+		UserId:      uid,
+		OperatorCid: operatorCid,
+		Type:        int(recordType),
+		Content:     content,
 	}
 }
 
@@ -41,20 +42,23 @@ func (controllerRecordOperation *ControllerRecordOperation) SaveControllerRecord
 	return controllerRecordOperation.db.WithContext(ctx).Save(record).Error
 }
 
-func (controllerRecordOperation *ControllerRecordOperation) GetControllerRecords(cid, page, pageSize int) (records []*ControllerRecord, total int64, err error) {
+func (controllerRecordOperation *ControllerRecordOperation) GetControllerRecords(uid uint, page, pageSize int) (records []*ControllerRecord, total int64, err error) {
 	records = make([]*ControllerRecord, 0, pageSize)
 	ctx, cancel := context.WithTimeout(context.Background(), controllerRecordOperation.queryTimeout)
 	defer cancel()
-	controllerRecordOperation.db.WithContext(ctx).Model(&ControllerRecord{}).Select("id").Where("cid = ?", cid).Count(&total)
-	err = controllerRecordOperation.db.WithContext(ctx).Offset((page-1)*pageSize).Where("cid = ?", cid).Order("time desc").Limit(pageSize).Find(&records).Error
+	controllerRecordOperation.db.WithContext(ctx).Model(&ControllerRecord{}).Select("id").Where("user_id = ?", uid).Count(&total)
+	err = controllerRecordOperation.db.WithContext(ctx).Offset((page-1)*pageSize).Where("user_id = ?", uid).Order("created_at desc").Limit(pageSize).Find(&records).Error
 	return
 }
 
-func (controllerRecordOperation *ControllerRecordOperation) GetControllerRecord(id uint) (record *ControllerRecord, err error) {
+func (controllerRecordOperation *ControllerRecordOperation) GetControllerRecord(id uint, uid uint) (record *ControllerRecord, err error) {
 	record = &ControllerRecord{}
 	ctx, cancel := context.WithTimeout(context.Background(), controllerRecordOperation.queryTimeout)
 	defer cancel()
-	err = controllerRecordOperation.db.WithContext(ctx).First(record, id).Error
+	err = controllerRecordOperation.db.WithContext(ctx).First(record, "id = ? and user_id = ?", id, uid).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = ErrControllerRecordNotFound
+	}
 	return
 }
 

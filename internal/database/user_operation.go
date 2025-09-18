@@ -147,15 +147,15 @@ func (userOperation *UserOperation) UpdateUserPilotTime(user *User, seconds int)
 }
 
 func (userOperation *UserOperation) UpdateUserPermission(user *User, permission Permission) error {
-	user.Permission = int64(permission)
+	user.Permission = uint64(permission)
 	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
 	defer cancel()
 	return userOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Model(user).Update("permission", int64(permission)).Error
+		return tx.Model(user).Update("permission", uint64(permission)).Error
 	})
 }
 
-func (userOperation *UserOperation) UpdateUserInfo(user *User, info map[string]interface{}) error {
+func (userOperation *UserOperation) UpdateUserInfo(user *User, info *User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
 	defer cancel()
 	return userOperation.db.WithContext(ctx).Model(user).Updates(info).Error

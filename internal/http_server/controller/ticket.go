@@ -32,7 +32,7 @@ func NewTicketController(
 }
 
 func (ticketController *TicketController) GetTickets(ctx echo.Context) error {
-	data := &RequestGetTicket{}
+	data := &RequestGetTickets{}
 	if err := ctx.Bind(data); err != nil {
 		ticketController.logger.ErrorF("TicketController.GetTickets bind error: %v", err)
 		return NewErrorResponse(ctx, ErrLackParam)
@@ -46,7 +46,7 @@ func (ticketController *TicketController) GetTickets(ctx echo.Context) error {
 }
 
 func (ticketController *TicketController) GetUserTickets(ctx echo.Context) error {
-	data := &RequestGetUserTicket{}
+	data := &RequestGetUserTickets{}
 	if err := ctx.Bind(data); err != nil {
 		ticketController.logger.ErrorF("TicketController.GetUserTickets bind error: %v", err)
 		return NewErrorResponse(ctx, ErrLackParam)
@@ -56,7 +56,7 @@ func (ticketController *TicketController) GetUserTickets(ctx echo.Context) error
 	data.Cid = claim.Cid
 	data.Uid = claim.Uid
 	data.Permission = claim.Permission
-	return ticketController.ticketService.GetUserTicket(data).Response(ctx)
+	return ticketController.ticketService.GetUserTickets(data).Response(ctx)
 }
 
 func (ticketController *TicketController) CreateTicket(ctx echo.Context) error {

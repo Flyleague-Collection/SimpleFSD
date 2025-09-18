@@ -1,4 +1,5 @@
 // Package service
+// 存放 ServerServiceInterface 的实现
 package service
 
 import (
@@ -52,15 +53,14 @@ func (serverService *ServerService) getServerConfig() *ResponseGetServerConfig {
 			EmailLengthMax:    serverService.config.HttpServer.Limits.EmailLengthMax,
 			CidMin:            serverService.config.HttpServer.Limits.CidMin,
 			CidMax:            serverService.config.HttpServer.Limits.CidMax,
-			SimulatorServer:   serverService.config.General.SimulatorServer,
 		},
 		ImageLimit: &ImageLimit{
 			MaxAllowSize: int(serverService.config.HttpServer.Store.FileLimit.ImageLimit.MaxFileSize),
 			AllowedExt:   serverService.config.HttpServer.Store.FileLimit.ImageLimit.AllowedFileExt,
 		},
 		EmailSendInterval: int(serverService.config.HttpServer.Email.SendDuration.Seconds()),
-		Facilities:        &fsd.Facilities,
-		Ratings:           &fsd.Ratings,
+		Facilities:        fsd.Facilities,
+		Ratings:           fsd.Ratings,
 	}
 }
 
@@ -94,38 +94,40 @@ func (serverService *ServerService) getTimeRating() *ResponseGetTimeRating {
 		return &ResponseGetTimeRating{}
 	}
 	data := &ResponseGetTimeRating{
-		Pilots:      make([]OnlineTime, 0),
-		Controllers: make([]OnlineTime, 0),
+		Pilots:      make([]*OnlineTime, 0),
+		Controllers: make([]*OnlineTime, 0),
 	}
 	for _, pilot := range pilots {
-		data.Pilots = append(data.Pilots, OnlineTime{
-			Cid:  pilot.Cid,
-			Time: pilot.TotalPilotTime,
+		data.Pilots = append(data.Pilots, &OnlineTime{
+			Cid:       pilot.Cid,
+			AvatarUrl: pilot.AvatarUrl,
+			Time:      pilot.TotalPilotTime,
 		})
 	}
 	for _, controller := range controllers {
-		data.Controllers = append(data.Controllers, OnlineTime{
-			Cid:  controller.Cid,
-			Time: controller.TotalAtcTime,
+		data.Controllers = append(data.Controllers, &OnlineTime{
+			Cid:       controller.Cid,
+			AvatarUrl: controller.AvatarUrl,
+			Time:      controller.TotalAtcTime,
 		})
 	}
 	return data
 }
 
-var SuccessGetServerConfig = ApiStatus{StatusName: "GET_SERVER_CONFIG", Description: "成功获取服务器配置", HttpCode: Ok}
+var SuccessGetServerConfig = NewApiStatus("GET_SERVER_CONFIG", "成功获取服务器配置", Ok)
 
 func (serverService *ServerService) GetServerConfig() *ApiResponse[ResponseGetServerConfig] {
-	return NewApiResponse(&SuccessGetServerConfig, serverService.serverConfig.GetValue())
+	return NewApiResponse(SuccessGetServerConfig, serverService.serverConfig.GetValue())
 }
 
-var SuccessGetServerInfo = ApiStatus{StatusName: "GET_SERVER_INFO", Description: "成功获取服务器信息", HttpCode: Ok}
+var SuccessGetServerInfo = NewApiStatus("GET_SERVER_INFO", "成功获取服务器信息", Ok)
 
 func (serverService *ServerService) GetServerInfo() *ApiResponse[ResponseGetServerInfo] {
-	return NewApiResponse(&SuccessGetServerInfo, serverService.serverInfo.GetValue())
+	return NewApiResponse(SuccessGetServerInfo, serverService.serverInfo.GetValue())
 }
 
-var SuccessGetTimeRating = ApiStatus{StatusName: "GET_TIME_RATING", Description: "成功获取服务器排行榜", HttpCode: Ok}
+var SuccessGetTimeRating = NewApiStatus("GET_TIME_RATING", "成功获取服务器排行榜", Ok)
 
 func (serverService *ServerService) GetTimeRating() *ApiResponse[ResponseGetTimeRating] {
-	return NewApiResponse(&SuccessGetTimeRating, serverService.serverOnlineTime.GetValue())
+	return NewApiResponse(SuccessGetTimeRating, serverService.serverOnlineTime.GetValue())
 }

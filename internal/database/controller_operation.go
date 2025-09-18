@@ -53,28 +53,28 @@ func (controllerOperation *ControllerOperation) SetControllerSolo(user *User, un
 	user.SoloUntil = untilTime
 	ctx, cancel := context.WithTimeout(context.Background(), controllerOperation.queryTimeout)
 	defer cancel()
-	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Updates(&User{UnderSolo: true, SoloUntil: untilTime}).Error
+	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Select("UnderSolo", "SoloUntil").Updates(&User{UnderSolo: true, SoloUntil: untilTime}).Error
 }
 
 func (controllerOperation *ControllerOperation) UnsetControllerSolo(user *User) (err error) {
 	user.UnderSolo = false
 	ctx, cancel := context.WithTimeout(context.Background(), controllerOperation.queryTimeout)
 	defer cancel()
-	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Updates(&User{UnderSolo: false}).Error
+	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Select("UnderSolo").Updates(&User{UnderSolo: false}).Error
 }
 
 func (controllerOperation *ControllerOperation) SetControllerUnderMonitor(user *User, underMonitor bool) (err error) {
 	user.UnderMonitor = underMonitor
 	ctx, cancel := context.WithTimeout(context.Background(), controllerOperation.queryTimeout)
 	defer cancel()
-	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Updates(&User{UnderMonitor: underMonitor}).Error
+	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Select("UnderMonitor").Updates(&User{UnderMonitor: underMonitor}).Error
 }
 
 func (controllerOperation *ControllerOperation) SetControllerGuest(user *User, guest bool) (err error) {
 	user.Guest = guest
 	ctx, cancel := context.WithTimeout(context.Background(), controllerOperation.queryTimeout)
 	defer cancel()
-	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Updates(&User{Guest: guest}).Error
+	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Select("Guest", "Rating").Updates(&User{Guest: guest, Rating: fsd.Normal.Index()}).Error
 }
 
 func (controllerOperation *ControllerOperation) SetControllerGuestRating(user *User, rating int) (err error) {
@@ -82,5 +82,5 @@ func (controllerOperation *ControllerOperation) SetControllerGuestRating(user *U
 	user.Rating = rating
 	ctx, cancel := context.WithTimeout(context.Background(), controllerOperation.queryTimeout)
 	defer cancel()
-	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Updates(&User{Guest: true, Rating: rating}).Error
+	return controllerOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(user).Select("Guest", "Rating").Updates(&User{Guest: true, Rating: rating}).Error
 }

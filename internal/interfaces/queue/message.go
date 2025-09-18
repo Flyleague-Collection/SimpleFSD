@@ -21,8 +21,15 @@ const (
 )
 
 var messageTypes = []string{
-	"SendVerifyEmail", "SendRatingChangeEmail", "SendPermissionChangeEmail", "SendPasswordChangeEmail",
-	"SendKickedFromServerEmail", "SendMessageToClient", "KickClientFromServer", "AuditLog", "AuditLogs",
+	"SendVerifyEmail",
+	"SendRatingChangeEmail",
+	"SendPermissionChangeEmail",
+	"SendPasswordChangeEmail",
+	"SendKickedFromServerEmail",
+	"SendMessageToClient",
+	"KickClientFromServer",
+	"AuditLog",
+	"AuditLogs",
 }
 
 func (messageType MessageType) String() string {

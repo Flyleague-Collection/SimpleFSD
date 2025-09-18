@@ -12,13 +12,13 @@ import (
 )
 
 var (
-	ErrFilePathFail       = ApiStatus{"FILE_PATH_FAIL", "文件上传失败", ServerInternalError}
-	ErrFileSaveFail       = ApiStatus{"FILE_SAVE_FAIL", "文件保存失败", ServerInternalError}
-	ErrFileUploadFail     = ApiStatus{"FILE_UPLOAD_FAIL", "文件上传失败", ServerInternalError}
-	ErrFileOverSize       = ApiStatus{"FILE_OVER_SIZE", "文件过大", BadRequest}
-	ErrFileExtUnsupported = ApiStatus{"FILE_EXT_UNSUPPORTED", "不支持的文件类型", BadRequest}
-	ErrFileNameIllegal    = ApiStatus{"FILE_NAME_ILLEGAL", "文件名不合法", BadRequest}
-	SuccessUploadFile     = ApiStatus{"UPLOAD_FILE", "文件上传成功", Ok}
+	ErrFilePathFail       = NewApiStatus("FILE_PATH_FAIL", "文件上传失败", ServerInternalError)
+	ErrFileSaveFail       = NewApiStatus("FILE_SAVE_FAIL", "文件保存失败", ServerInternalError)
+	ErrFileUploadFail     = NewApiStatus("FILE_UPLOAD_FAIL", "文件上传失败", ServerInternalError)
+	ErrFileOverSize       = NewApiStatus("FILE_OVER_SIZE", "文件过大", BadRequest)
+	ErrFileExtUnsupported = NewApiStatus("FILE_EXT_UNSUPPORTED", "不支持的文件类型", BadRequest)
+	ErrFileNameIllegal    = NewApiStatus("FILE_NAME_ILLEGAL", "文件名不合法", BadRequest)
+	SuccessUploadFile     = NewApiStatus("UPLOAD_FILE", "文件上传成功", Ok)
 )
 
 type FileType int
@@ -58,17 +58,17 @@ func NewStoreInfo(fileType FileType, fileLimit *config.HttpServerStoreFileLimit,
 
 func (fileType FileType) GenerateStoreInfo(fileLimit *config.HttpServerStoreFileLimit, file *multipart.FileHeader) (*StoreInfo, *ApiStatus) {
 	if strings.Contains(file.Filename, string(filepath.Separator)) {
-		return nil, &ErrFileNameIllegal
+		return nil, ErrFileNameIllegal
 	}
 
 	ext := filepath.Ext(file.Filename)
 
 	if !slices.Contains(fileLimit.AllowedFileExt, ext) {
-		return nil, &ErrFileExtUnsupported
+		return nil, ErrFileExtUnsupported
 	}
 
 	if file.Size > fileLimit.MaxFileSize {
-		return nil, &ErrFileOverSize
+		return nil, ErrFileOverSize
 	}
 
 	storeInfo := NewStoreInfo(fileType, fileLimit, file)
@@ -89,6 +89,7 @@ type StoreServiceInterface interface {
 
 type RequestUploadFile struct {
 	JwtHeader
+	EchoContentHeader
 	File *multipart.FileHeader
 }
 

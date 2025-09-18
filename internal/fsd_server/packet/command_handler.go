@@ -10,6 +10,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
+	"strconv"
 	"strings"
 )
 
@@ -61,6 +62,14 @@ func (session *Session) verifyUserInfo(callsign string, protocol int, cid UserId
 	}
 	session.user = user
 
+	return nil
+}
+
+func (session *Session) checkRangeLimit(realFacility Facility, realRange int) *Result {
+	rangeLimit := realFacility.GetRangeLimit()
+	if rangeLimit > -1 && realRange > rangeLimit {
+		return ResultError(Custom, session.refuseOutRange, strconv.Itoa(realRange), fmt.Errorf("visual range out of limit, your visual range is %d but limit is %d", realRange, rangeLimit))
+	}
 	return nil
 }
 
@@ -131,7 +140,7 @@ func (session *Session) handleAddPilot(data []string, rawLine []byte) *Result {
 	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
 	session.client.SendMotd()
 	session.logger.InfoF("[%s] client login successfully", callsign)
-	if !session.config.SimulatorServer {
+	if !session.isSimulatorServer {
 		flightPlan := session.client.FlightPlan()
 		if flightPlan != nil && flightPlan.FromWeb && callsign != flightPlan.Callsign {
 			session.client.SendLine(makePacket(Message, "FPlanManager", callsign,
@@ -152,6 +161,9 @@ func (session *Session) handleAtcPosUpdate(data []string, rawLine []byte) *Resul
 	facility := Facility(1 << utils.StrToInt(data[2], 0))
 	if facility != session.facilityIdent {
 		return ResultError(CallsignInvalid, true, callsign, errors.New("callsign and faility mismatch"))
+	}
+	if res := session.checkRangeLimit(facility, utils.StrToInt(data[3], 0)); res != nil {
+		return res
 	}
 	rating := Rating(utils.StrToInt(data[4], 0))
 	if !rating.CheckRatingFacility(facility) {
@@ -275,7 +287,7 @@ func (session *Session) handleClientQuery(data []string, rawLine []byte) *Result
 		// 如果目标频率是94835
 		if targetStation == EuroscopeFrequency {
 			subQuery := data[2]
-			if !session.config.SimulatorServer {
+			if !session.isSimulatorServer {
 				if !session.client.CheckFacility(AllowAtcFacility) {
 					return ResultError(InvalidCtrl, false, session.client.Callsign(), nil)
 				}
@@ -415,7 +427,7 @@ func (session *Session) handleAtcEditPlan(data []string, _ []byte) *Result {
 	if client.FlightPlan == nil {
 		return ResultError(NoFlightPlan, false, session.client.Callsign(), fmt.Errorf("%s do not have filght plan", session.client.Callsign()))
 	}
-	client.FlightPlan().Locked = !session.config.SimulatorServer
+	client.FlightPlan().Locked = !session.isSimulatorServer
 	if err := session.flightPlanOperation.UpdateFlightPlan(client.FlightPlan(), data[1:], true); err != nil {
 		return ResultError(Syntax, false, session.client.Callsign(), err)
 	}
@@ -439,7 +451,7 @@ func (session *Session) handleKillClient(data []string, _ []byte) *Result {
 	}
 	session.application.MessageQueue().Publish(&queue.Message{
 		Type: queue.SendKickedFromServerEmail,
-		Data: &service.SendKickedFromServerData{
+		Data: &service.KickedFromServerEmailData{
 			User:     client.User(),
 			Operator: session.user,
 			Reason:   data[2],

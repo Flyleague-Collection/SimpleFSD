@@ -4,40 +4,33 @@ package service
 import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
-	"html/template"
-	"time"
 )
 
-type SendEmailCodeData struct {
+type VerifyCodeEmailData struct {
 	Email string
 	Cid   int
 }
 
-type SendPermissionChangeData struct {
+type PermissionChangeEmailData struct {
 	User     *operation.User
 	Operator *operation.User
 }
 
-type SendRatingChangeData struct {
+type RatingChangeEmailData struct {
 	User      *operation.User
 	Operator  *operation.User
 	OldRating fsd.Rating
 	NewRating fsd.Rating
 }
 
-type SendKickedFromServerData struct {
+type KickedFromServerEmailData struct {
 	User     *operation.User
 	Operator *operation.User
 	Reason   string
 }
 
 type EmailServiceInterface interface {
-	RenderTemplate(template *template.Template, data interface{}) (string, error)
-	VerifyCode(email string, code int, cid int) error
-	SendEmailCode(data *SendEmailCodeData) (error, time.Duration)
-	SendPermissionChangeEmail(data *SendPermissionChangeData) error
-	SendRatingChangeEmail(data *SendRatingChangeData) error
-	SendKickedFromServerEmail(data *SendKickedFromServerData) error
+	VerifyEmailCode(email string, code int, cid int) error
 	SendEmailVerifyCode(req *RequestEmailVerifyCode) *ApiResponse[ResponseEmailVerifyCode]
 }
 

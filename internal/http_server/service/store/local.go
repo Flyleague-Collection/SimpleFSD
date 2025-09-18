@@ -1,4 +1,6 @@
-// Package service
+// Package store
+// 存放 service.StoreServiceInterface 的实现
+// 本文件存放本地存储实现
 package store
 
 import (
@@ -6,6 +8,8 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"io"
 	"mime/multipart"
@@ -17,30 +21,39 @@ import (
 )
 
 type LocalStoreService struct {
-	logger log.LoggerInterface
-	config *config.HttpServerStore
+	logger            log.LoggerInterface
+	config            *config.HttpServerStore
+	messageQueue      queue.MessageQueueInterface
+	auditLogOperation operation.AuditLogOperationInterface
 }
 
-func NewLocalStoreService(logger log.LoggerInterface, config *config.HttpServerStore) *LocalStoreService {
+func NewLocalStoreService(
+	logger log.LoggerInterface,
+	config *config.HttpServerStore,
+	messageQueue queue.MessageQueueInterface,
+	auditLogOperation operation.AuditLogOperationInterface,
+) *LocalStoreService {
 	return &LocalStoreService{
-		logger: logger,
-		config: config,
+		logger:            logger,
+		config:            config,
+		messageQueue:      messageQueue,
+		auditLogOperation: auditLogOperation,
 	}
 }
 
 func (store *LocalStoreService) GetFileStoreInfo(limit *config.HttpServerStoreFileLimit, file *multipart.FileHeader) (string, string, *ApiStatus) {
 	if strings.Contains(file.Filename, string(filepath.Separator)) {
-		return "", "", &ErrFileNameIllegal
+		return "", "", ErrFileNameIllegal
 	}
 
 	ext := filepath.Ext(file.Filename)
 
 	if !slices.Contains(limit.AllowedFileExt, ext) {
-		return "", "", &ErrFileExtUnsupported
+		return "", "", ErrFileExtUnsupported
 	}
 
 	if file.Size > limit.MaxFileSize {
-		return "", "", &ErrFileOverSize
+		return "", "", ErrFileOverSize
 	}
 
 	newFilename := filepath.Join(limit.StorePrefix, fmt.Sprintf("%d%s", time.Now().UnixNano(), ext))
@@ -53,29 +66,33 @@ func (store *LocalStoreService) SaveImageFile(file *multipart.FileHeader) (*Stor
 	if res != nil {
 		return nil, res
 	}
+
 	if !storeInfo.StoreInServer {
 		return storeInfo, nil
 	}
+
 	src, err := file.Open()
 	defer func(src multipart.File) {
 		_ = src.Close()
 	}(src)
 	if err != nil {
 		store.logger.ErrorF("LocalStoreService.SaveImageFile open file error: %v", err)
-		return nil, &ErrFileSaveFail
+		return nil, ErrFileSaveFail
 	}
+
 	dst, err := os.OpenFile(storeInfo.FilePath, os.O_WRONLY|os.O_CREATE, global.DefaultFilePermissions)
 	defer func(dst *os.File) {
 		_ = dst.Close()
 	}(dst)
 	if err != nil {
 		store.logger.ErrorF("LocalStoreService.SaveImageFile create file error: %v", err)
-		return nil, &ErrFileSaveFail
+		return nil, ErrFileSaveFail
 	}
+
 	_, err = io.Copy(dst, src)
 	if err != nil {
 		store.logger.ErrorF("LocalStoreService.SaveImageFile copy file error: %v", err)
-		return nil, &ErrFileSaveFail
+		return nil, ErrFileSaveFail
 	}
 	return storeInfo, nil
 }
@@ -99,14 +116,24 @@ func (store *LocalStoreService) DeleteImageFile(file string) (*StoreInfo, error)
 }
 
 func (store *LocalStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
-	if req.Permission <= 0 {
-		return NewApiResponse[ResponseUploadFile](ErrNoPermission, nil)
-	}
 	storeInfo, res := store.SaveImageFile(req.File)
 	if res != nil {
 		return NewApiResponse[ResponseUploadFile](res, nil)
 	}
-	return NewApiResponse(&SuccessUploadFile, &ResponseUploadFile{
+
+	store.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: store.auditLogOperation.NewAuditLog(
+			operation.FileUpload,
+			req.Cid,
+			storeInfo.RemotePath,
+			req.Ip,
+			req.UserAgent,
+			nil,
+		),
+	})
+
+	return NewApiResponse(SuccessUploadFile, &ResponseUploadFile{
 		FileSize:   req.File.Size,
 		AccessPath: storeInfo.RemotePath,
 	})

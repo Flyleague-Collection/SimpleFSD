@@ -19,6 +19,11 @@ type ActivityModel struct {
 	NOTAMS     string `json:"notams"`
 }
 
+var (
+	ErrActivityLocked     = NewApiStatus("ACTIVITY_LOCKED", "活动报名信息已锁定", Conflict)
+	ErrActivityIdMismatch = NewApiStatus("ACTIVITY_ID_MISMATCH", "活动ID不正确", Conflict)
+)
+
 type ActivityServiceInterface interface {
 	GetActivities(req *RequestGetActivities) *ApiResponse[ResponseGetActivities]
 	GetActivitiesPage(req *RequestGetActivitiesPage) *ApiResponse[ResponseGetActivitiesPage]
@@ -38,9 +43,7 @@ type RequestGetActivities struct {
 	Time string `query:"time"`
 }
 
-type ResponseGetActivities struct {
-	Items []*operation.Activity `json:"items"`
-}
+type ResponseGetActivities []*operation.Activity
 
 type RequestGetActivitiesPage struct {
 	JwtHeader
@@ -56,7 +59,7 @@ type ResponseGetActivitiesPage struct {
 }
 
 type RequestActivityInfo struct {
-	ActivityId uint `param:"id"`
+	ActivityId uint `param:"activity_id"`
 }
 
 type ResponseActivityInfo operation.Activity
@@ -64,19 +67,15 @@ type ResponseActivityInfo operation.Activity
 type RequestAddActivity struct {
 	JwtHeader
 	EchoContentHeader
-	Cid int
 	*operation.Activity
 }
 
-type ResponseAddActivity struct {
-	*operation.Activity
-}
+type ResponseAddActivity bool
 
 type RequestDeleteActivity struct {
 	JwtHeader
 	EchoContentHeader
-	Cid        int
-	ActivityId uint `param:"id"`
+	ActivityId uint `param:"activity_id"`
 }
 
 type ResponseDeleteActivity bool
@@ -84,7 +83,7 @@ type ResponseDeleteActivity bool
 type RequestControllerJoin struct {
 	JwtHeader
 	Rating     int
-	ActivityId uint `param:"id"`
+	ActivityId uint `param:"activity_id"`
 	FacilityId uint `param:"facility_id"`
 }
 
@@ -92,8 +91,7 @@ type ResponseControllerJoin bool
 
 type RequestControllerLeave struct {
 	JwtHeader
-	Cid        int
-	ActivityId uint `param:"id"`
+	ActivityId uint `param:"activity_id"`
 	FacilityId uint `param:"facility_id"`
 }
 
@@ -101,8 +99,7 @@ type ResponseControllerLeave bool
 
 type RequestPilotJoin struct {
 	JwtHeader
-	Cid          int
-	ActivityId   uint   `param:"id"`
+	ActivityId   uint   `param:"activity_id"`
 	Callsign     string `json:"callsign"`
 	AircraftType string `json:"aircraft_type"`
 }
@@ -111,8 +108,7 @@ type ResponsePilotJoin bool
 
 type RequestPilotLeave struct {
 	JwtHeader
-	Cid        int
-	ActivityId uint `param:"id"`
+	ActivityId uint `param:"activity_id"`
 }
 
 type ResponsePilotLeave bool
@@ -120,7 +116,6 @@ type ResponsePilotLeave bool
 type RequestEditActivity struct {
 	JwtHeader
 	EchoContentHeader
-	Cid int
 	*operation.Activity
 }
 
@@ -128,7 +123,7 @@ type ResponseEditActivity bool
 
 type RequestEditActivityStatus struct {
 	JwtHeader
-	ActivityId uint `param:"id"`
+	ActivityId uint `param:"activity_id"`
 	Status     int  `json:"status"`
 }
 
@@ -136,9 +131,8 @@ type ResponseEditActivityStatus bool
 
 type RequestEditPilotStatus struct {
 	JwtHeader
-	ActivityId uint `param:"id"`
-	Cid        int
-	PilotId    uint `param:"pilot_id"`
+	ActivityId uint `param:"activity_id"`
+	UserId     uint `param:"user_id"`
 	Status     int  `json:"status"`
 }
 

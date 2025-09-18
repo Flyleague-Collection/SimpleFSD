@@ -29,16 +29,16 @@ func NewClientController(logger log.LoggerInterface, clientService ClientService
 }
 
 func (controller *ClientController) GetOnlineClients(ctx echo.Context) error {
-	return ctx.JSON(http.StatusOK, controller.clientService.GetOnlineClient())
+	return ctx.JSON(http.StatusOK, controller.clientService.GetOnlineClients())
 }
 
 func (controller *ClientController) GetClientPath(ctx echo.Context) error {
 	data := &RequestClientPath{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ClientController.GetClientPath bind error: %v", err)
+		controller.logger.ErrorF("ClientController.GetClientFlightPath bind error: %v", err)
 		return NewErrorResponse(ctx, ErrLackParam)
 	}
-	return controller.clientService.GetClientPath(data).Response(ctx)
+	return controller.clientService.GetClientFlightPath(data).Response(ctx)
 }
 
 func (controller *ClientController) SendMessageToClient(ctx echo.Context) error {

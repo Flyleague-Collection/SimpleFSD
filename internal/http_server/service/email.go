@@ -1,4 +1,5 @@
 // Package service
+// 存放 EmailServiceInterface 的实现
 package service
 
 import (
@@ -76,10 +77,11 @@ var (
 	ErrCidMismatch            = errors.New("cid mismatch")
 )
 
-func (emailService *EmailService) RenderTemplate(template *template.Template, data interface{}) (string, error) {
+func (emailService *EmailService) renderTemplate(template *template.Template, data interface{}) (string, error) {
 	if template == nil {
 		return "", ErrTemplateNotInitialized
 	}
+
 	var sb strings.Builder
 	if err := template.Execute(&sb, data); err != nil {
 		return "", err
@@ -87,10 +89,11 @@ func (emailService *EmailService) RenderTemplate(template *template.Template, da
 	return sb.String(), nil
 }
 
-func (emailService *EmailService) VerifyCode(email string, code int, cid int) error {
+func (emailService *EmailService) VerifyEmailCode(email string, code int, cid int) error {
 	if emailService.config.EmailServer == nil {
 		return nil
 	}
+
 	email = strings.ToLower(email)
 	emailCode, ok := emailService.emailCodes[email]
 	if !ok {
@@ -114,38 +117,39 @@ func (emailService *EmailService) VerifyCode(email string, code int, cid int) er
 }
 
 func (emailService *EmailService) HandleSendKickedFromServerEmailMessage(message *queue.Message) error {
-	if val, ok := message.Data.(*SendKickedFromServerData); ok {
-		return emailService.SendKickedFromServerEmail(val)
+	if val, ok := message.Data.(*KickedFromServerEmailData); ok {
+		return emailService.sendKickedFromServerEmail(val)
 	}
 	return queue.ErrMessageDataType
 }
 
 func (emailService *EmailService) HandleSendPermissionChangeEmailMessage(message *queue.Message) error {
-	if val, ok := message.Data.(*SendPermissionChangeData); ok {
-		return emailService.SendPermissionChangeEmail(val)
+	if val, ok := message.Data.(*PermissionChangeEmailData); ok {
+		return emailService.sendPermissionChangeEmail(val)
 	}
 	return queue.ErrMessageDataType
 }
 
 func (emailService *EmailService) HandleSendRatingChangeEmailMessage(message *queue.Message) error {
-	if val, ok := message.Data.(*SendRatingChangeData); ok {
-		return emailService.SendRatingChangeEmail(val)
+	if val, ok := message.Data.(*RatingChangeEmailData); ok {
+		return emailService.sendRatingChangeEmail(val)
 	}
 	return queue.ErrMessageDataType
 }
 
 func (emailService *EmailService) HandleSendVerifyEmailMessage(message *queue.Message) error {
-	if val, ok := message.Data.(*SendEmailCodeData); ok {
-		err, _ := emailService.SendEmailCode(val)
+	if val, ok := message.Data.(*VerifyCodeEmailData); ok {
+		err, _ := emailService.sendEmailCode(val)
 		return err
 	}
 	return queue.ErrMessageDataType
 }
 
-func (emailService *EmailService) SendEmailCode(data *SendEmailCodeData) (error, time.Duration) {
+func (emailService *EmailService) sendEmailCode(data *VerifyCodeEmailData) (error, time.Duration) {
 	if emailService.config.EmailServer == nil {
 		return nil, 0
 	}
+
 	email := strings.ToLower(data.Email)
 	if lastSendTime, ok := emailService.lastSendTime[email]; ok {
 		now := time.Now()
@@ -154,6 +158,7 @@ func (emailService *EmailService) SendEmailCode(data *SendEmailCodeData) (error,
 			return ErrEmailSendInterval, timeRemain
 		}
 	}
+
 	code := rand.Intn(1e6)
 	emailCode := EmailCode{code: code, cid: data.Cid, sendTime: time.Now()}
 	d := &EmailVerifyTemplateData{
@@ -162,7 +167,7 @@ func (emailService *EmailService) SendEmailCode(data *SendEmailCodeData) (error,
 		Expired: strconv.Itoa(int(emailService.config.VerifyExpiredDuration.Minutes())),
 	}
 
-	message, err := emailService.RenderTemplate(emailService.config.Template.EmailVerifyTemplate, d)
+	message, err := emailService.renderTemplate(emailService.config.Template.EmailVerifyTemplate, d)
 	if err != nil {
 		emailService.logger.WarnF("Error rendering email verification template: %v", err)
 		return ErrRenderingTemplate, 0
@@ -182,17 +187,19 @@ func (emailService *EmailService) SendEmailCode(data *SendEmailCodeData) (error,
 	return emailService.config.EmailServer.DialAndSend(m), 0
 }
 
-func (emailService *EmailService) SendPermissionChangeEmail(data *SendPermissionChangeData) error {
+func (emailService *EmailService) sendPermissionChangeEmail(data *PermissionChangeEmailData) error {
 	if emailService.config.EmailServer == nil {
 		return nil
 	}
+
 	email := strings.ToLower(data.User.Email)
 	d := &EmailPermissionChangeData{
 		Cid:      fmt.Sprintf("%04d", data.User.Cid),
 		Operator: fmt.Sprintf("%04d", data.Operator.Cid),
 		Contact:  data.Operator.Email,
 	}
-	message, err := emailService.RenderTemplate(emailService.config.Template.PermissionChangeTemplate, d)
+
+	message, err := emailService.renderTemplate(emailService.config.Template.PermissionChangeTemplate, d)
 	if err != nil {
 		emailService.logger.WarnF("Error rendering email verification template: %v", err)
 		return ErrRenderingTemplate
@@ -209,19 +216,21 @@ func (emailService *EmailService) SendPermissionChangeEmail(data *SendPermission
 	return emailService.config.EmailServer.DialAndSend(m)
 }
 
-func (emailService *EmailService) SendRatingChangeEmail(data *SendRatingChangeData) error {
+func (emailService *EmailService) sendRatingChangeEmail(data *RatingChangeEmailData) error {
 	if emailService.config.EmailServer == nil {
 		return nil
 	}
+
 	email := strings.ToLower(data.User.Email)
 	d := &EmailRatingChangeData{
-		Cid:      strconv.Itoa(data.User.Cid),
+		Cid:      fmt.Sprintf("%04d", data.User.Cid),
 		OldValue: data.OldRating.String(),
 		NewValue: data.NewRating.String(),
 		Operator: fmt.Sprintf("%04d", data.Operator.Cid),
 		Contact:  data.Operator.Email,
 	}
-	message, err := emailService.RenderTemplate(emailService.config.Template.ATCRatingChangeTemplate, d)
+
+	message, err := emailService.renderTemplate(emailService.config.Template.ATCRatingChangeTemplate, d)
 	if err != nil {
 		emailService.logger.WarnF("Error rendering email verification template: %v", err)
 		return ErrRenderingTemplate
@@ -238,19 +247,21 @@ func (emailService *EmailService) SendRatingChangeEmail(data *SendRatingChangeDa
 	return emailService.config.EmailServer.DialAndSend(m)
 }
 
-func (emailService *EmailService) SendKickedFromServerEmail(data *SendKickedFromServerData) error {
+func (emailService *EmailService) sendKickedFromServerEmail(data *KickedFromServerEmailData) error {
 	if emailService.config.EmailServer == nil {
 		return nil
 	}
+
 	email := strings.ToLower(data.User.Email)
 	d := &EmailKickedFromServerData{
-		Cid:      strconv.Itoa(data.User.Cid),
+		Cid:      fmt.Sprintf("%04d", data.User.Cid),
 		Time:     time.Now().Format(time.DateTime),
 		Reason:   data.Reason,
 		Operator: fmt.Sprintf("%04d", data.Operator.Cid),
 		Contact:  data.Operator.Email,
 	}
-	message, err := emailService.RenderTemplate(emailService.config.Template.KickedFromServerTemplate, d)
+
+	message, err := emailService.renderTemplate(emailService.config.Template.KickedFromServerTemplate, d)
 	if err != nil {
 		emailService.logger.WarnF("Error rendering email verification template: %v", err)
 		return ErrRenderingTemplate
@@ -268,31 +279,36 @@ func (emailService *EmailService) SendKickedFromServerEmail(data *SendKickedFrom
 }
 
 var (
-	SendEmailSuccess  = ApiStatus{StatusName: "SEND_EMAIL_SUCCESS", Description: "邮件发送成功", HttpCode: Ok}
-	ErrRenderTemplate = ApiStatus{StatusName: "RENDER_TEMPLATE_ERROR", Description: "发送失败", HttpCode: ServerInternalError}
-	ErrSendEmail      = ApiStatus{StatusName: "EMAIL_SEND_ERROR", Description: "发送失败", HttpCode: ServerInternalError}
+	ErrRenderTemplate = NewApiStatus("RENDER_TEMPLATE_ERROR", "邮件发送失败", ServerInternalError)
+	ErrSendEmail      = NewApiStatus("EMAIL_SEND_ERROR", "发送失败", ServerInternalError)
+	SendEmailSuccess  = NewApiStatus("SEND_EMAIL_SUCCESS", "邮件发送成功", Ok)
 )
 
 func (emailService *EmailService) SendEmailVerifyCode(req *RequestEmailVerifyCode) *ApiResponse[ResponseEmailVerifyCode] {
 	if emailService.config.EmailServer == nil {
-		return NewApiResponse(&SendEmailSuccess, &ResponseEmailVerifyCode{Email: req.Email})
+		return NewApiResponse(SendEmailSuccess, &ResponseEmailVerifyCode{Email: req.Email})
 	}
+
 	if req.Email == "" || req.Cid <= 0 {
 		return NewApiResponse[ResponseEmailVerifyCode](ErrIllegalParam, nil)
 	}
-	err, remainTime := emailService.SendEmailCode(&SendEmailCodeData{Email: req.Email, Cid: req.Cid})
+
+	err, remainTime := emailService.sendEmailCode(&VerifyCodeEmailData{Email: req.Email, Cid: req.Cid})
 	if err == nil {
-		return NewApiResponse(&SendEmailSuccess, &ResponseEmailVerifyCode{Email: req.Email})
+		return NewApiResponse(SendEmailSuccess, &ResponseEmailVerifyCode{Email: req.Email})
 	}
+
 	if errors.Is(err, ErrEmailSendInterval) {
-		return NewApiResponse[ResponseEmailVerifyCode](&ApiStatus{
-			StatusName:  "EMAIL_SEND_INTERVAL",
-			Description: fmt.Sprintf("邮件已发送, 请在%.0f秒后重试", remainTime.Seconds()),
-			HttpCode:    BadRequest,
-		}, nil)
+		return NewApiResponse[ResponseEmailVerifyCode](NewApiStatus(
+			"EMAIL_SEND_INTERVAL",
+			fmt.Sprintf("邮件已发送, 请在%.0f秒后重试", remainTime.Seconds()),
+			BadRequest,
+		), nil)
 	}
+
 	if errors.Is(err, ErrRenderingTemplate) {
-		return NewApiResponse[ResponseEmailVerifyCode](&ErrRenderTemplate, nil)
+		return NewApiResponse[ResponseEmailVerifyCode](ErrRenderTemplate, nil)
 	}
-	return NewApiResponse[ResponseEmailVerifyCode](&ErrSendEmail, nil)
+
+	return NewApiResponse[ResponseEmailVerifyCode](ErrSendEmail, nil)
 }
