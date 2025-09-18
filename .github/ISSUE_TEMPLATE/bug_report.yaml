@@ -1,0 +1,81 @@
+name: "🐞 Bug 反馈"
+description: "提交一个 Bug 报告"
+title: "[Bug] <请简要描述问题>"
+labels: ["Bug"]
+assignees:
+  - half-nothing
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你抽出时间来反馈 Bug！  
+        请根据以下模板填写，我们会尽快处理。  
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 注意事项
+        1. **可复现的 bug**：
+           - 在[配置文件](../README.md#配置文件简介)中打开 `"debug_mode": true`
+           - 重启 FSD 并复现此 bug
+           - 将生成的 log 文件上传至 issue
+        2. **不可复现的 bug**：
+           - 请尽可能用文字描述
+
+  - type: textarea
+    id: reproduce_steps
+    attributes:
+      label: "复现操作步骤"
+      description: "请详细描述如何重现该 Bug"
+      placeholder: |
+        1. 前往“...”
+        2. 点击“...”
+        3. 向下滚动至“...”
+        4. 见错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_result
+    attributes:
+      label: "预期结果"
+      description: "你希望发生的结果"
+      placeholder: "清晰简洁的描述预期行为"
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "屏幕截图"
+      description: "如适用，请附加截图"
+      placeholder: "拖拽图片到这里"
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: "操作系统"
+      description: "例如：Ubuntu 22.04 LTS (Jammy Jellyfish) x86_64 (Py3.7.8)"
+      placeholder: "请输入操作系统信息"
+    validations:
+      required: true
+
+  - type: input
+    id: fsd_version
+    attributes:
+      label: "FSD 版本"
+      description: "例如：fsd-server-linux-amd64-c36d2c9ba6f533a31e98a6f5c2957d3a568bd55c"
+      placeholder: "请输入 FSD 版本"
+    validations:
+      required: true
+
+  - type: input
+    id: client_version
+    attributes:
+      label: "客户端版本"
+      description: "例如：EuroScope v3.2.10"
+      placeholder: "请输入客户端版本"
+    validations:
+      required: true
