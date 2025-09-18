@@ -31,7 +31,7 @@ func NewClientService(
 	messageQueue queue.MessageQueueInterface,
 ) *ClientService {
 	service := &ClientService{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "ClientService"),
 		clientManager:     clientManager,
 		config:            config,
 		userOperation:     userOperation,

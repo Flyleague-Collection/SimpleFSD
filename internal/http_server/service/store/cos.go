@@ -37,7 +37,7 @@ func NewTencentCosStoreService(
 	auditLogOperation operation.AuditLogOperationInterface,
 ) *TencentCosStoreService {
 	service := &TencentCosStoreService{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "TencentCosStoreService"),
 		localStore:        localStore,
 		config:            config,
 		messageQueue:      messageQueue,

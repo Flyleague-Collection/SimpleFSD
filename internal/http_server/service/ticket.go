@@ -27,7 +27,7 @@ func NewTicketService(
 	auditLogOperation operation.AuditLogOperationInterface,
 ) *TicketService {
 	return &TicketService{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "TicketService"),
 		messageQueue:      messageQueue,
 		userOperation:     userOperation,
 		ticketOperation:   ticketOperation,

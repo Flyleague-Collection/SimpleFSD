@@ -30,7 +30,7 @@ func NewServerService(
 	activityOperation operation.ActivityOperationInterface,
 ) *ServerService {
 	service := &ServerService{
-		logger:              logger,
+		logger:              log.NewLoggerAdapter(logger, "ServerService"),
 		config:              config,
 		userOperation:       userOperation,
 		controllerOperation: controllerOperation,

@@ -26,7 +26,7 @@ func NewTicketController(
 	ticketService TicketServiceInterface,
 ) *TicketController {
 	return &TicketController{
-		logger:        logger,
+		logger:        log.NewLoggerAdapter(logger, "TicketController"),
 		ticketService: ticketService,
 	}
 }
@@ -34,8 +34,8 @@ func NewTicketController(
 func (ticketController *TicketController) GetTickets(ctx echo.Context) error {
 	data := &RequestGetTickets{}
 	if err := ctx.Bind(data); err != nil {
-		ticketController.logger.ErrorF("TicketController.GetTickets bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		ticketController.logger.ErrorF("GetTickets bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -48,8 +48,8 @@ func (ticketController *TicketController) GetTickets(ctx echo.Context) error {
 func (ticketController *TicketController) GetUserTickets(ctx echo.Context) error {
 	data := &RequestGetUserTickets{}
 	if err := ctx.Bind(data); err != nil {
-		ticketController.logger.ErrorF("TicketController.GetUserTickets bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		ticketController.logger.ErrorF("GetUserTickets bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -62,8 +62,8 @@ func (ticketController *TicketController) GetUserTickets(ctx echo.Context) error
 func (ticketController *TicketController) CreateTicket(ctx echo.Context) error {
 	data := &RequestCreateTicket{}
 	if err := ctx.Bind(data); err != nil {
-		ticketController.logger.ErrorF("TicketController.CreateTicket bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		ticketController.logger.ErrorF("CreateTicket bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -78,8 +78,8 @@ func (ticketController *TicketController) CreateTicket(ctx echo.Context) error {
 func (ticketController *TicketController) CloseTicket(ctx echo.Context) error {
 	data := &RequestCloseTicket{}
 	if err := ctx.Bind(data); err != nil {
-		ticketController.logger.ErrorF("TicketController.CloseTicket bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		ticketController.logger.ErrorF("CloseTicket bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -94,8 +94,8 @@ func (ticketController *TicketController) CloseTicket(ctx echo.Context) error {
 func (ticketController *TicketController) DeleteTicket(ctx echo.Context) error {
 	data := &RequestDeleteTicket{}
 	if err := ctx.Bind(data); err != nil {
-		ticketController.logger.ErrorF("TicketController.DeleteTicket bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		ticketController.logger.ErrorF("DeleteTicket bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

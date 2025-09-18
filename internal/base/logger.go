@@ -180,40 +180,40 @@ func (lg *Logger) LogHandler() *slog.Logger {
 	return lg.logger
 }
 
-func (lg *Logger) Debug(msg string, v ...interface{}) {
-	lg.logger.Debug(msg, v...)
+func (lg *Logger) Debug(msg string) {
+	lg.logger.Debug(msg)
 }
 
 func (lg *Logger) DebugF(msg string, v ...interface{}) {
 	lg.logger.Debug(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Info(msg string, v ...interface{}) {
-	lg.logger.Info(msg, v...)
+func (lg *Logger) Info(msg string) {
+	lg.logger.Info(msg)
 }
 
 func (lg *Logger) InfoF(msg string, v ...interface{}) {
 	lg.logger.Info(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Warn(msg string, v ...interface{}) {
-	lg.logger.Warn(msg, v...)
+func (lg *Logger) Warn(msg string) {
+	lg.logger.Warn(msg)
 }
 
 func (lg *Logger) WarnF(msg string, v ...interface{}) {
 	lg.logger.Warn(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Error(msg string, v ...interface{}) {
-	lg.logger.Error(msg, v...)
+func (lg *Logger) Error(msg string) {
+	lg.logger.Error(msg)
 }
 
 func (lg *Logger) ErrorF(msg string, v ...interface{}) {
 	lg.logger.Error(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Fatal(msg string, v ...interface{}) {
-	lg.logger.Log(context.Background(), LevelFatal, msg, v...)
+func (lg *Logger) Fatal(msg string) {
+	lg.logger.Log(context.Background(), LevelFatal, msg)
 }
 
 func (lg *Logger) FatalF(msg string, v ...interface{}) {

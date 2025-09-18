@@ -60,7 +60,7 @@ type EmailKickedFromServerData struct {
 
 func NewEmailService(logger log.LoggerInterface, config *config.EmailConfig) *EmailService {
 	return &EmailService{
-		logger:       logger,
+		logger:       log.NewLoggerAdapter(logger, "EmailService"),
 		config:       config,
 		emailCodes:   make(map[string]EmailCode),
 		lastSendTime: make(map[string]time.Time),

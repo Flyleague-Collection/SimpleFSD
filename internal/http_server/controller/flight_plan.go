@@ -27,7 +27,7 @@ func NewFlightPlanController(
 	flightPlanService FlightPlanServiceInterface,
 ) *FlightPlanController {
 	return &FlightPlanController{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "FlightPlanController"),
 		flightPlanService: flightPlanService,
 	}
 }
@@ -35,8 +35,8 @@ func NewFlightPlanController(
 func (controller *FlightPlanController) SubmitFlightPlan(ctx echo.Context) error {
 	data := &RequestSubmitFlightPlan{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("FlightPlanController.SubmitFlightPlan bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("SubmitFlightPlan bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -49,8 +49,8 @@ func (controller *FlightPlanController) SubmitFlightPlan(ctx echo.Context) error
 func (controller *FlightPlanController) GetFlightPlan(ctx echo.Context) error {
 	data := &RequestGetFlightPlan{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("FlightPlanController.GetFlightPlan bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetFlightPlan bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -63,8 +63,8 @@ func (controller *FlightPlanController) GetFlightPlan(ctx echo.Context) error {
 func (controller *FlightPlanController) GetFlightPlans(ctx echo.Context) error {
 	data := &RequestGetFlightPlans{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("FlightPlanController.GetFlightPlans bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetFlightPlans bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -77,8 +77,8 @@ func (controller *FlightPlanController) GetFlightPlans(ctx echo.Context) error {
 func (controller *FlightPlanController) DeleteFlightPlan(ctx echo.Context) error {
 	data := &RequestDeleteFlightPlan{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("FlightPlanController.DeleteFlightPlan bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("DeleteFlightPlan bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -93,8 +93,8 @@ func (controller *FlightPlanController) DeleteFlightPlan(ctx echo.Context) error
 func (controller *FlightPlanController) LockFlightPlan(ctx echo.Context) error {
 	data := &RequestLockFlightPlan{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("FlightPlanController.LockFlightPlan bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("LockFlightPlan bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -110,8 +110,8 @@ func (controller *FlightPlanController) LockFlightPlan(ctx echo.Context) error {
 func (controller *FlightPlanController) UnlockFlightPlan(ctx echo.Context) error {
 	data := &RequestLockFlightPlan{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("FlightPlanController.UnlockFlightPlan bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UnlockFlightPlan bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

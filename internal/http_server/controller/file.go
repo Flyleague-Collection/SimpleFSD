@@ -19,15 +19,15 @@ type FileController struct {
 
 func NewFileController(logger log.LoggerInterface, storeService StoreServiceInterface) *FileController {
 	return &FileController{
-		logger:       logger,
+		logger:       log.NewLoggerAdapter(logger, "FileController"),
 		storeService: storeService,
 	}
 }
 
 func (controller *FileController) UploadImages(ctx echo.Context) error {
 	if file, err := ctx.FormFile("file"); err != nil {
-		controller.logger.ErrorF("FileController.UploadImages form file error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UploadImages form file error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	} else {
 		data := &RequestUploadFile{File: file}
 		token := ctx.Get("user").(*jwt.Token)

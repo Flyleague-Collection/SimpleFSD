@@ -19,7 +19,7 @@ func NewAuditService(
 	auditOperation operation.AuditLogOperationInterface,
 ) *AudioLogService {
 	return &AudioLogService{
-		logger:         logger,
+		logger:         log.NewLoggerAdapter(logger, "AudioLogService"),
 		auditOperation: auditOperation,
 	}
 }

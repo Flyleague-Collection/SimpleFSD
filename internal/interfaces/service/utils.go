@@ -105,7 +105,7 @@ func (res *ApiResponse[T]) Response(ctx echo.Context) error {
 
 var (
 	ErrIllegalParam          = NewApiStatus("PARAM_ERROR", "参数不正确", BadRequest)
-	ErrLackParam             = NewApiStatus("PARAM_LACK_ERROR", "缺少参数", BadRequest)
+	ErrParseParam            = NewApiStatus("PARAM_PARSE_ERROR", "参数解析错误", BadRequest)
 	ErrNoPermission          = NewApiStatus("NO_PERMISSION", "无权这么做", PermissionDenied)
 	ErrDatabaseFail          = NewApiStatus("DATABASE_ERROR", "服务器内部错误", ServerInternalError)
 	ErrUserNotFound          = NewApiStatus("USER_NOT_FOUND", "指定用户不存在", NotFound)

@@ -36,7 +36,7 @@ func NewALiYunOssStoreService(
 	auditLogOperation operation.AuditLogOperationInterface,
 ) *ALiYunOssStoreService {
 	service := &ALiYunOssStoreService{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "ALiYunOssStoreService"),
 		localStore:        localStore,
 		config:            config,
 		messageQueue:      messageQueue,

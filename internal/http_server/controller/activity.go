@@ -30,7 +30,7 @@ type ActivityController struct {
 
 func NewActivityController(logger log.LoggerInterface, activityService ActivityServiceInterface) *ActivityController {
 	return &ActivityController{
-		logger:          logger,
+		logger:          log.NewLoggerAdapter(logger, "ActivityController"),
 		activityService: activityService,
 	}
 }
@@ -38,8 +38,8 @@ func NewActivityController(logger log.LoggerInterface, activityService ActivityS
 func (controller *ActivityController) GetActivities(ctx echo.Context) error {
 	data := &RequestGetActivities{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.GetActivities bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetActivities bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.activityService.GetActivities(data).Response(ctx)
 }
@@ -47,8 +47,8 @@ func (controller *ActivityController) GetActivities(ctx echo.Context) error {
 func (controller *ActivityController) GetActivitiesPage(ctx echo.Context) error {
 	data := &RequestGetActivitiesPage{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.GetActivitiesPage bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetActivitiesPage bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -60,8 +60,8 @@ func (controller *ActivityController) GetActivitiesPage(ctx echo.Context) error 
 func (controller *ActivityController) GetActivityInfo(ctx echo.Context) error {
 	data := &RequestActivityInfo{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.GetActivityInfo bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetActivityInfo bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.activityService.GetActivityInfo(data).Response(ctx)
 }
@@ -69,8 +69,8 @@ func (controller *ActivityController) GetActivityInfo(ctx echo.Context) error {
 func (controller *ActivityController) AddActivity(ctx echo.Context) error {
 	data := &RequestAddActivity{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.AddActivity bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("AddActivity bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -85,8 +85,8 @@ func (controller *ActivityController) AddActivity(ctx echo.Context) error {
 func (controller *ActivityController) DeleteActivity(ctx echo.Context) error {
 	data := &RequestDeleteActivity{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.DeleteActivity bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("DeleteActivity bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -101,8 +101,8 @@ func (controller *ActivityController) DeleteActivity(ctx echo.Context) error {
 func (controller *ActivityController) ControllerJoin(ctx echo.Context) error {
 	data := &RequestControllerJoin{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.ControllerJoin bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("ControllerJoin bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -115,8 +115,8 @@ func (controller *ActivityController) ControllerJoin(ctx echo.Context) error {
 func (controller *ActivityController) ControllerLeave(ctx echo.Context) error {
 	data := &RequestControllerLeave{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.ControllerLeave bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("ControllerLeave bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -129,8 +129,8 @@ func (controller *ActivityController) ControllerLeave(ctx echo.Context) error {
 func (controller *ActivityController) PilotJoin(ctx echo.Context) error {
 	data := &RequestPilotJoin{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.PilotJoin bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("PilotJoin bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -143,8 +143,8 @@ func (controller *ActivityController) PilotJoin(ctx echo.Context) error {
 func (controller *ActivityController) PilotLeave(ctx echo.Context) error {
 	data := &RequestPilotLeave{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.PilotLeave bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("PilotLeave bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -157,8 +157,8 @@ func (controller *ActivityController) PilotLeave(ctx echo.Context) error {
 func (controller *ActivityController) EditActivity(ctx echo.Context) error {
 	data := &RequestEditActivity{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.EditActivity bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("EditActivity bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -173,8 +173,8 @@ func (controller *ActivityController) EditActivity(ctx echo.Context) error {
 func (controller *ActivityController) EditActivityStatus(ctx echo.Context) error {
 	data := &RequestEditActivityStatus{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.EditActivityStatus bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("EditActivityStatus bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -186,8 +186,8 @@ func (controller *ActivityController) EditActivityStatus(ctx echo.Context) error
 func (controller *ActivityController) EditPilotStatus(ctx echo.Context) error {
 	data := &RequestEditPilotStatus{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ActivityController.EditPilotStatus bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("EditPilotStatus bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

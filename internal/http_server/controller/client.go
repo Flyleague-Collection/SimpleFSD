@@ -23,7 +23,7 @@ type ClientController struct {
 
 func NewClientController(logger log.LoggerInterface, clientService ClientServiceInterface) *ClientController {
 	return &ClientController{
-		logger:        logger,
+		logger:        log.NewLoggerAdapter(logger, "ClientController"),
 		clientService: clientService,
 	}
 }
@@ -35,8 +35,8 @@ func (controller *ClientController) GetOnlineClients(ctx echo.Context) error {
 func (controller *ClientController) GetClientPath(ctx echo.Context) error {
 	data := &RequestClientPath{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ClientController.GetClientFlightPath bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetClientFlightPath bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.clientService.GetClientFlightPath(data).Response(ctx)
 }
@@ -44,8 +44,8 @@ func (controller *ClientController) GetClientPath(ctx echo.Context) error {
 func (controller *ClientController) SendMessageToClient(ctx echo.Context) error {
 	data := &RequestSendMessageToClient{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ClientController.sendMessageToClient bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("sendMessageToClient bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -60,8 +60,8 @@ func (controller *ClientController) SendMessageToClient(ctx echo.Context) error 
 func (controller *ClientController) KillClient(ctx echo.Context) error {
 	data := &RequestKillClient{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ClientController.killClient bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("killClient bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

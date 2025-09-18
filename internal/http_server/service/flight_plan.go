@@ -28,7 +28,7 @@ func NewFlightPlanService(
 	auditLogOperation operation.AuditLogOperationInterface,
 ) *FlightPlanService {
 	return &FlightPlanService{
-		logger:              logger,
+		logger:              log.NewLoggerAdapter(logger, "FlightPlanService"),
 		messageQueue:        messageQueue,
 		userOperation:       userOperation,
 		flightPlanOperation: flightPlanOperation,

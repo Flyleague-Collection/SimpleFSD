@@ -34,7 +34,7 @@ func NewLocalStoreService(
 	auditLogOperation operation.AuditLogOperationInterface,
 ) *LocalStoreService {
 	return &LocalStoreService{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "LocalStoreService"),
 		config:            config,
 		messageQueue:      messageQueue,
 		auditLogOperation: auditLogOperation,

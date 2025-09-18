@@ -203,6 +203,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	controllerService := impl.NewControllerService(logger, httpConfig, messageQueue, userOperation, controllerOperation, controllerRecordOperation, auditLogOperation)
 	ticketService := impl.NewTicketService(logger, messageQueue, userOperation, ticketOperation, auditLogOperation)
 	flightPlanService := impl.NewFlightPlanService(logger, messageQueue, userOperation, flightPlanOperation, auditLogOperation)
+	metarService := impl.NewMetarService(logger)
 
 	logger.Info("Controller initializing...")
 
@@ -216,11 +217,13 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	controllerController := controller.NewATCController(logger, controllerService)
 	ticketController := controller.NewTicketController(logger, ticketService)
 	flightPlanController := controller.NewFlightPlanController(logger, flightPlanService)
+	metarServiceController := controller.NewMetarServiceController(logger, metarService)
 
 	logger.Info("Applying router...")
 
 	apiGroup := e.Group("/api")
 	apiGroup.POST("/codes", emailController.SendVerifyEmail)
+	apiGroup.GET("/metar", metarServiceController.QueryMetar)
 
 	userGroup := apiGroup.Group("/users")
 	userGroup.POST("", userController.UserRegister)
@@ -320,6 +323,6 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Fatal("Http fsd_server error: %v", err)
+		logger.FatalF("Http fsd_server error: %v", err)
 	}
 }

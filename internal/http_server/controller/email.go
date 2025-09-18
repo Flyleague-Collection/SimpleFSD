@@ -18,7 +18,7 @@ type EmailController struct {
 
 func NewEmailController(logger log.LoggerInterface, emailService EmailServiceInterface) *EmailController {
 	return &EmailController{
-		logger:       logger,
+		logger:       log.NewLoggerAdapter(logger, "EmailController"),
 		emailService: emailService,
 	}
 }
@@ -26,8 +26,8 @@ func NewEmailController(logger log.LoggerInterface, emailService EmailServiceInt
 func (controller *EmailController) SendVerifyEmail(ctx echo.Context) error {
 	data := &RequestEmailVerifyCode{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ClientController.sendVerifyEmail bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("SendVerifyEmail bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.emailService.SendEmailVerifyCode(data).Response(ctx)
 }

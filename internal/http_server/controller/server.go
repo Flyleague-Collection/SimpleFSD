@@ -20,7 +20,7 @@ type ServerController struct {
 
 func NewServerController(logger log.LoggerInterface, serverService ServerServiceInterface) *ServerController {
 	return &ServerController{
-		logger:        logger,
+		logger:        log.NewLoggerAdapter(logger, "ServerController"),
 		serverService: serverService,
 	}
 }

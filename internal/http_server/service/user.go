@@ -38,7 +38,7 @@ func NewUserService(
 	emailService EmailServiceInterface,
 ) *UserService {
 	return &UserService{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "UserService"),
 		messageQueue:      messageQueue,
 		emailService:      emailService,
 		config:            config,

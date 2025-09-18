@@ -35,7 +35,7 @@ func NewControllerService(
 	auditLogOperation operation.AuditLogOperationInterface,
 ) *ControllerService {
 	return &ControllerService{
-		logger:                    logger,
+		logger:                    log.NewLoggerAdapter(logger, "ControllerService"),
 		config:                    config,
 		messageQueue:              messageQueue,
 		userOperation:             userOperation,

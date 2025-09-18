@@ -17,15 +17,15 @@ type LoggerInterface interface {
 	Init(logPath, logName string, debug, noLogs bool)
 	ShutdownCallback() global.Callable
 	LogHandler() *slog.Logger
-	Debug(msg string, v ...interface{})
+	Debug(msg string)
 	DebugF(msg string, v ...interface{})
-	Info(msg string, v ...interface{})
+	Info(msg string)
 	InfoF(msg string, v ...interface{})
-	Warn(msg string, v ...interface{})
+	Warn(msg string)
 	WarnF(msg string, v ...interface{})
-	Error(msg string, v ...interface{})
+	Error(msg string)
 	ErrorF(msg string, v ...interface{})
-	Fatal(msg string, v ...interface{})
+	Fatal(msg string)
 	FatalF(msg string, v ...interface{})
 }
 

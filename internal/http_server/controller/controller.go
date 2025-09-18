@@ -33,7 +33,7 @@ func NewATCController(
 	controllerService ControllerServiceInterface,
 ) *ATCController {
 	return &ATCController{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "ATCController"),
 		controllerService: controllerService,
 	}
 }
@@ -41,8 +41,8 @@ func NewATCController(
 func (controller *ATCController) GetControllers(ctx echo.Context) error {
 	data := &RequestControllerList{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.GetControllers bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetControllers bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -55,8 +55,8 @@ func (controller *ATCController) GetControllers(ctx echo.Context) error {
 func (controller *ATCController) UpdateControllerRating(ctx echo.Context) error {
 	data := &RequestUpdateControllerRating{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.UpdateControllerRating bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UpdateControllerRating bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -71,8 +71,8 @@ func (controller *ATCController) UpdateControllerRating(ctx echo.Context) error 
 func (controller *ATCController) GetCurrentControllerRecord(ctx echo.Context) error {
 	data := &RequestGetCurrentControllerRecord{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.GetCurrentControllerRecord bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetCurrentControllerRecord bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -85,8 +85,8 @@ func (controller *ATCController) GetCurrentControllerRecord(ctx echo.Context) er
 func (controller *ATCController) GetControllerRecord(ctx echo.Context) error {
 	data := &RequestGetControllerRecord{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.GetControllerRecord bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetControllerRecord bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -99,8 +99,8 @@ func (controller *ATCController) GetControllerRecord(ctx echo.Context) error {
 func (controller *ATCController) SetControllerUnderMonitor(ctx echo.Context) error {
 	data := &RequestUpdateControllerUnderMonitor{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.SetControllerUnderMonitor bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("SetControllerUnderMonitor bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -116,8 +116,8 @@ func (controller *ATCController) SetControllerUnderMonitor(ctx echo.Context) err
 func (controller *ATCController) UnsetControllerUnderMonitor(ctx echo.Context) error {
 	data := &RequestUpdateControllerUnderMonitor{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.UnsetControllerUnderMonitor bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UnsetControllerUnderMonitor bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -133,12 +133,8 @@ func (controller *ATCController) UnsetControllerUnderMonitor(ctx echo.Context) e
 func (controller *ATCController) SetControllerUnderSolo(ctx echo.Context) error {
 	data := &RequestUpdateControllerUnderSolo{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.SetControllerUnderSolo bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
-	}
-	if data.EndTime.IsZero() {
-		controller.logger.Error("Missing required data `end_time`")
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("SetControllerUnderSolo bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -154,8 +150,8 @@ func (controller *ATCController) SetControllerUnderSolo(ctx echo.Context) error 
 func (controller *ATCController) UnsetControllerUnderSolo(ctx echo.Context) error {
 	data := &RequestUpdateControllerUnderSolo{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.UnsetControllerUnderSolo bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UnsetControllerUnderSolo bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -171,8 +167,8 @@ func (controller *ATCController) UnsetControllerUnderSolo(ctx echo.Context) erro
 func (controller *ATCController) SetControllerGuest(ctx echo.Context) error {
 	data := &RequestUpdateControllerGuest{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.SetControllerGuest bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("SetControllerGuest bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -188,8 +184,8 @@ func (controller *ATCController) SetControllerGuest(ctx echo.Context) error {
 func (controller *ATCController) UnsetControllerGuest(ctx echo.Context) error {
 	data := &RequestUpdateControllerGuest{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.UnsetControllerGuest bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UnsetControllerGuest bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -205,8 +201,8 @@ func (controller *ATCController) UnsetControllerGuest(ctx echo.Context) error {
 func (controller *ATCController) AddControllerRecord(ctx echo.Context) error {
 	data := &RequestAddControllerRecord{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.AddControllerRecord bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("AddControllerRecord bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -221,8 +217,8 @@ func (controller *ATCController) AddControllerRecord(ctx echo.Context) error {
 func (controller *ATCController) DeleteControllerRecord(ctx echo.Context) error {
 	data := &RequestDeleteControllerRecord{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("ATCController.DeleteControllerRecord bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("DeleteControllerRecord bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

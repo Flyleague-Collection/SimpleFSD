@@ -35,7 +35,7 @@ func NewActivityService(
 	storeService StoreServiceInterface,
 ) *ActivityService {
 	return &ActivityService{
-		logger:            logger,
+		logger:            log.NewLoggerAdapter(logger, "ActivityService"),
 		config:            config,
 		messageQueue:      messageQueue,
 		userOperation:     userOperation,

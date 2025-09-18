@@ -20,7 +20,7 @@ type AuditLogController struct {
 
 func NewAuditLogController(logger log.LoggerInterface, auditService AuditServiceInterface) *AuditLogController {
 	return &AuditLogController{
-		logger:       logger,
+		logger:       log.NewLoggerAdapter(logger, "AuditLogController"),
 		auditService: auditService,
 	}
 }
@@ -28,8 +28,8 @@ func NewAuditLogController(logger log.LoggerInterface, auditService AuditService
 func (controller *AuditLogController) GetAuditLogs(ctx echo.Context) error {
 	data := &RequestGetAuditLog{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("AuditLogController.GetAuditLogs bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetAuditLogs bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -41,8 +41,8 @@ func (controller *AuditLogController) GetAuditLogs(ctx echo.Context) error {
 func (controller *AuditLogController) LogUnlawfulOverreach(ctx echo.Context) error {
 	data := &RequestLogUnlawfulOverreach{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("AuditLogController.LogUnlawfulOverreach bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("LogUnlawfulOverreach bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)

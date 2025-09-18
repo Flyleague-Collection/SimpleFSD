@@ -29,7 +29,7 @@ type UserController struct {
 
 func NewUserHandler(logger log.LoggerInterface, service UserServiceInterface) *UserController {
 	return &UserController{
-		logger:  logger,
+		logger:  log.NewLoggerAdapter(logger, "UserController"),
 		service: service,
 	}
 }
@@ -37,8 +37,8 @@ func NewUserHandler(logger log.LoggerInterface, service UserServiceInterface) *U
 func (controller *UserController) UserRegister(ctx echo.Context) error {
 	data := &RequestUserRegister{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.UserRegister bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UserRegister bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.service.UserRegister(data).Response(ctx)
 }
@@ -46,8 +46,8 @@ func (controller *UserController) UserRegister(ctx echo.Context) error {
 func (controller *UserController) UserLogin(ctx echo.Context) error {
 	data := &RequestUserLogin{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.UserLogin bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("UserLogin bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.service.UserLogin(data).Response(ctx)
 }
@@ -55,8 +55,8 @@ func (controller *UserController) UserLogin(ctx echo.Context) error {
 func (controller *UserController) CheckUserAvailability(ctx echo.Context) error {
 	data := &RequestUserAvailability{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.CheckUserAvailability bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("CheckUserAvailability bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.service.CheckAvailability(data).Response(ctx)
 }
@@ -72,8 +72,8 @@ func (controller *UserController) GetCurrentUserProfile(ctx echo.Context) error 
 func (controller *UserController) EditCurrentProfile(ctx echo.Context) error {
 	data := &RequestUserEditCurrentProfile{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.EditCurrentProfile bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("EditCurrentProfile bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -85,8 +85,8 @@ func (controller *UserController) EditCurrentProfile(ctx echo.Context) error {
 func (controller *UserController) GetUserProfile(ctx echo.Context) error {
 	data := &RequestUserProfile{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.GetUserProfile bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetUserProfile bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -98,8 +98,8 @@ func (controller *UserController) GetUserProfile(ctx echo.Context) error {
 func (controller *UserController) EditProfile(ctx echo.Context) error {
 	data := &RequestUserEditProfile{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.EditProfile bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("EditProfile bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -114,8 +114,8 @@ func (controller *UserController) EditProfile(ctx echo.Context) error {
 func (controller *UserController) GetUsers(ctx echo.Context) error {
 	data := &RequestUserList{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.GetUsers bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("GetUsers bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -127,8 +127,8 @@ func (controller *UserController) GetUsers(ctx echo.Context) error {
 func (controller *UserController) EditUserPermission(ctx echo.Context) error {
 	data := &RequestUserEditPermission{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("UserController.EditUserPermission bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		controller.logger.ErrorF("EditUserPermission bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
@@ -154,7 +154,7 @@ func (controller *UserController) GetToken(ctx echo.Context) error {
 	data := &RequestGetToken{}
 	if err := ctx.Bind(data); err != nil {
 		controller.logger.ErrorF("UserController.GetToken bind error: %v", err)
-		return NewErrorResponse(ctx, ErrLackParam)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	token := ctx.Get("user").(*jwt.Token)
 	claim := token.Claims.(*Claims)
