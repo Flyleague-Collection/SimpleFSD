@@ -67,7 +67,7 @@ FSD支持计划同步, 计划锁定, 网页计划提交
 ```json5
 {
   // 配置文件版本, 通常情况下与软件版本一致
-  "config_version": "0.6.0",
+  "config_version": "0.7.1",
   // 服务配置
   "server": {
     // 通用配置项
@@ -99,8 +99,12 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       // 服务器飞行路径记录间隔
       // 这里间隔的意思是：当客户端每发过来N个包就记录一次位置
       "pos_update_points": 1,
-      // FSD服务器心跳间隔
-      "heartbeat_interval": "60s",
+      // FSD服务器心跳间隔, 超过此时间FSD会认为客户端断开连接
+      // 由于ES的发包最大间隔为25s, 加之服务器处理也需要时间
+      // 推荐此数值大于30s, 但不得小于25s
+      "heartbeat_interval": "40s",
+      // whazzup更新时间
+      "whazzup_cache_time": "15s",
       // FSD服务器会话过期时间
       // 在过期时间内重连, 服务器会自动匹配断开时的session
       // 反之则会创建新session
@@ -111,6 +115,18 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       "max_broadcast_workers": 128,
       // 首行发送到客户端的motd格式, 第一个参数为fsd_name, 第二个为版本号
       "first_motd_line": "Welcome to use %[1]s v%[2]s",
+      // ES视程范围限制
+      "range_limit": {
+        // 是否断开超出视程范围的客户端
+        "refuse_out_range": false,
+        "observer": 300,
+        "delivery": 20,
+        "ground": 20,
+        "tower": 50,
+        "approach": 150,
+        "center": 600,
+        "fss": 1500
+      },
       // 要发送到客户端的motd消息
       "motd": [
         "This is my test fsd server"
@@ -129,8 +145,6 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       "port": 6810,
       // Http服务器最大工作线程
       "max_workers": 128,
-      // whazzup更新时间
-      "whazzup_cache_time": "15s",
       // 代理类型
       // 0 直连无代理服务器
       // 1 代理服务器使用 X-Forwarded-For Http头部
@@ -321,12 +335,30 @@ FSD支持计划同步, 计划锁定, 网页计划提交
 
 ### 命令行参数
 
-| 参数名                      | 类型     | 默认值             | 作用     |
-|:-------------------------|:-------|:----------------|:-------|
-| -help                    | ×      | ×               | 显示命令帮助 |
-| -debug                   | bool   | false           | 开启调试模式 |
-| -config                  | string | "./config.json" | 配置文件路径 |
-| -skip_email_verification | bool   | false           | 跳过邮箱验证 |
+| 参数名                         | 类型     | 默认值                                                                                | 作用                          |
+|:----------------------------|:-------|:-----------------------------------------------------------------------------------|:----------------------------|
+| -help                       | ×      | ×                                                                                  | 显示命令帮助                      |
+| -debug                      | bool   | false                                                                              | 开启调试模式                      |
+| -config                     | string | "./config.json"                                                                    | 配置文件路径                      |
+| -skip_email_verification    | bool   | false                                                                              | 跳过邮箱验证                      |
+| -update_config              | bool   | false                                                                              | 迁移配置文件, 迁移旧版本配置文件           |
+| -no_logs                    | bool   | false                                                                              | 禁用日志输出到文件                   |
+| -message_queue_channel_size | int    | 128                                                                                | 内置消息队列大小                    |
+| -download_prefix            | str    | "https://raw.githubusercontent.com/Flyleague-Collection/SimpleFSD/refs/heads/main" | 下载前缀, 用于无法连接到github或其他情况下使用 |
+
+### 环境变量
+
+***环境变量会覆盖对应的命令行参数***
+
+| 参数名                        | 类型     | 默认值                                                                                | 作用                          |
+|:---------------------------|:-------|:-----------------------------------------------------------------------------------|:----------------------------|
+| DEBUG_MODE                 | bool   | false                                                                              | 开启调试模式                      |
+| CONFIG_FILE_PATH           | string | "./config.json"                                                                    | 配置文件路径                      |
+| SKIP_EMAIL_VERIFICATION    | bool   | false                                                                              | 跳过邮箱验证                      |
+| UPDATE_CONFIG              | bool   | false                                                                              | 迁移配置文件, 迁移旧版本配置文件           |
+| NO_LOGS                    | bool   | false                                                                              | 禁用日志输出到文件                   |
+| MESSAGE_QUEUE_CHANNEL_SIZE | int    | 128                                                                                | 内置消息队列大小                    |
+| DOWNLOAD_PREFIX            | str    | "https://raw.githubusercontent.com/Flyleague-Collection/SimpleFSD/refs/heads/main" | 下载前缀, 用于无法连接到github或其他情况下使用 |
 
 ### 权限定义表
 

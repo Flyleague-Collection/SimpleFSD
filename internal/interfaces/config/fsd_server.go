@@ -100,6 +100,8 @@ func (config *FSDServerConfig) checkValid(logger log.LoggerInterface) *ValidResu
 
 	if duration, err := time.ParseDuration(config.HeartbeatInterval); err != nil {
 		return ValidFail(fmt.Errorf("invalid json field heartbead_interval, duration parse error, %v", err))
+	} else if duration <= 25*time.Second {
+		return ValidFail(fmt.Errorf("heartbead_interval must larger than 25s, got %.0fs", duration.Seconds()))
 	} else {
 		config.HeartbeatDuration = duration
 	}

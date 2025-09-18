@@ -21,7 +21,7 @@ import (
 
 func recoverFromError() {
 	if r := recover(); r != nil {
-		fmt.Printf("It looks like there are some serious errors, the details are as follows: %v", r)
+		fmt.Printf("It looks like there are some serious errors, the details are as follows: \n%v", r)
 	}
 }
 
