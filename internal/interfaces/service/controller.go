@@ -14,10 +14,8 @@ type ControllerServiceInterface interface {
 	GetControllerList(req *RequestControllerList) *ApiResponse[ResponseControllerList]
 	GetCurrentControllerRecord(req *RequestGetCurrentControllerRecord) *ApiResponse[ResponseGetCurrentControllerRecord]
 	GetControllerRecord(req *RequestGetControllerRecord) *ApiResponse[ResponseGetControllerRecord]
+	GetControllerRatings(req *RequestControllerRatingList) *ApiResponse[ResponseControllerRatingList]
 	UpdateControllerRating(req *RequestUpdateControllerRating) *ApiResponse[ResponseUpdateControllerRating]
-	UpdateControllerUnderMonitor(req *RequestUpdateControllerUnderMonitor) *ApiResponse[ResponseUpdateControllerUnderMonitor]
-	UpdateControllerUnderSolo(req *RequestUpdateControllerUnderSolo) *ApiResponse[ResponseUpdateControllerUnderSolo]
-	UpdateControllerGuest(req *RequestUpdateControllerGuest) *ApiResponse[ResponseUpdateControllerGuest]
 	AddControllerRecord(req *RequestAddControllerRecord) *ApiResponse[ResponseAddControllerRecord]
 	DeleteControllerRecord(req *RequestDeleteControllerRecord) *ApiResponse[ResponseDeleteControllerRecord]
 }
@@ -65,40 +63,16 @@ type ResponseGetControllerRecord struct {
 type RequestUpdateControllerRating struct {
 	JwtHeader
 	EchoContentHeader
-	TargetUid uint `param:"uid"`
-	Rating    int  `json:"rating"`
+	TargetUid    uint      `param:"uid"`
+	Guest        bool      `json:"guest"`
+	Rating       int       `json:"rating"`
+	UnderMonitor bool      `json:"under_monitor"`
+	UnderSolo    bool      `json:"under_solo"`
+	Tier2        bool      `json:"tier2"`
+	SoloUntil    time.Time `json:"solo_until"`
 }
 
 type ResponseUpdateControllerRating bool
-
-type RequestUpdateControllerUnderMonitor struct {
-	JwtHeader
-	EchoContentHeader
-	TargetUid    uint `param:"uid"`
-	UnderMonitor bool
-}
-
-type ResponseUpdateControllerUnderMonitor bool
-
-type RequestUpdateControllerUnderSolo struct {
-	JwtHeader
-	EchoContentHeader
-	TargetUid uint `param:"uid"`
-	Solo      bool
-	EndTime   time.Time `json:"end_time"`
-}
-
-type ResponseUpdateControllerUnderSolo bool
-
-type RequestUpdateControllerGuest struct {
-	JwtHeader
-	EchoContentHeader
-	TargetUid uint `param:"uid"`
-	Guest     bool
-	Rating    int `json:"rating"`
-}
-
-type ResponseUpdateControllerGuest bool
 
 type RequestAddControllerRecord struct {
 	JwtHeader
@@ -118,3 +92,26 @@ type RequestDeleteControllerRecord struct {
 }
 
 type ResponseDeleteControllerRecord bool
+
+type RequestControllerRatingList struct {
+	Page     int `query:"page_number"`
+	PageSize int `query:"page_size"`
+}
+
+type ControllerRating struct {
+	Cid          int       `json:"cid"`
+	Rating       int       `json:"rating"`
+	AvatarUrl    string    `json:"avatar_url"`
+	UnderMonitor bool      `json:"under_monitor"`
+	UnderSolo    bool      `json:"under_solo"`
+	SoloUntil    time.Time `json:"solo_until"`
+	Tier2        bool      `json:"tier2"`
+	IsGuest      bool      `json:"is_guest"`
+}
+
+type ResponseControllerRatingList struct {
+	Items    []*ControllerRating `json:"items"`
+	Page     int                 `json:"page"`
+	PageSize int                 `json:"page_size"`
+	Total    int64               `json:"total"`
+}

@@ -31,10 +31,10 @@ type RequestGetUserTickets struct {
 }
 
 type ResponseGetUserTickets struct {
-	Items    []*operation.Ticket `json:"items"`
-	Page     int                 `json:"page"`
-	PageSize int                 `json:"page_size"`
-	Total    int64               `json:"total"`
+	Items    []*operation.UserTicket `json:"items"`
+	Page     int                     `json:"page"`
+	PageSize int                     `json:"page_size"`
+	Total    int64                   `json:"total"`
 }
 
 type RequestCreateTicket struct {

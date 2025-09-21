@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"math"
+	"strings"
 )
 
 type FacilityModel struct {
@@ -43,7 +43,7 @@ var facilitiesIndex = map[Facility]int{Pilot: 0, OBS: 1, DEL: 2, GND: 3, TWR: 4,
 var facilityRangeLimit = map[Facility]int{Pilot: 50, OBS: 300, DEL: 20, GND: 20, TWR: 50, APP: 150, CTR: 600, FSS: 600}
 
 func (f Facility) String() string {
-	return Facilities[int(math.Log2(float64(f)))].ShortName
+	return Facilities[f.Index()].ShortName
 }
 
 func (f Facility) Index() int {
@@ -72,6 +72,20 @@ func SyncRatingConfig(config *config.Config) error {
 			return fmt.Errorf("illegal permission value %s", rating)
 		}
 		RatingFacilityMap[Rating(r)] = Facility(facility)
+	}
+	return nil
+}
+
+func SyncFacilityConfig(config *config.Config) error {
+	if len(config.Facility) == 0 {
+		return nil
+	}
+	for ident, facility := range config.Facility {
+		if facility <= 1 {
+			return fmt.Errorf("illegal facility ident value %d", facility)
+		}
+		ident = strings.ToUpper(ident)
+		FacilityMap[ident] = Facility(facility)
 	}
 	return nil
 }

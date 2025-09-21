@@ -2,7 +2,6 @@
 package service
 
 import (
-	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 )
 
@@ -19,8 +18,8 @@ type PermissionChangeEmailData struct {
 type RatingChangeEmailData struct {
 	User      *operation.User
 	Operator  *operation.User
-	OldRating fsd.Rating
-	NewRating fsd.Rating
+	OldRating string
+	NewRating string
 }
 
 type KickedFromServerEmailData struct {
@@ -30,7 +29,7 @@ type KickedFromServerEmailData struct {
 }
 
 type EmailServiceInterface interface {
-	VerifyEmailCode(email string, code int, cid int) error
+	VerifyEmailCode(email string, code string, cid int) error
 	SendEmailVerifyCode(req *RequestEmailVerifyCode) *ApiResponse[ResponseEmailVerifyCode]
 }
 

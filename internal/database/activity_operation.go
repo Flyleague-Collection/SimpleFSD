@@ -97,9 +97,10 @@ func (activityOperation *ActivityOperation) GetActivityById(activityId uint) (ac
 		Preload("Pilots.User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, cid, avatar_url")
 		}).
-		Preload("Controllers.User", func(db *gorm.DB) *gorm.DB {
+		Preload("Facilities.Controller.User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, cid, avatar_url")
 		}).
+		Preload("Controllers").
 		Where("id = ?", activityId).
 		First(activity).
 		Error
@@ -151,7 +152,7 @@ func (activityOperation *ActivityOperation) GetFacilityById(facilityId uint) (fa
 	facility = &ActivityFacility{}
 	ctx, cancel := context.WithTimeout(context.Background(), activityOperation.queryTimeout)
 	defer cancel()
-	err = activityOperation.db.WithContext(ctx).Preload("Controller").Where("id = ?", facilityId).First(facility).Error
+	err = activityOperation.db.WithContext(ctx).Preload("Controller").First(facility, facilityId).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = ErrFacilityNotFound
 	}
@@ -173,7 +174,7 @@ func (activityOperation *ActivityOperation) GetActivityPilotById(activityId uint
 }
 
 func (activityOperation *ActivityOperation) SignFacilityController(facility *ActivityFacility, user *User) (err error) {
-	if user.Rating < facility.MinRating {
+	if user.Rating < facility.MinRating || (facility.Tier2Tower && !user.Tier2) {
 		return ErrRatingNotAllowed
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), activityOperation.queryTimeout)
@@ -197,7 +198,7 @@ func (activityOperation *ActivityOperation) UnsignFacilityController(facility *A
 	if facility.Controller == nil {
 		return ErrFacilityNotSigned
 	}
-	if facility.Controller.ID != userId {
+	if facility.Controller.UserId != userId {
 		return ErrFacilityNotYourSign
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), activityOperation.queryTimeout)
@@ -217,9 +218,9 @@ func (activityOperation *ActivityOperation) SignActivityPilot(activityId uint, u
 	defer cancel()
 	return activityOperation.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		pilot := &ActivityPilot{}
-		tx.Select("id", "cid", "callsign").Where("activity_id = ? and (user_id = ? or callsign = ?)", activityId, userId, callsign).First(pilot)
+		tx.Select("id", "user_id", "callsign").Where("activity_id = ? and (user_id = ? or callsign = ?)", activityId, userId, callsign).First(pilot)
 		if pilot.ID != 0 {
-			if pilot.ID == userId {
+			if pilot.UserId == userId {
 				return ErrActivityAlreadySigned
 			}
 			return ErrCallsignAlreadyUsed

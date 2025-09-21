@@ -445,3 +445,7 @@ func (client *Client) SetLogoffTime(time string) { client.logoffTime = time }
 func (client *Client) IsBreak() bool { return client.isBreak }
 
 func (client *Client) SetBreak(isBreak bool) { client.isBreak = isBreak }
+
+func (client *Client) SetRating(rating Rating) { client.rating = rating }
+
+func (client *Client) SetRealName(realName string) { client.realName = realName }

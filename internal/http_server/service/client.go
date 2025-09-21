@@ -153,3 +153,42 @@ func (clientService *ClientService) GetClientFlightPath(req *RequestClientPath) 
 	data := ResponseClientPath(client.Paths())
 	return NewApiResponse(SuccessGetClientPath, &data)
 }
+
+var SuccessSendBroadcastMessage = NewApiStatus("SEND_BROADCAST_MESSAGE", "获取客户端飞行路径", Ok)
+
+func (clientService *ClientService) SendBroadcastMessage(req *RequestSendBroadcastMessage) *ApiResponse[ResponseSendBroadcastMessage] {
+	if req.Message == "" || !fsd.IsValidBroadcastTarget(req.Target) {
+		return NewApiResponse[ResponseSendBroadcastMessage](ErrIllegalParam, nil)
+	}
+
+	if res := CheckPermission[ResponseSendBroadcastMessage](req.Permission, operation.ClientSendBroadcastMessage); res != nil {
+		return res
+	}
+
+	clientService.messageQueue.Publish(&queue.Message{
+		Type: queue.BroadcastMessage,
+		Data: &fsd.BroadcastMessageData{
+			From:    req.Cid,
+			Target:  fsd.BroadcastTarget(req.Target),
+			Message: req.Message,
+		},
+	})
+
+	clientService.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: clientService.auditLogOperation.NewAuditLog(
+			operation.ClientBroadcastMessage,
+			req.Cid,
+			req.Target,
+			req.Ip,
+			req.UserAgent,
+			&operation.ChangeDetail{
+				OldValue: operation.ValueNotAvailable,
+				NewValue: req.Message,
+			},
+		),
+	})
+
+	data := ResponseSendBroadcastMessage(true)
+	return NewApiResponse[ResponseSendBroadcastMessage](SuccessSendBroadcastMessage, &data)
+}

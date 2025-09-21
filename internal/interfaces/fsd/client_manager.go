@@ -21,9 +21,16 @@ type ClientManagerInterface interface {
 	DeleteClient(callsign string) bool
 	HandleKickClientFromServerMessage(message *queue.Message) error
 	HandleSendMessageToClientMessage(message *queue.Message) error
+	HandleBroadcastMessage(message *queue.Message) error
 	KickClientFromServer(callsign string, reason string) (ClientInterface, error)
 	SendMessageTo(callsign string, message []byte) error
 	BroadcastMessage(message []byte, fromClient ClientInterface, filter BroadcastFilter)
+}
+
+type BroadcastMessageData struct {
+	From    int
+	Target  BroadcastTarget
+	Message string
 }
 
 type SendRawMessageData struct {

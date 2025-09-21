@@ -22,8 +22,8 @@ const (
 	Simulator                                // 模拟机
 	RatingChange                             // 权限变动
 	Training                                 // 训练内容
-	UnderMonitor                             // UM权限授予
-	Solo                                     // Solo权限授予
+	UnderMonitor                             // UM权限变动
+	Solo                                     // Solo权限变动
 	Guest                                    // 客座权限变动
 	Other                                    // 其他未定义内容
 )

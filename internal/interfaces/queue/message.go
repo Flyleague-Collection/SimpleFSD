@@ -16,6 +16,7 @@ const (
 	SendKickedFromServerEmail
 	SendMessageToClient
 	KickClientFromServer
+	BroadcastMessage
 	AuditLog
 	AuditLogs
 )
@@ -28,6 +29,7 @@ var messageTypes = []string{
 	"SendKickedFromServerEmail",
 	"SendMessageToClient",
 	"KickClientFromServer",
+	"BroadcastMessage",
 	"AuditLog",
 	"AuditLogs",
 }

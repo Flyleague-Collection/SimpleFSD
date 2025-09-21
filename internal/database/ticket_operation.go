@@ -65,12 +65,12 @@ func (ticketOperation *TicketOperation) GetTickets(page, pageSize int) (tickets 
 	return
 }
 
-func (ticketOperation *TicketOperation) GetUserTickets(cid, page, pageSize int) (tickets []*Ticket, total int64, err error) {
-	tickets = make([]*Ticket, 0, pageSize)
+func (ticketOperation *TicketOperation) GetUserTickets(cid, page, pageSize int) (tickets []*UserTicket, total int64, err error) {
+	tickets = make([]*UserTicket, 0, pageSize)
 	ctx, cancel := context.WithTimeout(context.Background(), ticketOperation.queryTimeout)
 	defer cancel()
 	ticketOperation.db.WithContext(ctx).Model(&Ticket{}).Select("id").Where("opener = ?", cid).Count(&total)
-	err = ticketOperation.db.WithContext(ctx).Offset((page-1)*pageSize).Order("created_at desc").Where("opener = ?", cid).Limit(pageSize).Find(&tickets).Error
+	err = ticketOperation.db.WithContext(ctx).Model(&Ticket{}).Offset((page-1)*pageSize).Order("created_at desc").Where("opener = ?", cid).Limit(pageSize).Find(&tickets).Error
 	return
 }
 

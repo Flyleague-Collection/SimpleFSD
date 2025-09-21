@@ -25,7 +25,7 @@ type RequestUserRegister struct {
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	Cid       int    `json:"cid"`
-	EmailCode int    `json:"email_code"`
+	EmailCode string `json:"email_code"`
 }
 
 type ResponseUserRegister bool
@@ -60,7 +60,7 @@ type RequestUserEditCurrentProfile struct {
 	Cid            int    `json:"cid"`
 	Username       string `json:"username"`
 	Email          string `json:"email"`
-	EmailCode      int    `json:"email_code"`
+	EmailCode      string `json:"email_code"`
 	AvatarUrl      string `json:"avatar_url"`
 	QQ             int    `json:"qq"`
 	OriginPassword string `json:"origin_password"`
@@ -123,6 +123,7 @@ type RequestGetToken struct {
 }
 
 type ResponseGetToken struct {
-	Token      string `json:"token"`
-	FlushToken string `json:"flush_token"`
+	User       *operation.User `json:"user"`
+	Token      string          `json:"token"`
+	FlushToken string          `json:"flush_token"`
 }

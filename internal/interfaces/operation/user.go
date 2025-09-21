@@ -20,6 +20,7 @@ type User struct {
 	Guest             bool                `gorm:"default:false" json:"guest"`
 	UnderMonitor      bool                `gorm:"default:false;not null" json:"under_monitor"`
 	UnderSolo         bool                `gorm:"default:false;not null" json:"under_solo"`
+	Tier2             bool                `gorm:"default:false;not null" json:"tier2"`
 	SoloUntil         time.Time           `gorm:"default:null" json:"solo_until"`
 	Permission        uint64              `gorm:"default:0" json:"permission"`
 	TotalPilotTime    int                 `gorm:"default:0" json:"total_pilot_time"`

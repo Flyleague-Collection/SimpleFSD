@@ -257,20 +257,6 @@ func GetTargetUserAndCheckPermissionFromDatabase[T any](
 	return
 }
 
-func GetTargetUserAndCheckPermission[T any](
-	userOperation operation.UserOperationInterface,
-	permission uint64,
-	targetUid uint,
-	perm operation.Permission,
-) (*operation.User, *ApiResponse[T]) {
-	if res := CheckPermission[T](permission, perm); res != nil {
-		return nil, res
-	}
-	return CallDBFunc[*operation.User, T](func() (*operation.User, error) {
-		return userOperation.GetUserByUid(targetUid)
-	})
-}
-
 func CheckPermissionFromDatabase[T any](
 	userOperation operation.UserOperationInterface,
 	uid uint,

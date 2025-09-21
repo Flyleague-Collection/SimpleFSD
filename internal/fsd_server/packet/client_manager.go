@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -55,6 +56,78 @@ func (cm *ClientManager) sendRawMessageTo(from int, to string, message string) e
 func (cm *ClientManager) HandleSendMessageToClientMessage(message *queue.Message) error {
 	if val, ok := message.Data.(*SendRawMessageData); ok {
 		return cm.sendRawMessageTo(val.From, val.To, val.Message)
+	}
+	return queue.ErrMessageDataType
+}
+
+func (cm *ClientManager) broadcastMessage(message *BroadcastMessageData) error {
+	if cm.shuttingDown.Load() {
+		return errors.New("client manager shutting down")
+	}
+
+	if len(message.Message) == 0 {
+		return errors.New("message is empty")
+	}
+
+	clients := cm.GetClientSnapshot()
+	defer cm.putSlice(clients)
+
+	if len(clients) == 0 {
+		return nil
+	}
+
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, cm.config.Server.FSDServer.MaxBroadcastWorkers)
+
+	var filter ClientFilter
+
+	switch message.Target {
+	case AllSup:
+		filter = BroadcastToSupClient
+	case AllATC:
+		message.Target = AllClient
+		filter = BroadcastToATCClient
+	case AllPilot:
+		message.Target = AllClient
+		filter = BroadcastToAllPilotClient
+	case AllClient:
+		filter = BroadcastToAllClient
+	}
+
+	packet := makePacket(Message, fmt.Sprintf("(%04d)", message.From), message.Target.String(), message.Message)
+
+	for _, client := range clients {
+		if client.Disconnected() {
+			continue
+		}
+
+		if filter != nil && !filter(client) {
+			continue
+		}
+
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(cl ClientInterface) {
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
+
+			cm.logger.DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), string(bytes.TrimRight(packet, "\r\n")))
+			err := cl.SendLineWithoutLog(packet)
+			if err != nil && errors.Is(err, ErrClientSocketWrite) {
+				cl.MarkedDisconnect(false)
+			}
+		}(client)
+	}
+
+	wg.Wait()
+	return nil
+}
+
+func (cm *ClientManager) HandleBroadcastMessage(message *queue.Message) error {
+	if val, ok := message.Data.(*BroadcastMessageData); ok {
+		return cm.broadcastMessage(val)
 	}
 	return queue.ErrMessageDataType
 }

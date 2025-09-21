@@ -59,4 +59,6 @@ type ClientInterface interface {
 	SetLogoffTime(time string)
 	IsBreak() bool
 	SetBreak(isBreak bool)
+	SetRating(rating Rating)
+	SetRealName(realName string)
 }

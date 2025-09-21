@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
@@ -53,17 +54,20 @@ var (
 	ErrEmailNotFound    = NewApiStatus("EMAIL_CODE_NOT_FOUND", "未向该邮箱发送验证码", BadRequest)
 	ErrCidNotMatch      = NewApiStatus("CID_NOT_MATCH", "注册cid与验证码发送时的cid不一致", BadRequest)
 	ErrEmailExpired     = NewApiStatus("EMAIL_CODE_EXPIRED", "验证码已过期", BadRequest)
+	ErrEmailIllegal     = NewApiStatus("EMAIL_CODE_ILLEGAL", "非法验证码", BadRequest)
 	ErrEmailCodeInvalid = NewApiStatus("EMAIL_CODE_INVALID", "邮箱验证码错误", BadRequest)
 	SuccessRegister     = NewApiStatus("REGISTER_SUCCESS", "注册成功", Ok)
 )
 
-func (userService *UserService) verifyEmailCode(email string, emailCode, cid int) *ApiStatus {
+func (userService *UserService) verifyEmailCode(email string, emailCode string, cid int) *ApiStatus {
 	err := userService.emailService.VerifyEmailCode(email, emailCode, cid)
 	switch {
 	case errors.Is(err, ErrEmailCodeNotFound):
 		return ErrEmailNotFound
 	case errors.Is(err, ErrEmailCodeExpired):
 		return ErrEmailExpired
+	case errors.Is(err, ErrEmailCodeIllegal):
+		return ErrEmailIllegal
 	case errors.Is(err, ErrInvalidEmailCode):
 		return ErrEmailCodeInvalid
 	case errors.Is(err, ErrCidMismatch):
@@ -74,7 +78,7 @@ func (userService *UserService) verifyEmailCode(email string, emailCode, cid int
 }
 
 func (userService *UserService) UserRegister(req *RequestUserRegister) *ApiResponse[ResponseUserRegister] {
-	if req.Username == "" || req.Email == "" || req.Password == "" || req.Cid <= 0 || req.EmailCode <= 0 {
+	if req.Username == "" || req.Email == "" || req.Password == "" || req.Cid <= 0 || len(req.EmailCode) != 6 {
 		return NewApiResponse[ResponseUserRegister](ErrIllegalParam, nil)
 	}
 
@@ -114,6 +118,7 @@ func (userService *UserService) UserRegister(req *RequestUserRegister) *ApiRespo
 }
 
 var (
+	ErrAccountSuspended        = NewApiStatus("ACCOUNT_SUSPENDED", "您已被封禁", PermissionDenied)
 	ErrWrongUsernameOrPassword = NewApiStatus("WRONG_USERNAME_OR_PASSWORD", "用户名或密码错误", NotFound)
 	SuccessLogin               = NewApiStatus("LOGIN_SUCCESS", "登陆成功", Ok)
 )
@@ -130,6 +135,10 @@ func (userService *UserService) UserLogin(req *RequestUserLogin) *ApiResponse[Re
 	})
 	if res != nil {
 		return res
+	}
+
+	if user.Rating <= fsd.Ban.Index() {
+		return NewApiResponse[ResponseUserLogin](ErrAccountSuspended, nil)
 	}
 
 	if pass := userService.userOperation.VerifyUserPassword(user, req.Password); !pass {
@@ -223,7 +232,7 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 			return err, nil, ""
 		}
 		if !skipEmailVerify {
-			if req.EmailCode <= 0 {
+			if len(req.EmailCode) != 6 {
 				return ErrIllegalParam, nil, ""
 			}
 			if res := userService.verifyEmailCode(req.Email, req.EmailCode, req.Cid); res != nil {
@@ -544,6 +553,7 @@ func (userService *UserService) GetTokenWithFlushToken(req *RequestGetToken) *Ap
 
 	token := NewClaims(userService.config.JWT, user, false)
 	return NewApiResponse(SuccessGetToken, &ResponseGetToken{
+		User:       user,
 		Token:      token.GenerateKey(),
 		FlushToken: flushToken,
 	})

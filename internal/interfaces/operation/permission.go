@@ -12,6 +12,7 @@ const (
 	UserEditBaseInfo
 	UserEditPermission
 	ControllerShowList
+	ControllerTier2Rating
 	ControllerEditRating
 	ControllerShowRecord
 	ControllerCreateRecord
@@ -34,6 +35,7 @@ const (
 	FlightPlanDelete
 	ClientManagerEntry
 	ClientSendMessage
+	ClientSendBroadcastMessage
 	ClientKill
 )
 
@@ -45,6 +47,7 @@ var PermissionMap = map[string]Permission{
 	"UserEditBaseInfo":             UserEditBaseInfo,
 	"UserEditPermission":           UserEditPermission,
 	"ControllerShowList":           ControllerShowList,
+	"ControllerTier2Rating":        ControllerTier2Rating,
 	"ControllerEditRating":         ControllerEditRating,
 	"ControllerShowRecord":         ControllerShowRecord,
 	"ControllerCreateRecord":       ControllerCreateRecord,
@@ -68,10 +71,11 @@ var PermissionMap = map[string]Permission{
 	"ClientManagerEntry":           ClientManagerEntry,
 	"ClientSendMessage":            ClientSendMessage,
 	"ClientKill":                   ClientKill,
+	"ClientSendBroadcastMessage":   ClientSendBroadcastMessage,
 }
 
 func (p *Permission) IsValid() bool {
-	maxPerm := ClientKill<<1 - 1 // 计算最大有效位
+	maxPerm := ClientSendBroadcastMessage<<1 - 1 // 计算最大有效位
 	return *p >= 0 && *p <= maxPerm
 }
 

@@ -10,6 +10,7 @@ type ClientServiceInterface interface {
 	SendMessageToClient(req *RequestSendMessageToClient) *ApiResponse[ResponseSendMessageToClient]
 	KillClient(req *RequestKillClient) *ApiResponse[ResponseKillClient]
 	GetClientFlightPath(req *RequestClientPath) *ApiResponse[ResponseClientPath]
+	SendBroadcastMessage(req *RequestSendBroadcastMessage) *ApiResponse[ResponseSendBroadcastMessage]
 }
 
 type RequestSendMessageToClient struct {
@@ -35,3 +36,12 @@ type RequestClientPath struct {
 }
 
 type ResponseClientPath []*fsd.PilotPath
+
+type RequestSendBroadcastMessage struct {
+	JwtHeader
+	EchoContentHeader
+	Target  string `json:"target"`
+	Message string `json:"message"`
+}
+
+type ResponseSendBroadcastMessage bool

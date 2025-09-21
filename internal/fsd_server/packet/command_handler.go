@@ -12,6 +12,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (session *Session) checkPacketLength(data []string, requirement *CommandRequirement) (*Result, bool) {
@@ -49,7 +50,7 @@ func (session *Session) verifyUserInfo(callsign string, protocol int, cid UserId
 	if err != nil {
 		return ResultError(InvalidCidPassword, true, callsign, err)
 	}
-	if user.Rating == Ban.Index() {
+	if user.Rating <= Ban.Index() {
 		return ResultError(CidSuspended, true, callsign, nil)
 	}
 	if !session.userOperation.VerifyUserPassword(user, password) {
@@ -106,6 +107,9 @@ func (session *Session) handleAddAtc(data []string, rawLine []byte) *Result {
 		session.client = NewClient(session.application, callsign, Rating(reqRating), protocol, realName, session, true)
 		_ = session.client.SetPosition(0, latitude, longitude)
 		_ = session.clientManager.AddClient(session.client)
+	} else {
+		session.client.SetRating(Rating(reqRating))
+		session.client.SetRealName(realName)
 	}
 	session.client.SendLine(makePacket(ClientQuery, global.FSDServerName, callsign, "ATIS"))
 	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
@@ -136,6 +140,9 @@ func (session *Session) handleAddPilot(data []string, rawLine []byte) *Result {
 		session.client = NewClient(session.application, callsign, reqRating, protocol, realName, session, false)
 		session.client.SetSimType(simType)
 		_ = session.clientManager.AddClient(session.client)
+	} else {
+		session.client.SetRating(reqRating)
+		session.client.SetRealName(realName)
 	}
 	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
 	session.client.SendMotd()
@@ -146,8 +153,7 @@ func (session *Session) handleAddPilot(data []string, rawLine []byte) *Result {
 			session.client.SendLine(makePacket(Message, "FPlanManager", callsign,
 				fmt.Sprintf("Seems you are connect with callsign(%s), "+
 					"but we found a flightplan submit by web at %s which has callsign(%s), "+
-					"please check it.", flightPlan.UpdatedAt.String(), callsign, flightPlan.Callsign)))
-
+					"please check it.", callsign, flightPlan.UpdatedAt.Format(time.DateTime), flightPlan.Callsign)))
 		}
 	}
 	return ResultSuccess()
@@ -158,16 +164,16 @@ func (session *Session) handleAtcPosUpdate(data []string, rawLine []byte) *Resul
 	//  %  ZSHA_CTR 24550  6  600  5  27.28025 118.28701  0
 	// [0] [   1  ] [ 2 ] [3] [4] [5] [   6  ] [   7   ] [8]
 	callsign := data[0]
+	rating := Rating(utils.StrToInt(data[4], 0))
 	facility := Facility(1 << utils.StrToInt(data[2], 0))
-	if facility != session.facilityIdent {
+	if !rating.CheckRatingFacility(facility) {
+		return ResultError(RequestLevelTooHigh, true, callsign, nil)
+	}
+	if !session.facilityIdent.CheckFacility(facility) {
 		return ResultError(CallsignInvalid, true, callsign, errors.New("callsign and faility mismatch"))
 	}
 	if res := session.checkRangeLimit(facility, utils.StrToInt(data[3], 0)); res != nil {
 		return res
-	}
-	rating := Rating(utils.StrToInt(data[4], 0))
-	if !rating.CheckRatingFacility(facility) {
-		return ResultError(RequestLevelTooHigh, true, callsign, nil)
 	}
 	frequency := utils.StrToInt(data[1], 0)
 	visualRange := utils.StrToFloat(data[3], 0)

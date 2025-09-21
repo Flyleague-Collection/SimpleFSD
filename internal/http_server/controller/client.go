@@ -14,6 +14,7 @@ type ClientControllerInterface interface {
 	GetClientPath(ctx echo.Context) error
 	SendMessageToClient(ctx echo.Context) error
 	KillClient(ctx echo.Context) error
+	BroadcastMessage(ctx echo.Context) error
 }
 
 type ClientController struct {
@@ -71,4 +72,20 @@ func (controller *ClientController) KillClient(ctx echo.Context) error {
 	data.Ip = ctx.RealIP()
 	data.UserAgent = ctx.Request().UserAgent()
 	return controller.clientService.KillClient(data).Response(ctx)
+}
+
+func (controller *ClientController) BroadcastMessage(ctx echo.Context) error {
+	data := &RequestSendBroadcastMessage{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.ErrorF("broadcastMessage bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
+	token := ctx.Get("user").(*jwt.Token)
+	claim := token.Claims.(*Claims)
+	data.Uid = claim.Uid
+	data.Permission = claim.Permission
+	data.Cid = claim.Cid
+	data.Ip = ctx.RealIP()
+	data.UserAgent = ctx.Request().UserAgent()
+	return controller.clientService.SendBroadcastMessage(data).Response(ctx)
 }

@@ -52,12 +52,14 @@ var CommandRequirements = map[ClientCommand]*CommandRequirement{
 }
 
 var FacilityMap = map[string]Facility{
-	"SUP": OBS,
-	"OBS": OBS,
-	"DEL": DEL,
-	"GND": GND,
-	"TWR": TWR,
-	"APP": APP,
-	"CTR": CTR,
-	"FSS": FSS,
+	"SUP":  OBS,
+	"OBS":  OBS,
+	"DEL":  DEL,
+	"RMP":  GND,
+	"GND":  GND,
+	"TWR":  TWR,
+	"APP":  APP,
+	"CTR":  CTR,
+	"FSS":  FSS,
+	"ATIS": TWR,
 }

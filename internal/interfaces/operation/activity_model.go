@@ -82,10 +82,11 @@ func (facility *Activity) Diff(other *Activity) map[string]interface{} {
 type ActivityFacility struct {
 	ID         uint         `gorm:"primarykey" json:"id"`
 	ActivityId uint         `gorm:"index;not null" json:"activity_id"`
+	Tier2Tower bool         `gorm:"default:false;not null" json:"tier2_tower"`
 	MinRating  int          `gorm:"default:2;not null" json:"min_rating"`
 	Callsign   string       `gorm:"size:16;not null" json:"callsign"`
 	Frequency  string       `gorm:"size:16;not null" json:"frequency"`
-	Controller *ActivityATC `gorm:"foreignKey:FacilityId;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Controller *ActivityATC `gorm:"foreignKey:FacilityId;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"controller"`
 	CreatedAt  time.Time    `json:"-"`
 	UpdatedAt  time.Time    `json:"-"`
 }
@@ -99,6 +100,9 @@ func (facility *ActivityFacility) Diff(other *ActivityFacility) map[string]inter
 	result := make(map[string]interface{})
 	if facility.MinRating != other.MinRating {
 		result["min_rating"] = facility.MinRating
+	}
+	if facility.Tier2Tower != other.Tier2Tower {
+		result["tier2_tower"] = facility.Tier2Tower
 	}
 	if facility.Callsign != other.Callsign {
 		result["callsign"] = facility.Callsign
@@ -122,7 +126,7 @@ type ActivityATC struct {
 type ActivityPilot struct {
 	ID           uint      `gorm:"primarykey" json:"id"`
 	ActivityId   uint      `gorm:"uniqueIndex:activityPilot;not null" json:"activity_id"`
-	UserId       uint      `gorm:"not null" json:"uid"`
+	UserId       uint      `gorm:"uniqueIndex:activityPilot;not null" json:"uid"`
 	User         *User     `gorm:"foreignKey:UserId;references:ID" json:"user"`
 	Callsign     string    `gorm:"size:32;not null" json:"callsign"`
 	AircraftType string    `gorm:"size:32;not null" json:"aircraft_type"`

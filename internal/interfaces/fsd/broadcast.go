@@ -9,9 +9,15 @@ type BroadcastTarget string
 
 var (
 	AllClient BroadcastTarget = "*"
+	AllPilot  BroadcastTarget = "*P"
 	AllATC    BroadcastTarget = "*A"
 	AllSup    BroadcastTarget = "*S"
 )
+
+func IsValidBroadcastTarget(b string) bool {
+	target := BroadcastTarget(b)
+	return target == AllSup || target == AllATC || target == AllClient || target == AllPilot
+}
 
 func (b BroadcastTarget) String() string {
 	return string(b)
@@ -21,14 +27,31 @@ func (b BroadcastTarget) Index() int {
 	return 0
 }
 
+type ClientFilter func(client ClientInterface) bool
+
 type BroadcastFilter func(toClient, fromClient ClientInterface) bool
 
-func BroadcastToAll(_, _ ClientInterface) bool {
+func BroadcastToAllPilotClient(client ClientInterface) bool {
+	return !client.IsAtc()
+}
+
+func BroadcastToAllClient(_ ClientInterface) bool {
 	return true
 }
 
-func BroadcastToPilot(toClient, _ ClientInterface) bool {
-	return !toClient.IsAtc()
+func BroadcastToATCClient(client ClientInterface) bool {
+	return client.IsAtc()
+}
+
+func BroadcastToSupClient(client ClientInterface) bool {
+	if !client.IsAtc() {
+		return false
+	}
+	return client.Rating() >= Supervisor
+}
+
+func BroadcastToAll(_, _ ClientInterface) bool {
+	return true
 }
 
 func BroadcastToAtc(toClient, _ ClientInterface) bool {

@@ -12,6 +12,7 @@ type Config struct {
 	Server        *ServerConfig   `json:"server"`
 	Database      *DatabaseConfig `json:"database"`
 	Rating        map[string]int  `json:"rating"`
+	Facility      map[string]int  `json:"facility"`
 }
 
 func DefaultConfig() *Config {
@@ -20,6 +21,7 @@ func DefaultConfig() *Config {
 		Server:        defaultServerConfig(),
 		Database:      defaultDatabaseConfig(),
 		Rating:        make(map[string]int),
+		Facility:      make(map[string]int),
 	}
 }
 

@@ -1,6 +1,8 @@
 // Package fsd
 package fsd
 
+import "strings"
+
 type RatingModel struct {
 	Id        int    `json:"id"`
 	ShortName string `json:"short_name"`
@@ -48,6 +50,20 @@ func (r Rating) String() string {
 
 func (r Rating) Index() int {
 	return int(r)
+}
+
+func ToRatingString(rating int, tier2 bool, um bool, solo bool) string {
+	result := []string{Rating(rating).String()}
+	if tier2 {
+		result = append(result, "Tier2")
+	}
+	if um {
+		result = append(result, "UM")
+	}
+	if solo {
+		result = append(result, "SOLO")
+	}
+	return strings.Join(result, " ")
 }
 
 func IsValidRating(r int) bool {

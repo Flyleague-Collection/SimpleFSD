@@ -89,7 +89,12 @@ func main() {
 	cleaner.Add(grpcLogger.ShutdownCallback())
 
 	if err := fsd.SyncRatingConfig(config); err != nil {
-		mainLogger.FatalF("Error occurred while handle rating base, details: %v", err)
+		mainLogger.FatalF("Error occurred while handle rating addition, details: %v", err)
+		return
+	}
+
+	if err := fsd.SyncFacilityConfig(config); err != nil {
+		mainLogger.FatalF("Error occurred while handle facility addition, details: %v", err)
 		return
 	}
 
@@ -113,6 +118,7 @@ func main() {
 
 	messageQueue.Subscribe(queue.KickClientFromServer, clientManager.HandleKickClientFromServerMessage)
 	messageQueue.Subscribe(queue.SendMessageToClient, clientManager.HandleSendMessageToClientMessage)
+	messageQueue.Subscribe(queue.BroadcastMessage, clientManager.HandleBroadcastMessage)
 
 	mainLogger.Info("Creating application content...")
 	applicationContent := interfaces.NewApplicationContent(logger, cleaner, configManager, clientManager, messageQueue, databaseOperation)

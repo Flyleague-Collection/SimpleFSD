@@ -20,6 +20,16 @@ type Ticket struct {
 	DeletedAt gorm.DeletedAt `json:"-"`
 }
 
+type UserTicket struct {
+	ID        uint      `json:"id"`
+	Type      int       `json:"type"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	Reply     string    `json:"reply"`
+	CreatedAt time.Time `json:"open_at"`
+	UpdatedAt time.Time `json:"close_at"`
+}
+
 type TicketType int
 
 const (
@@ -43,7 +53,7 @@ type TicketOperationInterface interface {
 	NewTicket(opener int, ticketType TicketType, title string, content string) (ticket *Ticket)
 	SaveTicket(ticket *Ticket) (err error)
 	GetTickets(page, pageSize int) (tickets []*Ticket, total int64, err error)
-	GetUserTickets(cid, page, pageSize int) (tickets []*Ticket, total int64, err error)
+	GetUserTickets(cid, page, pageSize int) (tickets []*UserTicket, total int64, err error)
 	GetTicket(id uint) (ticket *Ticket, err error)
 	CloseTicket(ticketId uint, closer int, content string) (err error)
 	DeleteTicket(id uint) (err error)

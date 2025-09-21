@@ -9,6 +9,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 	"gopkg.in/gomail.v2"
 	"html/template"
 	"math/rand"
@@ -73,6 +74,7 @@ var (
 	ErrTemplateNotInitialized = errors.New("error template not initialized")
 	ErrEmailCodeNotFound      = errors.New("email code not found")
 	ErrEmailCodeExpired       = errors.New("email code expired")
+	ErrEmailCodeIllegal       = errors.New("email code illegal")
 	ErrInvalidEmailCode       = errors.New("invalid email code")
 	ErrCidMismatch            = errors.New("cid mismatch")
 )
@@ -89,9 +91,14 @@ func (emailService *EmailService) renderTemplate(template *template.Template, da
 	return sb.String(), nil
 }
 
-func (emailService *EmailService) VerifyEmailCode(email string, code int, cid int) error {
+func (emailService *EmailService) VerifyEmailCode(email string, code string, cid int) error {
 	if emailService.config.EmailServer == nil {
 		return nil
+	}
+
+	realEmailCode := utils.StrToInt(code, -1)
+	if realEmailCode == -1 {
+		return ErrEmailCodeIllegal
 	}
 
 	email = strings.ToLower(email)
@@ -104,7 +111,7 @@ func (emailService *EmailService) VerifyEmailCode(email string, code int, cid in
 		return ErrEmailCodeExpired
 	}
 
-	if emailCode.code != code {
+	if emailCode.code != realEmailCode {
 		return ErrInvalidEmailCode
 	}
 
@@ -163,7 +170,7 @@ func (emailService *EmailService) sendEmailCode(data *VerifyCodeEmailData) (erro
 	emailCode := EmailCode{code: code, cid: data.Cid, sendTime: time.Now()}
 	d := &EmailVerifyTemplateData{
 		Cid:     fmt.Sprintf("%04d", data.Cid),
-		Code:    strconv.Itoa(code),
+		Code:    fmt.Sprintf("%06d", code),
 		Expired: strconv.Itoa(int(emailService.config.VerifyExpiredDuration.Minutes())),
 	}
 
@@ -224,8 +231,8 @@ func (emailService *EmailService) sendRatingChangeEmail(data *RatingChangeEmailD
 	email := strings.ToLower(data.User.Email)
 	d := &EmailRatingChangeData{
 		Cid:      fmt.Sprintf("%04d", data.User.Cid),
-		OldValue: data.OldRating.String(),
-		NewValue: data.NewRating.String(),
+		OldValue: data.OldRating,
+		NewValue: data.NewRating,
 		Operator: fmt.Sprintf("%04d", data.Operator.Cid),
 		Contact:  data.Operator.Email,
 	}

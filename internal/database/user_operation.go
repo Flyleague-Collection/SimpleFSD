@@ -218,10 +218,10 @@ func (userOperation *UserOperation) GetTimeRatings() (pilots []*User, controller
 	controllers = make([]*User, 0, 10)
 	ctx, cancel := context.WithTimeout(context.Background(), userOperation.queryTimeout)
 	defer cancel()
-	err = userOperation.db.WithContext(ctx).Select("id", "cid", "total_pilot_time").Where("total_pilot_time > 0").Order("total_pilot_time desc").Limit(10).Find(&pilots).Error
+	err = userOperation.db.WithContext(ctx).Select("id", "cid", "avatar_url", "total_pilot_time").Where("total_pilot_time > 0").Order("total_pilot_time desc").Limit(10).Find(&pilots).Error
 	if err != nil {
 		return
 	}
-	err = userOperation.db.WithContext(ctx).Select("id", "cid", "total_atc_time").Where("total_atc_time > 0").Order("total_atc_time desc").Limit(10).Find(&controllers).Error
+	err = userOperation.db.WithContext(ctx).Select("id", "cid", "avatar_url", "total_atc_time").Where("total_atc_time > 0").Order("total_atc_time desc").Limit(10).Find(&controllers).Error
 	return
 }
