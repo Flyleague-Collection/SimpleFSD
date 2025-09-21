@@ -18,7 +18,7 @@ var (
 
 const (
 	AppVersion    = "0.7.0"
-	ConfigVersion = "0.7.1"
+	ConfigVersion = "0.7.2"
 
 	EnvDebugMode               = "DEBUG_MODE"
 	EnvConfigFilePath          = "CONFIG_FILE_PATH"

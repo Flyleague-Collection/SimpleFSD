@@ -20,6 +20,7 @@ import (
 	"github.com/samber/slog-echo"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 )
@@ -54,7 +55,16 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	case 0:
 		e.IPExtractor = echo.ExtractIPDirect()
 	case 1:
-		e.IPExtractor = echo.ExtractIPFromXFFHeader()
+		trustOperations := make([]echo.TrustOption, 0, len(config.Server.HttpServer.TrustedIpRange))
+		for _, ip := range config.Server.HttpServer.TrustedIpRange {
+			_, network, err := net.ParseCIDR(ip)
+			if err != nil {
+				logger.WarnF("%s is not a valid CIDR string, skipping it", ip)
+				continue
+			}
+			trustOperations = append(trustOperations, echo.TrustIPRange(network))
+		}
+		e.IPExtractor = echo.ExtractIPFromXFFHeader(trustOperations...)
 	case 2:
 		e.IPExtractor = echo.ExtractIPFromRealIPHeader()
 	default:
