@@ -49,3 +49,7 @@ func (r Rating) String() string {
 func (r Rating) Index() int {
 	return int(r)
 }
+
+func IsValidRating(r int) bool {
+	return int(Ban) <= r && r <= int(Administrator)
+}

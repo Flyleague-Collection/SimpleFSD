@@ -7,6 +7,7 @@ import (
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/utils"
+	"strconv"
 	"strings"
 )
 
@@ -61,6 +62,14 @@ func (session *Session) verifyUserInfo(callsign string, protocol int, cid string
 	return nil
 }
 
+func (session *Session) checkRangeLimit(realFacility Facility, realRange int) *Result {
+	rangeLimit := realFacility.GetRangeLimit()
+	if rangeLimit > -1 && realRange > rangeLimit {
+		return ResultError(Custom, session.refuseOutRange, strconv.Itoa(realRange), fmt.Errorf("visual range out of limit, your visual range is %d but limit is %d", realRange, rangeLimit))
+	}
+	return nil
+}
+
 // handleAddAtc 处理管制员登录
 func (session *Session) handleAddAtc(data []string, rawLine []byte) *Result {
 	// #AA 2352_OBS SERVER 2352 2352 123456  1  9  1  0  29.86379 119.49287 100
@@ -91,9 +100,12 @@ func (session *Session) handleAddAtc(data []string, rawLine []byte) *Result {
 	latitude := utils.StrToFloat(data[9], 0)
 	longitude := utils.StrToFloat(data[10], 0)
 	if session.client == nil {
-		session.client = session.clientManager.NewClient(callsign, Rating(reqRating), protocol, realName, session, true)
+		session.client = NewClient(session.application, callsign, Rating(reqRating), protocol, realName, session, true)
 		_ = session.client.SetPosition(0, latitude, longitude)
 		_ = session.clientManager.AddClient(session.client)
+	} else {
+		session.client.SetRating(Rating(reqRating))
+		session.client.SetRealName(realName)
 	}
 	session.client.SendLine(makePacket(ClientQuery, global.FSDServerName, callsign, "ATIS"))
 	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
@@ -121,9 +133,12 @@ func (session *Session) handleAddPilot(data []string, rawLine []byte) *Result {
 	simType := utils.StrToInt(data[6], 0)
 	realName := data[7]
 	if session.client == nil {
-		session.client = session.clientManager.NewClient(callsign, reqRating, protocol, realName, session, false)
+		session.client = NewClient(session.application, callsign, reqRating, protocol, realName, session, false)
 		session.client.SetSimType(simType)
 		_ = session.clientManager.AddClient(session.client)
+	} else {
+		session.client.SetRating(reqRating)
+		session.client.SetRealName(realName)
 	}
 	go session.clientManager.BroadcastMessage(rawLine, session.client, BroadcastToClientInRange)
 	session.client.SendMotd()
@@ -136,13 +151,16 @@ func (session *Session) handleAtcPosUpdate(data []string, rawLine []byte) *Resul
 	//  %  ZSHA_CTR 24550  6  600  5  27.28025 118.28701  0
 	// [0] [   1  ] [ 2 ] [3] [4] [5] [   6  ] [   7   ] [8]
 	callsign := data[0]
-	facility := Facility(1 << utils.StrToInt(data[2], 0))
-	if facility != session.facilityIdent {
-		return ResultError(CallsignInvalid, true, callsign, errors.New("callsign and faility mismatch"))
-	}
 	rating := Rating(utils.StrToInt(data[4], 0))
+	facility := Facility(1 << utils.StrToInt(data[2], 0))
 	if !rating.CheckRatingFacility(facility) {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
+	}
+	if !session.facilityIdent.CheckFacility(facility) {
+		return ResultError(CallsignInvalid, true, callsign, errors.New("callsign and faility mismatch"))
+	}
+	if res := session.checkRangeLimit(facility, utils.StrToInt(data[3], 0)); res != nil {
+		return res
 	}
 	frequency := utils.StrToInt(data[1], 0)
 	visualRange := utils.StrToFloat(data[3], 0)
@@ -379,10 +397,10 @@ func (session *Session) handleAtcEditPlan(data []string, _ []byte) *Result {
 	targetCallsign := data[2]
 	client, ok := session.clientManager.GetClient(targetCallsign)
 	if !ok {
-		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetCallsign))
+		return ResultError(NoCallsignFound, false, "FLIGHT_PLAN", fmt.Errorf("%s not exists", targetCallsign))
 	}
 	if client.FlightPlan == nil {
-		return ResultError(NoFlightPlan, false, session.client.Callsign(), fmt.Errorf("%s do not have filght plan", session.client.Callsign()))
+		return ResultError(NoFlightPlan, false, "FLIGHT_PLAN", fmt.Errorf("%s do not have filght plan", session.client.Callsign()))
 	}
 	client.FlightPlan().Locked = true
 	if err := session.flightPlanOperation.UpdateFlightPlan(client.FlightPlan(), client.Callsign(), data[1:], true); err != nil {
@@ -406,7 +424,7 @@ func (session *Session) handleKillClient(data []string, _ []byte) *Result {
 	if !ok {
 		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
 	}
-	client.SendError(ResultError(Custom, true, session.client.Callsign(), fmt.Errorf("kicked from server by %04d, reason: %s", session.user.Cid, data[2])))
+	client.SendError(ResultError(Custom, true, session.client.Callsign(), fmt.Errorf("kicked from server by %s, reason: %s", session.user.Cid, data[2])))
 	return ResultSuccess()
 }
 

@@ -4,58 +4,41 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"math/rand"
 	"os"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type ClientManager struct {
-	logger             log.LoggerInterface
-	clients            map[string]fsd.ClientInterface
-	lock               sync.RWMutex
-	shuttingDown       atomic.Bool
-	config             *config.Config
-	heartbeatTimer     *utils.IntervalActuator
-	whazzupTimer       *utils.IntervalActuator
-	clientSlicePool    sync.Pool
-	applicationContent *interfaces.ApplicationContent
+	logger          log.LoggerInterface
+	clients         map[string]ClientInterface
+	lock            sync.RWMutex
+	shuttingDown    atomic.Bool
+	config          *config.Config
+	clientSlicePool sync.Pool
+	whazzupContent  *utils.CachedValue[OnlineClients]
+	whazzupTimer    *utils.IntervalActuator
 }
 
-var (
-	clientManager *ClientManager
-	once          sync.Once
-)
-
-func NewClientManager(applicationContent *interfaces.ApplicationContent) *ClientManager {
-	once.Do(func() {
-		if clientManager == nil {
-			c := applicationContent.ConfigManager().Config()
-			clientManager = &ClientManager{
-				logger:             applicationContent.Logger(),
-				clients:            make(map[string]fsd.ClientInterface),
-				shuttingDown:       atomic.Bool{},
-				config:             c,
-				applicationContent: applicationContent,
-				clientSlicePool: sync.Pool{
-					New: func() interface{} {
-						return make([]fsd.ClientInterface, 0, 128)
-					},
-				},
-			}
-			clientManager.heartbeatTimer = utils.NewIntervalActuator(c.HeartbeatDuration, clientManager.SendHeartBeat)
-			clientManager.whazzupTimer = utils.NewIntervalActuator(c.WhazzupDuration, clientManager.generateWhazzupFile)
-			clientManager.heartbeatTimer.Start()
-			clientManager.whazzupTimer.Start()
-		}
-	})
+func NewClientManager(logger log.LoggerInterface, config *config.Config) *ClientManager {
+	clientManager := &ClientManager{
+		logger:       logger,
+		clients:      make(map[string]ClientInterface),
+		shuttingDown: atomic.Bool{},
+		config:       config,
+		clientSlicePool: sync.Pool{
+			New: func() interface{} {
+				return make([]ClientInterface, 0, 128)
+			},
+		},
+	}
+	clientManager.whazzupTimer = utils.NewIntervalActuator(config.WhazzupDuration, clientManager.generateWhazzupFile)
+	clientManager.whazzupTimer.Start()
 	return clientManager
 }
 
@@ -68,15 +51,15 @@ func (cm *ClientManager) generateWhazzupFile() error {
 	// 定义数据结构, 如果你输出的是txt格式而不是json格式的whazzup文件
 	// 那你可以换成下面这行
 	// data := bytes.Buffer{}
-	data := &fsd.OnlineClients{
-		General: &fsd.OnlineGeneral{
+	data := &OnlineClients{
+		General: &OnlineGeneral{
 			Version:          3,
 			ConnectedClients: 0,
 			OnlinePilot:      0,
 			OnlineController: 0,
 		},
-		Pilots:      make([]*fsd.OnlinePilot, 0),
-		Controllers: make([]*fsd.OnlineController, 0),
+		Pilots:      make([]*OnlinePilot, 0),
+		Controllers: make([]*OnlineController, 0),
 	}
 
 	// 这里是文件生成的核心逻辑
@@ -92,7 +75,7 @@ func (cm *ClientManager) generateWhazzupFile() error {
 		data.General.ConnectedClients++
 		if client.IsAtc() {
 			data.General.OnlineController++
-			controller := &fsd.OnlineController{
+			controller := &OnlineController{
 				Cid:         client.User().Cid,
 				Callsign:    client.Callsign(),
 				RealName:    client.RealName(),
@@ -110,7 +93,7 @@ func (cm *ClientManager) generateWhazzupFile() error {
 			data.Controllers = append(data.Controllers, controller)
 		} else {
 			data.General.OnlinePilot++
-			pilot := &fsd.OnlinePilot{
+			pilot := &OnlinePilot{
 				Cid:         client.User().Cid,
 				Callsign:    client.Callsign(),
 				RealName:    client.RealName(),
@@ -150,7 +133,7 @@ func (cm *ClientManager) generateWhazzupFile() error {
 	return nil
 }
 
-func (cm *ClientManager) PutSlice(clients []fsd.ClientInterface) {
+func (cm *ClientManager) PutSlice(clients []ClientInterface) {
 	cm.clientSlicePool.Put(clients)
 }
 
@@ -161,7 +144,6 @@ func (cm *ClientManager) Shutdown(ctx context.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	cm.heartbeatTimer.Stop()
 	cm.whazzupTimer.Stop()
 
 	clients := cm.GetClientSnapshot()
@@ -183,12 +165,12 @@ func (cm *ClientManager) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (cm *ClientManager) GetClientSnapshot() []fsd.ClientInterface {
+func (cm *ClientManager) GetClientSnapshot() []ClientInterface {
 	cm.lock.RLock()
 	defer cm.lock.RUnlock()
 
 	// 从池中获取切片
-	clients := cm.clientSlicePool.Get().([]fsd.ClientInterface)
+	clients := cm.clientSlicePool.Get().([]ClientInterface)
 	clients = clients[:0]
 
 	// 填充客户端
@@ -199,7 +181,7 @@ func (cm *ClientManager) GetClientSnapshot() []fsd.ClientInterface {
 }
 
 // 并发断开所有客户端连接
-func (cm *ClientManager) disconnectClients(clients []fsd.ClientInterface) {
+func (cm *ClientManager) disconnectClients(clients []ClientInterface) {
 	if len(clients) == 0 {
 		return
 	}
@@ -211,7 +193,7 @@ func (cm *ClientManager) disconnectClients(clients []fsd.ClientInterface) {
 		wg.Add(1)
 		sem <- struct{}{}
 
-		go func(c fsd.ClientInterface) {
+		go func(c ClientInterface) {
 			defer func() {
 				<-sem
 				wg.Done()
@@ -224,17 +206,7 @@ func (cm *ClientManager) disconnectClients(clients []fsd.ClientInterface) {
 	wg.Wait()
 }
 
-func (cm *ClientManager) SendHeartBeat() error {
-	if cm.shuttingDown.Load() {
-		return nil
-	}
-	randomInt := rand.Int()
-	packet := makePacket(fsd.WindDelta, "SERVER", string(fsd.AllClient), strconv.Itoa(randomInt%11-5), strconv.Itoa(randomInt%21-10))
-	cm.BroadcastMessage(packet, nil, fsd.BroadcastToAll)
-	return nil
-}
-
-func (cm *ClientManager) AddClient(client fsd.ClientInterface) error {
+func (cm *ClientManager) AddClient(client ClientInterface) error {
 	if cm.shuttingDown.Load() {
 		return fmt.Errorf("fsd_server shutting down")
 	}
@@ -248,7 +220,7 @@ func (cm *ClientManager) AddClient(client fsd.ClientInterface) error {
 	return nil
 }
 
-func (cm *ClientManager) GetClient(callsign string) (fsd.ClientInterface, bool) {
+func (cm *ClientManager) GetClient(callsign string) (ClientInterface, bool) {
 	if cm.shuttingDown.Load() {
 		return nil, false
 	}
@@ -274,31 +246,19 @@ func (cm *ClientManager) DeleteClient(callsign string) bool {
 
 func (cm *ClientManager) SendMessageTo(callsign string, message []byte) error {
 	if cm.shuttingDown.Load() {
-		return fmt.Errorf("fsd_server is shutting down")
+		return fmt.Errorf("server is shutting down")
 	}
 
 	client, exists := cm.GetClient(callsign)
 	if !exists {
-		return fsd.ErrCallsignNotFound
+		return ErrCallsignNotFound
 	}
 
 	client.SendLine(message)
 	return nil
 }
 
-func (cm *ClientManager) SendRawMessageTo(from int, to string, message string) error {
-	client, exists := cm.GetClient(to)
-	if !exists {
-		return fsd.ErrCallsignNotFound
-	}
-
-	bytes := makePacket(fsd.Message, fmt.Sprintf("(%04d)", from), to, message)
-
-	client.SendLine(bytes)
-	return nil
-}
-
-func (cm *ClientManager) BroadcastMessage(message []byte, fromClient fsd.ClientInterface, filter fsd.BroadcastFilter) {
+func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInterface, filter BroadcastFilter) {
 	if cm.shuttingDown.Load() || len(message) == 0 {
 		return
 	}
@@ -330,7 +290,7 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient fsd.ClientI
 
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(cl fsd.ClientInterface) {
+		go func(cl ClientInterface) {
 			defer func() {
 				<-sem
 				wg.Done()

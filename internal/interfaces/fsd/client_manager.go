@@ -18,7 +18,5 @@ type ClientManagerInterface interface {
 	GetClient(callsign string) (ClientInterface, bool)
 	DeleteClient(callsign string) bool
 	SendMessageTo(callsign string, message []byte) error
-	SendRawMessageTo(from int, to string, message string) error
 	BroadcastMessage(message []byte, fromClient ClientInterface, filter BroadcastFilter)
-	NewClient(callsign string, rating Rating, protocol int, realName string, socket SessionInterface, isAtc bool) ClientInterface
 }

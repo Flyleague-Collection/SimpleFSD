@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/utils"
+	"strings"
 )
 
 type FacilityModel struct {
@@ -39,6 +40,8 @@ var Facilities = []FacilityModel{
 
 var facilitiesIndex = map[Facility]int{Pilot: 0, OBS: 1, DEL: 2, GND: 3, TWR: 4, APP: 5, CTR: 6, FSS: 7}
 
+var facilityRangeLimit = map[Facility]int{Pilot: 50, OBS: 300, DEL: 20, GND: 20, TWR: 50, APP: 150, CTR: 600, FSS: 600}
+
 func (f Facility) String() string {
 	return Facilities[f].ShortName
 }
@@ -47,8 +50,12 @@ func (f Facility) Index() int {
 	return facilitiesIndex[f]
 }
 
+func (f Facility) GetRangeLimit() int {
+	return facilityRangeLimit[f]
+}
+
 func (f Facility) CheckFacility(facility Facility) bool {
-	return f&facility != 0
+	return f&facility == facility
 }
 
 func (r Rating) CheckRatingFacility(facility Facility) bool {
@@ -60,11 +67,35 @@ func SyncRatingConfig(config *config.Config) error {
 		return nil
 	}
 	for rating, facility := range config.Rating {
-		r := utils.StrToInt(rating, -2)
-		if r <= -2 || r > 12 {
+		r := utils.StrToInt(rating, int(Ban)-1)
+		if !IsValidRating(r) {
 			return fmt.Errorf("illegal permission value %s", rating)
 		}
 		RatingFacilityMap[Rating(r)] = Facility(facility)
 	}
 	return nil
+}
+
+func SyncFacilityConfig(config *config.Config) error {
+	if len(config.Facility) == 0 {
+		return nil
+	}
+	for ident, facility := range config.Facility {
+		if facility < 0 {
+			return fmt.Errorf("illegal facility ident value %d", facility)
+		}
+		ident = strings.ToUpper(ident)
+		FacilityMap[ident] = Facility(facility)
+	}
+	return nil
+}
+
+func SyncRangeLimit(config *config.FsdRangeLimit) {
+	facilityRangeLimit[OBS] = config.Observer
+	facilityRangeLimit[DEL] = config.Delivery
+	facilityRangeLimit[GND] = config.Ground
+	facilityRangeLimit[TWR] = config.Tower
+	facilityRangeLimit[APP] = config.Approach
+	facilityRangeLimit[CTR] = config.Center
+	facilityRangeLimit[FSS] = config.FSS
 }

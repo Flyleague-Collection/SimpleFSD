@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
@@ -52,7 +53,8 @@ type Client struct {
 	logonTime           time.Time
 }
 
-func (cm *ClientManager) NewClient(
+func NewClient(
+	applicationContent *interfaces.ApplicationContent,
 	callsign string,
 	rating Rating,
 	protocol int,
@@ -61,14 +63,11 @@ func (cm *ClientManager) NewClient(
 	isAtc bool,
 ) ClientInterface {
 	session.SetCallsign(callsign)
-	var flightPlan *operation.FlightPlan = nil
-	userOperation := cm.applicationContent.Operations().UserOperation()
-	flightPlanOperation := cm.applicationContent.Operations().FlightPlanOperation()
-	client := &Client{
-		logger:              cm.applicationContent.Logger(),
-		config:              cm.config,
-		userOperation:       userOperation,
-		flightPlanOperation: flightPlanOperation,
+	return &Client{
+		logger:              applicationContent.Logger(),
+		config:              applicationContent.ConfigManager().Config(),
+		userOperation:       applicationContent.Operations().UserOperation(),
+		flightPlanOperation: applicationContent.Operations().FlightPlanOperation(),
 		isAtc:               isAtc,
 		isAtis:              strings.HasSuffix(callsign, "ATIS"),
 		isBreak:             false,
@@ -87,24 +86,15 @@ func (cm *ClientManager) NewClient(
 		groundSpeed:         0,
 		frequency:           99998,
 		visualRange:         40,
-		flightPlan:          flightPlan,
+		flightPlan:          nil,
 		atisInfo:            make([]string, 0, 4),
 		motdBytes:           nil,
-		clientManager:       cm,
+		clientManager:       applicationContent.ClientManager(),
 		disconnect:          atomic.Bool{},
 		reconnectTimer:      nil,
 		logonTime:           time.Now(),
 		lock:                sync.RWMutex{},
 	}
-	return client
-}
-
-func (client *Client) recordPathPoint() {
-	client.paths = append(client.paths, &PilotPath{
-		Latitude:  client.position[0].Latitude,
-		Longitude: client.position[0].Longitude,
-		Altitude:  client.altitude,
-	})
 }
 
 func (client *Client) Disconnected() bool {
@@ -112,19 +102,21 @@ func (client *Client) Disconnected() bool {
 }
 
 func (client *Client) Delete() {
-	if client.disconnect.Load() {
-		client.lock.Lock()
-		defer client.lock.Unlock()
-		client.logger.InfoF("[%s](%s) client session deleted", client.socket.ConnId(), client.callsign)
+	if !client.disconnect.Load() {
+		return
+	}
 
-		if client.reconnectTimer != nil {
-			client.reconnectTimer.Stop()
-			client.reconnectTimer = nil
-		}
+	client.lock.Lock()
+	defer client.lock.Unlock()
 
-		if !client.clientManager.DeleteClient(client.callsign) {
-			client.logger.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
-		}
+	if client.reconnectTimer != nil {
+		client.reconnectTimer.Stop()
+		client.reconnectTimer = nil
+	}
+
+	client.logger.InfoF("[%s](%s) client session deleted", client.socket.ConnId(), client.callsign)
+	if !client.clientManager.DeleteClient(client.callsign) {
+		client.logger.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
 	}
 }
 
@@ -383,3 +375,7 @@ func (client *Client) SetBreak(isBreak bool) { client.isBreak = isBreak }
 func (client *Client) LogonTime() string {
 	return client.logonTime.Format(time.DateTime)
 }
+
+func (client *Client) SetRating(rating Rating) { client.rating = rating }
+
+func (client *Client) SetRealName(realName string) { client.realName = realName }

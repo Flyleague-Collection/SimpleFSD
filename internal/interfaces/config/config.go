@@ -36,9 +36,11 @@ type Config struct {
 	WhazzupFile          string         `json:"whazzup_file"`
 	WhazzupInterval      string         `json:"whazzup_interval"`
 	WhazzupDuration      time.Duration  `json:"-"`
+	RangeLimit           *FsdRangeLimit `json:"range_limit"`
 	FirstMotdLine        string         `json:"first_motd_line"`
 	Motd                 []string       `json:"motd"`
 	Rating               map[string]int `json:"rating"`
+	Facility             map[string]int `json:"facility"`
 }
 
 func DefaultConfig() *Config {
@@ -55,17 +57,23 @@ func DefaultConfig() *Config {
 		EncryptionType:      int(SHA256),
 		WhazzupFile:         "whazzup.json",
 		WhazzupInterval:     "15s",
+		RangeLimit:          defaultFsdRangeLimitConfig(),
 		FirstMotdLine:       "Welcome to use %[1]s v%[2]s",
 		Motd:                make([]string, 0),
 		Rating:              make(map[string]int),
+		Facility:            make(map[string]int),
 	}
 }
 
-func (config *Config) CheckValid(_ log.LoggerInterface) *ValidResult {
+func (config *Config) CheckValid(logger log.LoggerInterface) *ValidResult {
 	if version, err := newVersion(config.ConfigVersion); err != nil {
 		return ValidFailWith(errors.New("invalid json field config_version"), err)
 	} else if result := ConfVersion.checkVersion(version); result != AllMatch {
 		return ValidFail(fmt.Errorf("config version mismatch, expected %s, got %s", ConfVersion.String(), version.String()))
+	}
+
+	if result := config.RangeLimit.checkValid(logger); result.IsFail() {
+		return result
 	}
 
 	if result := checkPort(config.Port); result.IsFail() {

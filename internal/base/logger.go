@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
+	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -18,84 +18,39 @@ const (
 )
 
 type AsyncHandler struct {
-	ch          chan []byte
-	writer      io.Writer
-	attrs       []slog.Attr
-	currentDay  int      // 当前日志日期（day of year）
-	currentFile *os.File // 当前日志文件
-	basePath    string   // 日志文件基础路径
-	group       string
-	logLevel    slog.Level
-	wg          sync.WaitGroup
+	ch       chan []byte
+	logName  string
+	writer   io.Writer
+	attrs    []slog.Attr
+	group    string
+	logLevel slog.Level
+	wg       sync.WaitGroup
 }
 
-func NewAsyncHandler(basePath string, logLevel slog.Level) *AsyncHandler {
+func NewAsyncHandler(logPath, logName string, logLevel slog.Level, noLogs bool) *AsyncHandler {
 	h := &AsyncHandler{
 		ch:       make(chan []byte, 1024),
 		logLevel: logLevel,
-		basePath: basePath,
+		logName:  strings.ToUpper(logName),
 	}
-	_ = h.rotateIfNeeded()
-	h.wg.Add(1)
+	if noLogs {
+		h.writer = os.Stdout
+	} else {
+		h.writer = io.MultiWriter(os.Stdout, &lumberjack.Logger{
+			Filename:   logPath, // 日志文件的位置
+			MaxSize:    10,      // 文件最大尺寸（以MB为单位）
+			MaxBackups: 30,      // 保留的最大旧文件数量
+			MaxAge:     28,      // 保留旧文件的最大天数
+			Compress:   true,    // 是否压缩/归档旧文件
+			LocalTime:  true,    // 使用本地时间创建时间戳
+		})
+	}
 	go h.startWorker()
 	return h
 }
 
-// 在rotateIfNeeded中添加
-func (h *AsyncHandler) cleanOldLogs() {
-	files, _ := filepath.Glob(h.basePath + "/*.log")
-	now := time.Now()
-
-	for _, f := range files {
-		fi, _ := os.Stat(f)
-		if now.Sub(fi.ModTime()) > 30*24*time.Hour {
-			_ = os.Remove(f) // 删除30天前的日志
-		}
-	}
-}
-
-// 初始化或轮转日志文件
-func (h *AsyncHandler) rotateIfNeeded() error {
-	now := time.Now()
-	currentDay := now.YearDay()
-
-	// 检查是否需要轮转
-	if currentDay == h.currentDay && h.currentFile != nil {
-		return nil
-	}
-
-	// 关闭旧文件
-	if h.currentFile != nil {
-		if err := h.currentFile.Close(); err != nil {
-			return fmt.Errorf("closing log file failed: %w", err)
-		}
-	}
-
-	// 创建新文件
-	logPath := h.getLogPath()
-	if err := os.MkdirAll(filepath.Dir(logPath), global.DefaultDirectoryPermission); err != nil {
-		return fmt.Errorf("creating log directory failed: %w", err)
-	}
-
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, global.DefaultFilePermissions)
-	if err != nil {
-		return fmt.Errorf("failed to create a log file: %w", err)
-	}
-
-	// 更新状态
-	h.currentFile = f
-	h.currentDay = currentDay
-	h.writer = io.MultiWriter(os.Stdout, h.currentFile)
-	return nil
-}
-
-// 获取当前日志文件路径
-func (h *AsyncHandler) getLogPath() string {
-	now := time.Now()
-	return fmt.Sprintf("%s/%s.log", h.basePath, now.Format("2006-01-02"))
-}
-
 func (h *AsyncHandler) startWorker() {
+	h.wg.Add(1)
 	defer h.wg.Done()
 	for data := range h.ch {
 		_, _ = h.writer.Write(data)
@@ -122,20 +77,19 @@ func (h *AsyncHandler) Handle(_ context.Context, r slog.Record) error {
 		level = color.HiRedString("FATAL")
 	}
 
-	// 基础格式：时间 | 级别 | 消息
+	// 时间 | 记录器 | 级别 | 消息
 	line := fmt.Sprintf(
-		"%s | %-5s | %s",
+		"%s | %-4s | %-5s | %s",
 		color.GreenString(r.Time.Format("2006-01-02T15:04:05")),
+		h.logName,
 		level,
 		color.CyanString(r.Message),
 	)
 
-	// 处理固定字段
 	for _, attr := range h.attrs {
 		line += color.CyanString(fmt.Sprintf(" %s=%v", attr.Key, attr.Value))
 	}
 
-	// 处理动态字段
 	r.Attrs(func(attr slog.Attr) bool {
 		line += color.CyanString(fmt.Sprintf(" %s=%v", attr.Key, attr.Value))
 		return true
@@ -208,14 +162,14 @@ type Logger struct {
 	shutdownCallback *ShutdownCallback
 }
 
-func (lg *Logger) Init(debug bool) {
-	lg.handler = NewAsyncHandler("logs", slog.LevelInfo)
+func (lg *Logger) Init(logPath, logName string, debug, noLogs bool) {
+	lg.handler = NewAsyncHandler(logPath, logName, slog.LevelInfo, noLogs)
 	if debug {
 		lg.handler.logLevel = slog.LevelDebug
 	}
 	lg.logger = slog.New(lg.handler)
 	lg.shutdownCallback = &ShutdownCallback{handler: lg.handler}
-	slog.Debug("Logger initialized")
+	lg.DebugF("%s logger initialized", strings.ToUpper(logName))
 }
 
 func (lg *Logger) ShutdownCallback() global.Callable {
@@ -226,40 +180,40 @@ func (lg *Logger) LogHandler() *slog.Logger {
 	return lg.logger
 }
 
-func (lg *Logger) Debug(msg string, v ...interface{}) {
-	lg.logger.Debug(msg, v...)
+func (lg *Logger) Debug(msg string) {
+	lg.logger.Debug(msg)
 }
 
 func (lg *Logger) DebugF(msg string, v ...interface{}) {
 	lg.logger.Debug(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Info(msg string, v ...interface{}) {
-	lg.logger.Info(msg, v...)
+func (lg *Logger) Info(msg string) {
+	lg.logger.Info(msg)
 }
 
 func (lg *Logger) InfoF(msg string, v ...interface{}) {
 	lg.logger.Info(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Warn(msg string, v ...interface{}) {
-	lg.logger.Warn(msg, v...)
+func (lg *Logger) Warn(msg string) {
+	lg.logger.Warn(msg)
 }
 
 func (lg *Logger) WarnF(msg string, v ...interface{}) {
 	lg.logger.Warn(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Error(msg string, v ...interface{}) {
-	lg.logger.Error(msg, v...)
+func (lg *Logger) Error(msg string) {
+	lg.logger.Error(msg)
 }
 
 func (lg *Logger) ErrorF(msg string, v ...interface{}) {
 	lg.logger.Error(fmt.Sprintf(msg, v...))
 }
 
-func (lg *Logger) Fatal(msg string, v ...interface{}) {
-	lg.logger.Log(context.Background(), LevelFatal, msg, v...)
+func (lg *Logger) Fatal(msg string) {
+	lg.logger.Log(context.Background(), LevelFatal, msg)
 }
 
 func (lg *Logger) FatalF(msg string, v ...interface{}) {
