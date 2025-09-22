@@ -29,7 +29,7 @@ FSD支持计划同步, 计划锁定
 
 ```shell
 # 运行一个临时容器
-docker run -d --name temp halfnothing/simple-fsd-lite:0.6.0
+docker run -d --name temp halfnothing/simple-fsd-lite:0.7.0
 # 分别复制需要的文件
 docker cp temp:/fsd/config.json ./config.json
 docker cp temp:/fsd/cert.txt ./cert.txt
@@ -469,7 +469,7 @@ type OnlineClients struct {
 > 在EuroScope中, Callsign, Facility, Rating 是三个独立的值
 > 但在本FSD中, 三者之间是有对应联系的
 
-![](../SimpleFSD-lite/docs/image/euroscope_logon.png)
+![](./docs/image/euroscope_logon.png)
 
 --- 
 
