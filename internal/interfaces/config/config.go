@@ -49,7 +49,7 @@ func DefaultConfig() *Config {
 		FSDName:             "SimpleFSD",
 		Host:                "localhost",
 		Port:                6809,
-		HeartbeatInterval:   "60s",
+		HeartbeatInterval:   "40s",
 		SessionCleanTime:    "40s",
 		MaxWorkers:          128,
 		MaxBroadcastWorkers: 128,
@@ -96,6 +96,8 @@ func (config *Config) CheckValid(logger log.LoggerInterface) *ValidResult {
 
 	if duration, err := time.ParseDuration(config.HeartbeatInterval); err != nil {
 		return ValidFailWith(errors.New("invalid json field heartbead_interval, duration parse error"), err)
+	} else if duration <= 25*time.Second {
+		return ValidFail(fmt.Errorf("heartbead_interval must larger than 25s, got %.0fs", duration.Seconds()))
 	} else {
 		config.HeartbeatDuration = duration
 	}

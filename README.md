@@ -51,18 +51,18 @@ docker rm temp
    ```yml
    services:
      fsd:
-       image: halfnothing/simple-fsd-lite:0.6.0
+       image: halfnothing/simple-fsd-lite:0.7.0
        # 省略部分字段
        command:
          - "-debug"
    ```
-   iiii. docker-compose文件介绍  
+   iiii. docker-compose文件介绍
    ```yml
    services:
      # 服务名
      fsd:
        # 使用的镜像
-       image: halfnothing/simple-fsd-lite:0.6.0
+       image: halfnothing/simple-fsd-lite:0.7.0
        # 容器名称
        container_name: simple-fsd-lite
        # 容器网络模式, 当模式为host的时候ports设置无效
@@ -88,20 +88,20 @@ docker rm temp
        restart: always
    ```
 2. 使用docker命令  
-   i. 使用桥接模式, FSD无法获取到客户端真实IP  
+   i. 使用桥接模式, FSD无法获取到客户端真实IP
    ```shell
-   docker run -d --name simple-fsd-lite -p 6809:6809 -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json halfnothing/simple-fsd-lite:0.6.0  
+   docker run -d --name simple-fsd-lite -p 6809:6809 -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json halfnothing/simple-fsd-lite:0.7.0  
    ```
-   ii. 使用host模式, FSD可以获取到客户端真实IP  
+   ii. 使用host模式, FSD可以获取到客户端真实IP
    ```shell
-   docker run -d --name simple-fsd-lite --network=host -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json halfnothing/simple-fsd-lite:0.6.0  
+   docker run -d --name simple-fsd-lite --network=host -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json halfnothing/simple-fsd-lite:0.7.0  
    ```
-   iii. 如果需要添加命令行参数, 则在命令的最后添加  
+   iii. 如果需要添加命令行参数, 则在命令的最后添加
    ```shell
-   docker run -d ... halfnothing/simple-fsd-lite:0.6.0 -debug
+   docker run -d ... halfnothing/simple-fsd-lite:0.7.0 -debug
    ```
 3. 通过Dockerfile构建  
-   i. 手动构建  
+   i. 手动构建
    ```shell
    # 克隆本仓库
    git clone https://github.com/Flyleague-Collection/SimpleFSD.git
@@ -116,7 +116,7 @@ docker rm temp
    # 或者以host模式运行
    docker run -d --name simple-fsd-lite --network=host -v ./config.json:/fsd/config.json -v ./logs:/fsd/logs -v ./cert.txt:/fsd/cert.txt -v ./whazzup.json:/fsd/whazzup.json simple-fsd-lite:latest
    ```
-   ii. 自动构建  
+   ii. 自动构建
    ```shell
    # 克隆本仓库
    git clone https://github.com/Flyleague-Collection/SimpleFSD.git
@@ -128,8 +128,8 @@ docker rm temp
    cd docker
    vi docker-compose.yml
    ```
-   将`image: halfnothing/simple-fsd-lite:0.6.0`这一行替换为`build: ".."`    
-   然后在同目录运行  
+   将`image: halfnothing/simple-fsd-lite:0.7.0`这一行替换为`build: ".."`    
+   然后在同目录运行
    ```shell
    docker compose up -d
    ```
@@ -162,15 +162,17 @@ docker rm temp
 ```json5
 {
   // 配置文件版本, 通常情况下与软件版本一致
-  "config_version": "0.6.0",
+  "config_version": "0.7.0",
   // FSD名称, 会被发送到连接到服务器的客户端作为motd消息
   "fsd_name": "Simple-Fsd",
   // FSD服务器监听地址
   "host": "0.0.0.0",
   // FSD服务器监听端口
   "port": 6809,
-  // FSD服务器心跳间隔
-  "heartbeat_interval": "60s",
+  // FSD服务器心跳间隔, 超过此时间FSD会认为客户端断开连接
+  // 由于ES的发包最大间隔为25s, 加之服务器处理也需要时间
+  // 推荐此数值大于30s, 但不得小于25s
+  "heartbeat_interval": "40s",
   // FSD服务器会话过期时间
   // 在过期时间内重连, 服务器会自动匹配断开时的session
   // 反之则会创建新session
@@ -191,6 +193,18 @@ docker rm temp
   "whazzup_file": "whazzup.json",
   // whazzup文件生成间隔
   "whazzup_interval": "15s",
+  // ES视程范围限制
+  "range_limit": {
+    // 是否断开超出视程范围的客户端
+    "refuse_out_range": false,
+    "observer": 300,
+    "delivery": 20,
+    "ground": 20,
+    "tower": 50,
+    "approach": 150,
+    "center": 600,
+    "fss": 1500
+  },
   // 首行发送到客户端的motd格式, 第一个参数为fsd_name, 第二个为版本号
   "first_motd_line": "Welcome to use %[1]s v%[2]s",
   // 要发送到客户端的motd消息
@@ -208,6 +222,18 @@ docker rm temp
 | -debug          | bool   | false           | 开启调试模式               |
 | -config         | string | "./config.json" | 配置文件路径               |
 | -flush_interval | int    | 5               | cert.txt文件轮询时间, 单位为秒 |
+| -no_logs        | bool   | false           | 禁用日志输出到文件            |
+
+### 环境变量
+
+***环境变量会覆盖对应的命令行参数***
+
+| 参数名              | 类型     | 默认值             | 作用                   |
+|:-----------------|:-------|:----------------|:---------------------|
+| DEBUG_MODE       | bool   | false           | 开启调试模式               |
+| CONFIG_FILE_PATH | string | "./config.json" | 配置文件路径               |
+| FLUSH_INTERVAL   | int    | 5               | cert.txt文件轮询时间, 单位为秒 |
+| NO_LOGS          | bool   | false           | 禁用日志输出到文件            |
 
 ### cert.txt 文件简介
 
@@ -219,7 +245,7 @@ docker rm temp
 > 当使用Docker部署的时候, 由于Docker挂载问题, 程序无法正确收到文件修改事件  
 > 即程序无法做到保存文件后立即生效的效果, 最差的情况是需要等待一个完整的轮询周期修改才生效    
 > 所以在使用Docker部署的时候, 程序会自动退回到轮询模式, 默认轮询时间是5s  
-> 你可以通过设置命令行参数`-flush_interval`来覆写轮询时间, 详见[命令行参数](#命令行参数)  
+> 你可以通过设置命令行参数`-flush_interval`来覆写轮询时间, 详见[命令行参数](#命令行参数)
 
 [MD5/SHA256加密网站]  
 [Bcrypt加密网站]
@@ -395,6 +421,57 @@ type OnlineClients struct {
   }
 }
 ```
+
+### 特殊席位配置
+
+你可以通过配置文件覆写呼号后缀与管制席位对照表  
+注意!!! 这个字段会`覆盖`默认的对照表  
+默认的席位对照表如下
+
+| 席位后缀名 | 允许的席位 |
+|:------|:------|
+| SUP   | OBS   |    
+| OBS   | OBS   |    
+| DEL   | DEL   |    
+| RMP   | GND   |    
+| GND   | GND   |    
+| TWR   | TWR   |    
+| APP   | APP   |    
+| CTR   | CTR   |    
+| FSS   | FSS   |    
+| ATIS  | TWR   |    
+
+在明确的知道你在做什么之前, 不要修改这个配置  
+配置文件字段为`facility`
+
+```json5
+{
+   // 特殊席位配置
+   "facility": {
+      // 键为想要修改呼号后缀名
+      // 什么是呼号后缀名？
+      // 比如有个管制的呼号为XXXX_YYY, 后缀名就是YYY
+      // 如果呼号是XXX_Y_ZZZ, 后缀名就是ZZZ, 以此类推
+      // 值为后缀名许可席位的席位编码之和
+      // 注意如果后缀名许可的席位和实际席位不匹配, 服务器会拒绝连接
+      // 比如, 在默认配置下, 使用Ground的Facility登录呼号为ZSSS_TWR的管制席位, 服务器会拒绝登录
+      // 但如果你将下面的配置复制进配置文件并重启服务器, 那么服务器就允许登录了
+      // GND(8) + TWR(16) = 24
+      // 当然如果当前权限值就不允许登录该席位, 那么自然是无效的
+      // 比如你用GND的权限登录TWR席位, 那自然是不允许登录的
+      "TWR": 24
+   }
+}
+```
+
+---
+
+> 在EuroScope中, Callsign, Facility, Rating 是三个独立的值
+> 但在本FSD中, 三者之间是有对应联系的
+
+![](../SimpleFSD-lite/docs/image/euroscope_logon.png)
+
+--- 
 
 ## 反馈办法
 

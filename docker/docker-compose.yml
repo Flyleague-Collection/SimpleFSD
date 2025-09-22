@@ -2,7 +2,7 @@ services:
   # 服务名
   fsd:
     # 使用的镜像
-    image: halfnothing/simple-fsd-lite:0.6.0
+    image: halfnothing/simple-fsd-lite:0.7.0
     # 容器名称
     container_name: simple-fsd-lite
     # 容器网络模式, 当模式为host的时候ports设置无效
