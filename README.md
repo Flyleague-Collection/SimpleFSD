@@ -42,7 +42,7 @@ docker rm temp
 ##### 如何部署
 
 1. ***(推荐)*** 使用docker-compose文件  
-   i. 复制[docker-compose文件](docker/docker-compose.yml)到任意目录  
+   i. 复制[docker-compose文件](docker/docker-compose.yml)到上一步执行命令的目录, 即存有所需文件的目录  
    ii. 在docker-compose文件同目录运行命令
    ```shell
    docker compose up -d  
