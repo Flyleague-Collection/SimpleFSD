@@ -81,7 +81,7 @@ func SyncFacilityConfig(config *config.Config) error {
 		return nil
 	}
 	for ident, facility := range config.Facility {
-		if facility <= 1 {
+		if facility < 0 {
 			return fmt.Errorf("illegal facility ident value %d", facility)
 		}
 		ident = strings.ToUpper(ident)
