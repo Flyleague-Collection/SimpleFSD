@@ -181,6 +181,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	activityOperation := applicationContent.Operations().ActivityOperation()
 	ticketOperation := applicationContent.Operations().TicketOperation()
 	flightPlanOperation := applicationContent.Operations().FlightPlanOperation()
+	metarManager := applicationContent.MetarManager()
 
 	emailService := impl.NewEmailService(logger, config.Server.HttpServer.Email)
 
@@ -213,7 +214,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	controllerService := impl.NewControllerService(logger, httpConfig, messageQueue, userOperation, controllerOperation, controllerRecordOperation, auditLogOperation)
 	ticketService := impl.NewTicketService(logger, messageQueue, userOperation, ticketOperation, auditLogOperation)
 	flightPlanService := impl.NewFlightPlanService(logger, messageQueue, userOperation, flightPlanOperation, auditLogOperation)
-	metarService := impl.NewMetarService(logger)
+	metarService := impl.NewMetarService(logger, metarManager)
 
 	logger.Info("Controller initializing...")
 

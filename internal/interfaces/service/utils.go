@@ -103,6 +103,10 @@ func (res *ApiResponse[T]) Response(ctx echo.Context) error {
 	return ctx.JSON(res.HttpCode, res)
 }
 
+func TextResponse(ctx echo.Context, httpCode int, content string) error {
+	return ctx.String(httpCode, content)
+}
+
 var (
 	ErrIllegalParam          = NewApiStatus("PARAM_ERROR", "参数不正确", BadRequest)
 	ErrParseParam            = NewApiStatus("PARAM_PARSE_ERROR", "参数解析错误", BadRequest)

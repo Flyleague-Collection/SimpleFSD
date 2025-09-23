@@ -14,6 +14,7 @@ type ApplicationContent struct {
 	clientManager fsd.ClientManagerInterface
 	logger        *log.Loggers
 	messageQueue  queue.MessageQueueInterface
+	metarManager  MetarManagerInterface
 	operations    *operation.DatabaseOperations
 }
 
@@ -23,6 +24,7 @@ func NewApplicationContent(
 	configManager ConfigManagerInterface,
 	clientManager fsd.ClientManagerInterface,
 	messageQueue queue.MessageQueueInterface,
+	metarManager MetarManagerInterface,
 	db *operation.DatabaseOperations,
 ) *ApplicationContent {
 	return &ApplicationContent{
@@ -31,6 +33,7 @@ func NewApplicationContent(
 		clientManager: clientManager,
 		logger:        logger,
 		messageQueue:  messageQueue,
+		metarManager:  metarManager,
 		operations:    db,
 	}
 }
@@ -46,5 +49,7 @@ func (app *ApplicationContent) ClientManager() fsd.ClientManagerInterface { retu
 func (app *ApplicationContent) Logger() *log.Loggers { return app.logger }
 
 func (app *ApplicationContent) MessageQueue() queue.MessageQueueInterface { return app.messageQueue }
+
+func (app *ApplicationContent) MetarManager() MetarManagerInterface { return app.metarManager }
 
 func (app *ApplicationContent) Operations() *operation.DatabaseOperations { return app.operations }

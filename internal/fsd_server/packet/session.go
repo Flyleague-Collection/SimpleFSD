@@ -29,6 +29,7 @@ type Session struct {
 	application         *interfaces.ApplicationContent
 	client              ClientInterface
 	clientManager       ClientManagerInterface
+	metarManager        interfaces.MetarManagerInterface
 	refuseOutRange      bool
 	isSimulatorServer   bool
 	userOperation       operation.UserOperationInterface
@@ -50,6 +51,7 @@ func NewSession(
 		clientManager:       application.ClientManager(),
 		user:                nil,
 		disconnected:        atomic.Bool{},
+		metarManager:        application.MetarManager(),
 		refuseOutRange:      config.Server.FSDServer.RangeLimit.RefuseOutRange,
 		isSimulatorServer:   config.Server.General.SimulatorServer,
 		userOperation:       application.Operations().UserOperation(),

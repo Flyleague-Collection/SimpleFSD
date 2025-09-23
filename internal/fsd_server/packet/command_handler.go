@@ -490,7 +490,7 @@ func (session *Session) removeClient(_ []string, _ []byte) *Result {
 }
 
 func (session *Session) handleSquawkBox(data []string, rawLine []byte) *Result {
-	//# SB ZSHA_CTR CES7199 FSIPIR 0 ZZZ C172 3.73453 1.32984 174.00000 3.3028DC0.98CF9A41 L1P Cessna Skyhawk 172SP
+	// #SB ZSHA_CTR CES7199 FSIPIR 0 ZZZ C172 3.73453 1.32984 174.00000 3.3028DC0.98CF9A41 L1P Cessna Skyhawk 172SP
 	if session.client == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
@@ -500,6 +500,25 @@ func (session *Session) handleSquawkBox(data []string, rawLine []byte) *Result {
 		return ResultError(NoCallsignFound, false, session.client.Callsign(), fmt.Errorf("%s not exists", targetStation))
 	}
 	client.SendLine(rawLine)
+	return ResultSuccess()
+}
+
+func (session *Session) handleWeatherQuery(data []string, _ []byte) *Result {
+	// $AX ZSHA_CTR SERVER METAR ZGHA
+	// $AR SERVER ZSHA_CTR ZGHA METAR ZGHA 231100Z 34007MPS 6000 -RA SCT011 22/19 Q1010 NOSIG
+	if session.client == nil {
+		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
+	}
+	targetStation := data[3]
+	if len(targetStation) != 4 {
+		return ResultError(Syntax, false, targetStation, fmt.Errorf("invalid target station"))
+	}
+	result, err := session.metarManager.QueryMetar(targetStation)
+	if err != nil {
+		return ResultError(NoWeatherProfile, false, targetStation, fmt.Errorf("cant fetch metar for %s", targetStation))
+	} else {
+		session.client.SendLine(makePacket(WeatherResponse, global.FSDServerName, session.callsign, "METAR", result[6:]))
+	}
 	return ResultSuccess()
 }
 
@@ -539,6 +558,8 @@ func (session *Session) handleCommand(commandType ClientCommand, data []string, 
 		session.removeClient(data, rawLine)
 	case SquawkBox:
 		result = session.handleSquawkBox(data, rawLine)
+	case WeatherQuery:
+		result = session.handleWeatherQuery(data, rawLine)
 	default:
 		result = ResultSuccess()
 	}

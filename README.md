@@ -67,7 +67,7 @@ FSD支持计划同步, 计划锁定, 网页计划提交
 ```json5
 {
   // 配置文件版本, 通常情况下与软件版本一致
-  "config_version": "0.7.2",
+  "config_version": "0.8.0",
   // 服务配置
   "server": {
     // 通用配置项
@@ -310,6 +310,37 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       "whazzup_cache_time": "15s"
     }
   },
+  // metar报文源
+  "metar_source": [
+    {
+      // 查询地址, %s会被替换为机场ICAO码
+      "url": "https://aviationweather.gov/api/data/metar?ids=%s",
+      // 返回raw: 直接返回metar文本
+      "return_type": "raw",
+      // 数据排列方式, 此值为false时, 服务器取第一行作为metar报文, 反之取最后一行
+      "reverse": false,
+      // 数据分行方式
+      // 当此行为空时, 服务器认为返回值里面仅有一条metar报文
+      // 不为空时, 服务器按照此配置作为分隔符切分数据并按照`reverse`字段配置返回报文
+      "multiline": ""
+    },
+    {
+      "url": "https://example.com/api/metar?icao=%s&style=html",
+      // 返回html: 返回一个html网页
+      "return_type": "html",
+      "reverse": false,
+      // html css 选择器, 用于提取metar报文
+      "selector": "body > div > pre",
+      "multiline": "\n"
+    },
+    {
+      "url": "https://example.com/api/metar?icao=%s&style=json",
+      // 返回json: 返回json格式的数据
+      "return_type": "json",
+      // jsonpath字符串, 用于提取json中的metar报文
+      "selector": "$.data.metar"
+    }
+  ],
   // 数据库配置
   "database": {
     // 数据库类型, 支持的数据库类型: mysql, postgres, sqlite3
@@ -344,30 +375,35 @@ FSD支持计划同步, 计划锁定, 网页计划提交
 
 ### 命令行参数
 
-| 参数名                         | 类型     | 默认值                                                                                | 作用                          |
-|:----------------------------|:-------|:-----------------------------------------------------------------------------------|:----------------------------|
-| -help                       | ×      | ×                                                                                  | 显示命令帮助                      |
-| -debug                      | bool   | false                                                                              | 开启调试模式                      |
-| -config                     | string | "./config.json"                                                                    | 配置文件路径                      |
-| -skip_email_verification    | bool   | false                                                                              | 跳过邮箱验证                      |
-| -update_config              | bool   | false                                                                              | 迁移配置文件, 迁移旧版本配置文件           |
-| -no_logs                    | bool   | false                                                                              | 禁用日志输出到文件                   |
-| -message_queue_channel_size | int    | 128                                                                                | 内置消息队列大小                    |
-| -download_prefix            | str    | "https://raw.githubusercontent.com/Flyleague-Collection/SimpleFSD/refs/heads/main" | 下载前缀, 用于无法连接到github或其他情况下使用 |
+| 参数名                         | 类型     | 默认值             | 作用                          |
+|:----------------------------|:-------|:----------------|:----------------------------|
+| -help                       | ×      | ×               | 显示命令帮助                      |
+| -debug                      | bool   | false           | 开启调试模式                      |
+| -config                     | string | "./config.json" | 配置文件路径                      |
+| -skip_email_verification    | bool   | false           | 跳过邮箱验证                      |
+| -update_config              | bool   | false           | 迁移配置文件, 迁移旧版本配置文件           |
+| -no_logs                    | bool   | false           | 禁用日志输出到文件                   |
+| -message_queue_channel_size | int    | 128             | 内置消息队列大小                    |
+| -download_prefix            | str    | 本仓库raw地址        | 下载前缀, 用于无法连接到github或其他情况下使用 |
+| -metar_cache_clean_interval | str    | 30s             | 过期metar报文清理间隔               |
+| -metar_query_thread         | int    | 32              | metar报文查询线程数                |
 
 ### 环境变量
 
 ***环境变量会覆盖对应的命令行参数***
 
-| 参数名                        | 类型     | 默认值                                                                                | 作用                          |
-|:---------------------------|:-------|:-----------------------------------------------------------------------------------|:----------------------------|
-| DEBUG_MODE                 | bool   | false                                                                              | 开启调试模式                      |
-| CONFIG_FILE_PATH           | string | "./config.json"                                                                    | 配置文件路径                      |
-| SKIP_EMAIL_VERIFICATION    | bool   | false                                                                              | 跳过邮箱验证                      |
-| UPDATE_CONFIG              | bool   | false                                                                              | 迁移配置文件, 迁移旧版本配置文件           |
-| NO_LOGS                    | bool   | false                                                                              | 禁用日志输出到文件                   |
-| MESSAGE_QUEUE_CHANNEL_SIZE | int    | 128                                                                                | 内置消息队列大小                    |
-| DOWNLOAD_PREFIX            | str    | "https://raw.githubusercontent.com/Flyleague-Collection/SimpleFSD/refs/heads/main" | 下载前缀, 用于无法连接到github或其他情况下使用 |
+| 参数名                        | 类型     | 默认值             | 作用                          |
+|:---------------------------|:-------|:----------------|:----------------------------|
+| DEBUG_MODE                 | bool   | false           | 开启调试模式                      |
+| CONFIG_FILE_PATH           | string | "./config.json" | 配置文件路径                      |
+| SKIP_EMAIL_VERIFICATION    | bool   | false           | 跳过邮箱验证                      |
+| UPDATE_CONFIG              | bool   | false           | 迁移配置文件, 迁移旧版本配置文件           |
+| NO_LOGS                    | bool   | false           | 禁用日志输出到文件                   |
+| MESSAGE_QUEUE_CHANNEL_SIZE | int    | 128             | 内置消息队列大小                    |
+| DOWNLOAD_PREFIX            | str    | 本仓库raw地址        | 下载前缀, 用于无法连接到github或其他情况下使用 |
+| MESSAGE_QUEUE_CHANNEL_SIZE | int    | 128             | 内置消息队列大小                    |
+| METAR_CACHE_CLEAN_INTERVAL | str    | 30s             | 过期metar报文清理间隔               |
+| METAR_QUERY_THREAD         | int    | 32              | metar报文查询线程数                |
 
 ### 权限定义表
 

@@ -7,6 +7,7 @@ type MetarServiceInterface interface {
 
 type RequestQueryMetar struct {
 	ICAO string `query:"icao"`
+	Raw  bool   `query:"raw"`
 }
 
-type ResponseQueryMetar string
+type ResponseQueryMetar []string

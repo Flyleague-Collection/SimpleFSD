@@ -2,9 +2,11 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo/v4"
+	"strings"
 )
 
 type MetarControllerInterface interface {
@@ -32,5 +34,14 @@ func (controller *MetarController) QueryMetar(ctx echo.Context) error {
 		controller.logger.ErrorF("QueryMetar bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	return controller.metarService.QueryMetar(data).Response(ctx)
+	res := controller.metarService.QueryMetar(data)
+	if data.Raw {
+		if res.Data != nil {
+			return TextResponse(ctx, res.HttpCode, fmt.Sprintf("<pre>%s</pre>", strings.Join(*res.Data, "</pre>\b<pre>")))
+		} else {
+			return TextResponse(ctx, NotFound.Code(), "")
+		}
+	} else {
+		return res.Response(ctx)
+	}
 }

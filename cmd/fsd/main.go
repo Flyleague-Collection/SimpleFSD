@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/base"
+	"github.com/half-nothing/simple-fsd/internal/cache"
 	"github.com/half-nothing/simple-fsd/internal/database"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server/packet"
@@ -14,9 +15,11 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	"github.com/half-nothing/simple-fsd/internal/message"
+	"github.com/half-nothing/simple-fsd/internal/metar"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"os"
 	"strconv"
+	"time"
 )
 
 func recoverFromError() {
@@ -46,6 +49,13 @@ func checkBoolEnv(envKey string, target *bool) {
 	}
 }
 
+func checkDurationEnv(envKey string, target *time.Duration) {
+	value := os.Getenv(envKey)
+	if duration, err := time.ParseDuration(value); err == nil {
+		*target = duration
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -56,6 +66,8 @@ func main() {
 	checkBoolEnv(global.EnvNoLogs, global.NoLogs)
 	checkIntEnv(global.EnvMessageQueueChannelSize, global.MessageQueueChannelSize, 128)
 	checkStringEnv(global.EnvDownloadPrefix, global.DownloadPrefix)
+	checkDurationEnv(global.EnvMetarCacheCleanInterval, global.MetarCacheCleanInterval)
+	checkIntEnv(global.EnvMetarQueryThread, global.MetarQueryThread, 32)
 
 	defer recoverFromError()
 
@@ -120,8 +132,13 @@ func main() {
 	messageQueue.Subscribe(queue.SendMessageToClient, clientManager.HandleSendMessageToClientMessage)
 	messageQueue.Subscribe(queue.BroadcastMessage, clientManager.HandleBroadcastMessage)
 
+	memoryCache := cache.NewMemoryCache[*string](*global.MetarCacheCleanInterval)
+	defer memoryCache.Close()
+
+	metarManager := metar.NewMetarManager(mainLogger, config.MetarSource, memoryCache)
+
 	mainLogger.Info("Creating application content...")
-	applicationContent := interfaces.NewApplicationContent(logger, cleaner, configManager, clientManager, messageQueue, databaseOperation)
+	applicationContent := interfaces.NewApplicationContent(logger, cleaner, configManager, clientManager, messageQueue, metarManager, databaseOperation)
 
 	mainLogger.Info("Application initialized. Starting application...")
 

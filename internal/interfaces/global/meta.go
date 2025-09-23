@@ -14,11 +14,13 @@ var (
 	NoLogs                  = flag.Bool("no_logs", false, "Disable logging to file")
 	MessageQueueChannelSize = flag.Int("message_queue_channel_size", 128, "Message Queue channel size")
 	DownloadPrefix          = flag.String("download_prefix", "https://raw.githubusercontent.com/Flyleague-Collection/SimpleFSD/refs/heads/main", "auto download prefix")
+	MetarCacheCleanInterval = flag.Duration("metar_cache_clean_interval", 30*time.Minute, "metar cache cleanup interval")
+	MetarQueryThread        = flag.Int("metar_query_thread", 32, "metar query thread")
 )
 
 const (
-	AppVersion    = "0.7.0"
-	ConfigVersion = "0.7.2"
+	AppVersion    = "0.8.0"
+	ConfigVersion = "0.8.0"
 
 	EnvDebugMode               = "DEBUG_MODE"
 	EnvConfigFilePath          = "CONFIG_FILE_PATH"
@@ -27,6 +29,8 @@ const (
 	EnvNoLogs                  = "NO_LOGS"
 	EnvMessageQueueChannelSize = "MESSAGE_QUEUE_CHANNEL_SIZE"
 	EnvDownloadPrefix          = "DOWNLOAD_PREFIX"
+	EnvMetarCacheCleanInterval = "METAR_CACHE_CLEAN_INTERVAL"
+	EnvMetarQueryThread        = "METAR_QUERY_THREAD"
 
 	LogFilePath = "logs"
 	MainLogName = "main"
