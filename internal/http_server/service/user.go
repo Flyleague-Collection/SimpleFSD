@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
@@ -51,7 +52,6 @@ func NewUserService(
 }
 
 var (
-	ErrEmailNotFound    = NewApiStatus("EMAIL_CODE_NOT_FOUND", "未向该邮箱发送验证码", BadRequest)
 	ErrCidNotMatch      = NewApiStatus("CID_NOT_MATCH", "注册cid与验证码发送时的cid不一致", BadRequest)
 	ErrEmailExpired     = NewApiStatus("EMAIL_CODE_EXPIRED", "验证码已过期", BadRequest)
 	ErrEmailIllegal     = NewApiStatus("EMAIL_CODE_ILLEGAL", "非法验证码", BadRequest)
@@ -62,8 +62,6 @@ var (
 func (userService *UserService) verifyEmailCode(email string, emailCode string, cid int) *ApiStatus {
 	err := userService.emailService.VerifyEmailCode(email, emailCode, cid)
 	switch {
-	case errors.Is(err, ErrEmailCodeNotFound):
-		return ErrEmailNotFound
 	case errors.Is(err, ErrEmailCodeExpired):
 		return ErrEmailExpired
 	case errors.Is(err, ErrEmailCodeIllegal):
@@ -443,6 +441,7 @@ func (userService *UserService) EditUserPermission(req *RequestUserEditPermissio
 	permission := operation.Permission(user.Permission)
 	targetPermission := operation.Permission(targetUser.Permission)
 	auditLogs := make([]*operation.AuditLog, 0, len(req.Permissions))
+	permissions := make([]string, 0, len(req.Permissions))
 
 	for key, value := range req.Permissions {
 		if per, ok := operation.PermissionMap[key]; ok {
@@ -473,6 +472,7 @@ func (userService *UserService) EditUserPermission(req *RequestUserEditPermissio
 							nil,
 						))
 				}
+				permissions = append(permissions, key)
 			} else {
 				return NewApiResponse[ResponseUserEditPermission](ErrIllegalParam, nil)
 			}
@@ -490,9 +490,10 @@ func (userService *UserService) EditUserPermission(req *RequestUserEditPermissio
 	if userService.config.Email.Template.EnablePermissionChangeEmail {
 		userService.messageQueue.Publish(&queue.Message{
 			Type: queue.SendPermissionChangeEmail,
-			Data: &PermissionChangeEmailData{
-				User:     targetUser,
-				Operator: user,
+			Data: &interfaces.PermissionChangeEmailData{
+				User:        targetUser,
+				Operator:    user,
+				Permissions: permissions,
 			},
 		})
 	}

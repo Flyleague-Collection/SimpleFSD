@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/half-nothing/simple-fsd/internal/cache"
 	"github.com/half-nothing/simple-fsd/internal/http_server/controller"
 	mid "github.com/half-nothing/simple-fsd/internal/http_server/middleware"
 	impl "github.com/half-nothing/simple-fsd/internal/http_server/service"
@@ -183,14 +184,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	flightPlanOperation := applicationContent.Operations().FlightPlanOperation()
 	metarManager := applicationContent.MetarManager()
 
-	emailService := impl.NewEmailService(logger, config.Server.HttpServer.Email)
-
 	messageQueue := applicationContent.MessageQueue()
-	messageQueue.Subscribe(queue.SendVerifyEmail, emailService.HandleSendVerifyEmailMessage)
-	messageQueue.Subscribe(queue.SendRatingChangeEmail, emailService.HandleSendRatingChangeEmailMessage)
-	messageQueue.Subscribe(queue.SendPermissionChangeEmail, emailService.HandleSendPermissionChangeEmailMessage)
-	messageQueue.Subscribe(queue.SendPasswordChangeEmail, emailService.HandleSendPermissionChangeEmailMessage)
-	messageQueue.Subscribe(queue.SendKickedFromServerEmail, emailService.HandleSendKickedFromServerEmailMessage)
 
 	auditLogService := impl.NewAuditService(logger, auditLogOperation)
 	messageQueue.Subscribe(queue.AuditLog, auditLogService.HandleAuditLogMessage)
@@ -206,6 +200,12 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	case 2:
 		storeService = store.NewTencentCosStoreService(logger, httpConfig.Store, storeService, messageQueue, auditLogOperation)
 	}
+
+	emailCodesCache := cache.NewMemoryCache[*service.EmailCode](config.Server.HttpServer.Email.VerifyExpiredDuration)
+	defer emailCodesCache.Close()
+	lastSendTimeCache := cache.NewMemoryCache[time.Time](config.Server.HttpServer.Email.SendDuration)
+	defer lastSendTimeCache.Close()
+	emailService := impl.NewEmailService(logger, config.Server.HttpServer.Email, emailCodesCache, lastSendTimeCache, messageQueue)
 
 	userService := impl.NewUserService(logger, httpConfig, messageQueue, userOperation, historyOperation, auditLogOperation, storeService, emailService)
 	clientService := impl.NewClientService(logger, httpConfig, userOperation, auditLogOperation, clientManager, messageQueue)
@@ -330,6 +330,6 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.FatalF("Http fsd_server error: %v", err)
+		logger.FatalF("Http server error: %v", err)
 	}
 }

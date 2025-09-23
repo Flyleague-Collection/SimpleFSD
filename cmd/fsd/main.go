@@ -6,6 +6,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/base"
 	"github.com/half-nothing/simple-fsd/internal/cache"
 	"github.com/half-nothing/simple-fsd/internal/database"
+	"github.com/half-nothing/simple-fsd/internal/email"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server/packet"
 	"github.com/half-nothing/simple-fsd/internal/http_server"
@@ -131,6 +132,19 @@ func main() {
 	messageQueue.Subscribe(queue.KickClientFromServer, clientManager.HandleKickClientFromServerMessage)
 	messageQueue.Subscribe(queue.SendMessageToClient, clientManager.HandleSendMessageToClientMessage)
 	messageQueue.Subscribe(queue.BroadcastMessage, clientManager.HandleBroadcastMessage)
+
+	emailSender := email.NewEmailSender(mainLogger, config.Server.HttpServer.Email)
+	emailMessageHandler := email.NewEmailMessageHandler(emailSender)
+
+	messageQueue.Subscribe(queue.SendApplicationPassedEmail, emailMessageHandler.HandleSendApplicationPassedEmailMessage)
+	messageQueue.Subscribe(queue.SendApplicationProcessingEmail, emailMessageHandler.HandleSendApplicationProcessingEmailMessage)
+	messageQueue.Subscribe(queue.SendApplicationRejectedEmail, emailMessageHandler.HandleSendApplicationRejectedEmailMessage)
+	messageQueue.Subscribe(queue.SendAtcRatingChangeEmail, emailMessageHandler.HandleSendAtcRatingChangeEmailMessage)
+	messageQueue.Subscribe(queue.SendEmailVerifyEmail, emailMessageHandler.HandleSendEmailVerifyEmailMessage)
+	messageQueue.Subscribe(queue.SendKickedFromServerEmail, emailMessageHandler.HandleSendKickedFromServerEmailMessage)
+	messageQueue.Subscribe(queue.SendPasswordChangeEmail, emailMessageHandler.HandleSendPasswordChangeEmailMessage)
+	messageQueue.Subscribe(queue.SendPermissionChangeEmail, emailMessageHandler.HandleSendPermissionChangeEmailMessage)
+	messageQueue.Subscribe(queue.SendTicketReplyEmail, emailMessageHandler.HandleSendTicketReplyEmailMessage)
 
 	memoryCache := cache.NewMemoryCache[*string](*global.MetarCacheCleanInterval)
 	defer memoryCache.Close()

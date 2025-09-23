@@ -5,6 +5,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
@@ -88,7 +89,7 @@ func (ticketService *TicketService) CreateTicket(req *RequestCreateTicket) *ApiR
 
 	ticketType := operation.TicketType(req.Type)
 
-	ticket := ticketService.ticketOperation.NewTicket(req.Cid, ticketType, req.Title, req.Content)
+	ticket := ticketService.ticketOperation.NewTicket(req.Uid, ticketType, req.Title, req.Content)
 
 	if res := CallDBFuncWithoutRet[ResponseCreateTicket](func() error {
 		return ticketService.ticketOperation.SaveTicket(ticket)
@@ -127,8 +128,15 @@ func (ticketService *TicketService) CloseTicket(req *RequestCloseTicket) *ApiRes
 		return res
 	}
 
+	ticket, res := CallDBFunc[*operation.Ticket, ResponseCloseTicket](func() (*operation.Ticket, error) {
+		return ticketService.ticketOperation.GetTicket(req.TicketId)
+	})
+	if res != nil {
+		return res
+	}
+
 	if res := CallDBFuncWithoutRet[ResponseCloseTicket](func() error {
-		return ticketService.ticketOperation.CloseTicket(req.TicketId, req.Cid, req.Reply)
+		return ticketService.ticketOperation.CloseTicket(ticket, req.Cid, req.Reply)
 	}); res != nil {
 		return res
 	}
@@ -146,6 +154,15 @@ func (ticketService *TicketService) CloseTicket(req *RequestCloseTicket) *ApiRes
 				NewValue: req.Reply,
 			},
 		),
+	})
+
+	ticketService.messageQueue.Publish(&queue.Message{
+		Type: queue.SendTicketReplyEmail,
+		Data: &interfaces.TicketReplyEmailData{
+			User:  ticket.User,
+			Title: ticket.Title,
+			Reply: req.Reply,
+		},
 	})
 
 	data := ResponseCloseTicket(true)

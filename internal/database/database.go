@@ -57,7 +57,7 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) 
 	}
 
 	if err = db.Migrator().AutoMigrate(&User{}, &FlightPlan{}, &History{}, &Activity{}, &ActivityATC{},
-		&ActivityPilot{}, &ActivityFacility{}, &AuditLog{}, &ControllerRecord{}, &Ticket{}); err != nil {
+		&ActivityPilot{}, &ActivityFacility{}, &AuditLog{}, &ControllerRecord{}, &Ticket{}, &ControllerApplication{}); err != nil {
 		return nil, nil, Errorf("error occured while migrating operation: %v", err)
 	}
 
@@ -90,6 +90,6 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) 
 
 	return NewDBCloseCallback(lg, db),
 		NewDatabaseOperations(userOperation, flightPlanOperation, historyOperation, activityOperation,
-			auditLogOperation, controllerOperation, controllerRecordOperation, ticketOperation),
+			auditLogOperation, controllerOperation, controllerRecordOperation, nil, ticketOperation),
 		nil
 }

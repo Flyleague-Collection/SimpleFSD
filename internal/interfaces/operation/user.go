@@ -31,7 +31,7 @@ type User struct {
 	ActivityPilot     []*ActivityPilot    `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
 	AuditLogs         []*AuditLog         `gorm:"foreignKey:Subject;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
 	ControllerRecords []*ControllerRecord `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
-	Opener            []*Ticket           `gorm:"foreignKey:Opener;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
+	Tickets           []*Ticket           `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
 	CreatedAt         time.Time           `json:"-"`
 	UpdatedAt         time.Time           `json:"-"`
 }

@@ -9,11 +9,15 @@ import (
 type MessageType int
 
 const (
-	SendVerifyEmail MessageType = iota
-	SendRatingChangeEmail
-	SendPermissionChangeEmail
-	SendPasswordChangeEmail
+	SendApplicationPassedEmail MessageType = iota
+	SendApplicationProcessingEmail
+	SendApplicationRejectedEmail
+	SendAtcRatingChangeEmail
+	SendEmailVerifyEmail
 	SendKickedFromServerEmail
+	SendPasswordChangeEmail
+	SendPermissionChangeEmail
+	SendTicketReplyEmail
 	SendMessageToClient
 	KickClientFromServer
 	BroadcastMessage
@@ -22,12 +26,15 @@ const (
 )
 
 var messageTypes = []string{
-	"SendVerifyEmail",
-	"SendRatingChangeEmail",
-	"SendPermissionChangeEmail",
-	"SendPasswordChangeEmail",
+	"SendApplicationPassedEmail",
+	"SendApplicationProcessingEmail",
+	"SendApplicationRejectedEmail",
+	"SendAtcRatingChangeEmail",
+	"SendEmailVerifyEmail",
 	"SendKickedFromServerEmail",
-	"SendMessageToClient",
+	"SendPasswordChangeEmail",
+	"SendPermissionChangeEmail",
+	"SendTicketReplyEmail",
 	"KickClientFromServer",
 	"BroadcastMessage",
 	"AuditLog",

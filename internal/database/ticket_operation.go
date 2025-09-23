@@ -25,9 +25,9 @@ func NewTicketOperation(logger log.LoggerInterface, db *gorm.DB, queryTimeout ti
 	}
 }
 
-func (ticketOperation *TicketOperation) NewTicket(opener int, ticketType TicketType, title string, content string) (ticket *Ticket) {
+func (ticketOperation *TicketOperation) NewTicket(userId uint, ticketType TicketType, title string, content string) (ticket *Ticket) {
 	return &Ticket{
-		Opener:  opener,
+		UserId:  userId,
 		Type:    int(ticketType),
 		Title:   title,
 		Content: content,
@@ -47,7 +47,7 @@ func (ticketOperation *TicketOperation) GetTicket(id uint) (ticket *Ticket, err 
 	ctx, cancel := context.WithTimeout(context.Background(), ticketOperation.queryTimeout)
 	defer cancel()
 	ticket = &Ticket{}
-	err = ticketOperation.db.WithContext(ctx).First(ticket, id).Error
+	err = ticketOperation.db.WithContext(ctx).Preload("User").First(ticket, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err = ErrTicketNotFound
@@ -74,17 +74,13 @@ func (ticketOperation *TicketOperation) GetUserTickets(cid, page, pageSize int) 
 	return
 }
 
-func (ticketOperation *TicketOperation) CloseTicket(ticketId uint, closer int, content string) (err error) {
+func (ticketOperation *TicketOperation) CloseTicket(ticket *Ticket, closer int, content string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ticketOperation.queryTimeout)
 	defer cancel()
-	ticket, err := ticketOperation.GetTicket(ticketId)
-	if err != nil {
-		return err
-	}
 	if ticket.Closer != 0 {
 		return ErrTicketAlreadyClosed
 	}
-	return ticketOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(&Ticket{ID: ticketId}).Updates(&Ticket{Closer: closer, Reply: content}).Error
+	return ticketOperation.db.Clauses(clause.Locking{Strength: "UPDATE"}).WithContext(ctx).Model(&Ticket{ID: ticket.ID}).Updates(&Ticket{Closer: closer, Reply: content}).Error
 }
 
 func (ticketOperation *TicketOperation) DeleteTicket(id uint) (err error) {

@@ -5,6 +5,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
@@ -114,7 +115,7 @@ func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiRespo
 	if clientService.config.Email.Template.EnableKickedFromServerEmail {
 		clientService.messageQueue.Publish(&queue.Message{
 			Type: queue.SendKickedFromServerEmail,
-			Data: &KickedFromServerEmailData{
+			Data: &interfaces.KickedFromServerEmailData{
 				User:     client.User(),
 				Operator: user,
 				Reason:   req.Reason,

@@ -4,11 +4,11 @@ package packet
 import (
 	"errors"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strconv"
 	"strings"
@@ -457,7 +457,7 @@ func (session *Session) handleKillClient(data []string, _ []byte) *Result {
 	}
 	session.application.MessageQueue().Publish(&queue.Message{
 		Type: queue.SendKickedFromServerEmail,
-		Data: &service.KickedFromServerEmailData{
+		Data: &interfaces.KickedFromServerEmailData{
 			User:     client.User(),
 			Operator: session.user,
 			Reason:   data[2],

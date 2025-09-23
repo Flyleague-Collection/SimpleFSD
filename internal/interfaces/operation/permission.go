@@ -20,6 +20,10 @@ const (
 	ControllerChangeUnderMonitor
 	ControllerChangeSolo
 	ControllerChangeGuest
+	ControllerApplicationShowList
+	ControllerApplicationConfirm
+	ControllerApplicationPass
+	ControllerApplicationReject
 	ActivityPublish
 	ActivityShowList
 	ActivityEdit
@@ -40,38 +44,42 @@ const (
 )
 
 var PermissionMap = map[string]Permission{
-	"AdminEntry":                   AdminEntry,
-	"UserShowList":                 UserShowList,
-	"UserGetProfile":               UserGetProfile,
-	"UserSetPassword":              UserSetPassword,
-	"UserEditBaseInfo":             UserEditBaseInfo,
-	"UserEditPermission":           UserEditPermission,
-	"ControllerShowList":           ControllerShowList,
-	"ControllerTier2Rating":        ControllerTier2Rating,
-	"ControllerEditRating":         ControllerEditRating,
-	"ControllerShowRecord":         ControllerShowRecord,
-	"ControllerCreateRecord":       ControllerCreateRecord,
-	"ControllerDeleteRecord":       ControllerDeleteRecord,
-	"ControllerChangeUnderMonitor": ControllerChangeUnderMonitor,
-	"ControllerChangeSolo":         ControllerChangeSolo,
-	"ControllerChangeGuest":        ControllerChangeGuest,
-	"ActivityPublish":              ActivityPublish,
-	"ActivityShowList":             ActivityShowList,
-	"ActivityEdit":                 ActivityEdit,
-	"ActivityEditState":            ActivityEditState,
-	"ActivityEditPilotState":       ActivityEditPilotState,
-	"ActivityDelete":               ActivityDelete,
-	"AuditLogShow":                 AuditLogShow,
-	"TicketShowList":               TicketShowList,
-	"TicketReply":                  TicketReply,
-	"TicketRemove":                 TicketRemove,
-	"FlightPlanShowList":           FlightPlanShowList,
-	"FlightPlanChangeLock":         FlightPlanChangeLock,
-	"FlightPlanDelete":             FlightPlanDelete,
-	"ClientManagerEntry":           ClientManagerEntry,
-	"ClientSendMessage":            ClientSendMessage,
-	"ClientKill":                   ClientKill,
-	"ClientSendBroadcastMessage":   ClientSendBroadcastMessage,
+	"AdminEntry":                    AdminEntry,
+	"UserShowList":                  UserShowList,
+	"UserGetProfile":                UserGetProfile,
+	"UserSetPassword":               UserSetPassword,
+	"UserEditBaseInfo":              UserEditBaseInfo,
+	"UserEditPermission":            UserEditPermission,
+	"ControllerShowList":            ControllerShowList,
+	"ControllerTier2Rating":         ControllerTier2Rating,
+	"ControllerEditRating":          ControllerEditRating,
+	"ControllerShowRecord":          ControllerShowRecord,
+	"ControllerCreateRecord":        ControllerCreateRecord,
+	"ControllerDeleteRecord":        ControllerDeleteRecord,
+	"ControllerChangeUnderMonitor":  ControllerChangeUnderMonitor,
+	"ControllerChangeSolo":          ControllerChangeSolo,
+	"ControllerChangeGuest":         ControllerChangeGuest,
+	"ControllerApplicationShowList": ControllerApplicationShowList,
+	"ControllerApplicationConfirm":  ControllerApplicationConfirm,
+	"ControllerApplicationPass":     ControllerApplicationPass,
+	"ControllerApplicationReject":   ControllerApplicationReject,
+	"ActivityPublish":               ActivityPublish,
+	"ActivityShowList":              ActivityShowList,
+	"ActivityEdit":                  ActivityEdit,
+	"ActivityEditState":             ActivityEditState,
+	"ActivityEditPilotState":        ActivityEditPilotState,
+	"ActivityDelete":                ActivityDelete,
+	"AuditLogShow":                  AuditLogShow,
+	"TicketShowList":                TicketShowList,
+	"TicketReply":                   TicketReply,
+	"TicketRemove":                  TicketRemove,
+	"FlightPlanShowList":            FlightPlanShowList,
+	"FlightPlanChangeLock":          FlightPlanChangeLock,
+	"FlightPlanDelete":              FlightPlanDelete,
+	"ClientManagerEntry":            ClientManagerEntry,
+	"ClientSendMessage":             ClientSendMessage,
+	"ClientKill":                    ClientKill,
+	"ClientSendBroadcastMessage":    ClientSendBroadcastMessage,
 }
 
 func (p *Permission) IsValid() bool {

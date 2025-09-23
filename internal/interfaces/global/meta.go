@@ -42,12 +42,16 @@ const (
 	GrpcLogName = "grpc"
 	GrpcLogPath = LogFilePath + "/" + GrpcLogName + ".log"
 
-	AirportDataFilePath              = "/data/airport.json"
-	EmailVerifyTemplateFilePath      = "/template/email_verify.template"
-	ATCRatingChangeTemplateFilePath  = "/template/atc_rating_change.template"
-	PermissionChangeTemplateFilePath = "/template/permission_change.template"
-	KickedFromServerTemplateFilePath = "/template/kicked_from_server.template"
-	PasswordChangeTemplateFilePath   = "/template/password_change.template"
+	AirportDataFilePath                   = "/data/airport.json"
+	EmailVerifyTemplateFilePath           = "/template/email_verify.template"
+	ATCRatingChangeTemplateFilePath       = "/template/atc_rating_change.template"
+	PermissionChangeTemplateFilePath      = "/template/permission_change.template"
+	KickedFromServerTemplateFilePath      = "/template/kicked_from_server.template"
+	PasswordChangeTemplateFilePath        = "/template/password_change.template"
+	ApplicationPassedTemplateFilePath     = "/template/application_passed.template"
+	ApplicationRejectedTemplateFilePath   = "/template/application_rejected.template"
+	ApplicationProcessingTemplateFilePath = "/template/application_processing.template"
+	TicketReplyTemplateFilePath           = "/template/ticket_reply.template"
 
 	DefaultFilePermissions     = 0644
 	DefaultDirectoryPermission = 0755

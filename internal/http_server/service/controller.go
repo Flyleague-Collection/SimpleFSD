@@ -5,6 +5,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
@@ -226,8 +227,8 @@ func (controllerService *ControllerService) UpdateControllerRating(req *RequestU
 
 	if controllerService.config.Email.Template.EnableRatingChangeEmail {
 		controllerService.messageQueue.Publish(&queue.Message{
-			Type: queue.SendRatingChangeEmail,
-			Data: &RatingChangeEmailData{
+			Type: queue.SendAtcRatingChangeEmail,
+			Data: &interfaces.AtcRatingChangeEmailData{
 				User:      targetUser,
 				Operator:  user,
 				OldRating: oldRatingStr,

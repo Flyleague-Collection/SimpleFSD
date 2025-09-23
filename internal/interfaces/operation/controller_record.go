@@ -25,6 +25,7 @@ const (
 	UnderMonitor                             // UM权限变动
 	Solo                                     // Solo权限变动
 	Guest                                    // 客座权限变动
+	Application                              // 管制员申请
 	Other                                    // 其他未定义内容
 )
 

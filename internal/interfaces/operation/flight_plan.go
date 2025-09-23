@@ -33,7 +33,7 @@ type FlightPlan struct {
 
 var (
 	ErrFlightPlanNotFound     = errors.New("flight plan not found")
-	ErrSimulatorServer        = errors.New("simulator fsd_server not support flight plan store")
+	ErrSimulatorServer        = errors.New("simulator server not support flight plan store")
 	ErrFlightPlanDataTooShort = errors.New("flight plan data is too short")
 	ErrFlightPlanExists       = errors.New("flight plan already exists")
 	ErrFlightPlanLocked       = errors.New("flight plan locked")

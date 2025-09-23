@@ -9,7 +9,8 @@ import (
 
 type Ticket struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
-	Opener    int            `gorm:"index:opener;not null" json:"creator"`
+	UserId    uint           `gorm:"index:userId;not null" json:"creator"`
+	User      *User          `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"user"`
 	Type      int            `gorm:"not null" json:"type"`
 	Title     string         `gorm:"not null" json:"title"`
 	Content   string         `gorm:"not null" json:"content"`
@@ -50,11 +51,11 @@ var (
 )
 
 type TicketOperationInterface interface {
-	NewTicket(opener int, ticketType TicketType, title string, content string) (ticket *Ticket)
+	NewTicket(userId uint, ticketType TicketType, title string, content string) (ticket *Ticket)
 	SaveTicket(ticket *Ticket) (err error)
 	GetTickets(page, pageSize int) (tickets []*Ticket, total int64, err error)
 	GetUserTickets(cid, page, pageSize int) (tickets []*UserTicket, total int64, err error)
 	GetTicket(id uint) (ticket *Ticket, err error)
-	CloseTicket(ticketId uint, closer int, content string) (err error)
+	CloseTicket(ticket *Ticket, closer int, content string) (err error)
 	DeleteTicket(id uint) (err error)
 }
