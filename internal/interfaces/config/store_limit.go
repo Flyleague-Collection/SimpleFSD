@@ -26,6 +26,7 @@ func (config *HttpServerStoreFileLimit) checkValid(_ log.LoggerInterface) *Valid
 
 type HttpServerStoreFileLimits struct {
 	ImageLimit *HttpServerStoreFileLimit `json:"image_limit"`
+	FileLimit  *HttpServerStoreFileLimit `json:"file_limit"`
 }
 
 func defaultHttpServerStoreFileLimits() *HttpServerStoreFileLimits {
@@ -34,6 +35,12 @@ func defaultHttpServerStoreFileLimits() *HttpServerStoreFileLimits {
 			MaxFileSize:    5 * 1024 * 1024,
 			AllowedFileExt: []string{".jpg", ".png", ".bmp", ".jpeg"},
 			StorePrefix:    "images",
+			StoreInServer:  true,
+		},
+		FileLimit: &HttpServerStoreFileLimit{
+			MaxFileSize:    10 * 1024 * 1024,
+			AllowedFileExt: []string{".md", ".txt", ".pdf", ".doc", ".docx"},
+			StorePrefix:    "files",
 			StoreInServer:  true,
 		},
 	}
@@ -53,6 +60,9 @@ func (config *HttpServerStoreFileLimits) CheckLocalStore(_ log.LoggerInterface, 
 	if !config.ImageLimit.StoreInServer {
 		return ValidFail(errors.New("when you use local store, store_in_server must be true"))
 	}
+	if !config.FileLimit.StoreInServer {
+		return ValidFail(errors.New("when you use local store, store_in_server must be true"))
+	}
 	return ValidPass()
 }
 
@@ -61,6 +71,13 @@ func (config *HttpServerStoreFileLimits) CreateDir(_ log.LoggerInterface, root s
 	if config.ImageLimit.StoreInServer {
 		imagePath := filepath.Join(root, config.ImageLimit.StorePrefix)
 		if err := os.MkdirAll(imagePath, global.DefaultDirectoryPermission); err != nil {
+			return ValidFailWith(errors.New("error creating the image directory"), err)
+		}
+	}
+	config.FileLimit.RootPath = root
+	if config.FileLimit.StoreInServer {
+		filePath := filepath.Join(root, config.FileLimit.StorePrefix)
+		if err := os.MkdirAll(filePath, global.DefaultDirectoryPermission); err != nil {
 			return ValidFailWith(errors.New("error creating the image directory"), err)
 		}
 	}

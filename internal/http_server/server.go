@@ -311,7 +311,8 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	flightPlanGroup.DELETE("/:cid", flightPlanController.DeleteFlightPlan, jwtMiddleware, requireNoFlushToken)
 
 	fileGroup := apiGroup.Group("/files")
-	fileGroup.POST("/images", fileController.UploadImages, jwtMiddleware, requireNoFlushToken)
+	fileGroup.POST("/images", fileController.UploadImage, jwtMiddleware, requireNoFlushToken)
+	fileGroup.POST("/files", fileController.UploadFile, jwtMiddleware, requireNoFlushToken)
 
 	auditLogGroup := apiGroup.Group("/audits")
 	auditLogGroup.GET("", auditLogController.GetAuditLogs, jwtMiddleware, requireNoFlushToken)

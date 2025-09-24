@@ -60,26 +60,28 @@ func NewTencentCosStoreService(
 	return service
 }
 
-func (store *TencentCosStoreService) SaveImageFile(file *multipart.FileHeader) (*StoreInfo, *ApiStatus) {
-	storeInfo, res := store.localStore.SaveImageFile(file)
-	if res != nil {
-		return nil, res
-	}
+func (store *TencentCosStoreService) GetStoreInfo(fileType FileType, fileLimit *config.HttpServerStoreFileLimit, file *multipart.FileHeader) (*StoreInfo, *ApiStatus) {
+	return fileType.GenerateStoreInfo(fileLimit, file)
+}
 
+func (store *TencentCosStoreService) SaveFile(storeInfo *StoreInfo, file *multipart.FileHeader) *ApiStatus {
+	if res := store.localStore.SaveFile(storeInfo, file); res != nil {
+		return res
+	}
 	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
 
 	reader, err := file.Open()
 	if err != nil {
 		store.logger.ErrorF("TencentCosStoreService.SaveImageFile open form file errors: %v", err)
-		return nil, ErrFileUploadFail
+		return ErrFileUploadFail
 	}
 
 	_, err = store.client.Object.Put(context.Background(), storeInfo.RemotePath, reader, nil)
 	if err != nil {
 		store.logger.ErrorF("TencentCosStoreService.SaveImageFile upload image to remote storage error: %v", err)
-		return nil, ErrFileUploadFail
+		return ErrFileUploadFail
 	}
-	return storeInfo, nil
+	return nil
 }
 
 func (store *TencentCosStoreService) DeleteImageFile(file string) (*StoreInfo, error) {
@@ -88,19 +90,60 @@ func (store *TencentCosStoreService) DeleteImageFile(file string) (*StoreInfo, e
 		return nil, err
 	}
 
-	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
-
-	_, err = store.client.Object.Delete(context.Background(), storeInfo.RemotePath)
-	if err != nil {
-		store.logger.ErrorF("TencentCosStoreService.DeleteImageFile delete image from remote storage errors: %v", err)
-		return nil, err
-	}
-	return storeInfo, nil
+	return storeInfo, store.DeleteFile(storeInfo)
 }
 
-func (store *TencentCosStoreService) SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
-	storeInfo, res := store.SaveImageFile(req.File)
+func (store *TencentCosStoreService) DeleteFile(storeInfo *StoreInfo) error {
+	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
+
+	_, err := store.client.Object.Delete(context.Background(), storeInfo.RemotePath)
+	if err != nil {
+		store.logger.ErrorF("TencentCosStoreService.DeleteImageFile delete image from remote storage errors: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (store *TencentCosStoreService) SaveUploadImage(req *RequestUploadImage) *ApiResponse[ResponseUploadImage] {
+	storeInfo, res := store.GetStoreInfo(IMAGES, store.config.FileLimit.ImageLimit, req.File)
 	if res != nil {
+		return NewApiResponse[ResponseUploadImage](res, nil)
+	}
+
+	if res := store.SaveFile(storeInfo, req.File); res != nil {
+		return NewApiResponse[ResponseUploadImage](res, nil)
+	}
+
+	accessUrl, err := url.JoinPath(store.endpoint.String(), storeInfo.RemotePath)
+	if err != nil {
+		return NewApiResponse[ResponseUploadImage](ErrFilePathFail, nil)
+	}
+
+	store.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: store.auditLogOperation.NewAuditLog(
+			operation.FileUpload,
+			req.Cid,
+			storeInfo.RemotePath,
+			req.Ip,
+			req.UserAgent,
+			nil,
+		),
+	})
+
+	return NewApiResponse(SuccessUploadFile, &ResponseUploadImage{
+		FileSize:   req.File.Size,
+		AccessPath: accessUrl,
+	})
+}
+
+func (store *TencentCosStoreService) SaveUploadFile(req *RequestUploadFile) *ApiResponse[ResponseUploadFile] {
+	storeInfo, res := store.GetStoreInfo(FILES, store.config.FileLimit.FileLimit, req.File)
+	if res != nil {
+		return NewApiResponse[ResponseUploadFile](res, nil)
+	}
+
+	if res := store.SaveFile(storeInfo, req.File); res != nil {
 		return NewApiResponse[ResponseUploadFile](res, nil)
 	}
 

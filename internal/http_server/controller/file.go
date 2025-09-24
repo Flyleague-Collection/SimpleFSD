@@ -2,14 +2,14 @@
 package controller
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo/v4"
 )
 
 type FileControllerInterface interface {
-	UploadImages(ctx echo.Context) error
+	UploadImage(ctx echo.Context) error
+	UploadFile(ctx echo.Context) error
 }
 
 type FileController struct {
@@ -24,19 +24,28 @@ func NewFileController(logger log.LoggerInterface, storeService StoreServiceInte
 	}
 }
 
-func (controller *FileController) UploadImages(ctx echo.Context) error {
-	if file, err := ctx.FormFile("file"); err != nil {
-		controller.logger.ErrorF("UploadImages form file error: %v", err)
+func (controller *FileController) UploadImage(ctx echo.Context) error {
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		controller.logger.ErrorF("UploadImage form file error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
-	} else {
-		data := &RequestUploadFile{File: file}
-		token := ctx.Get("user").(*jwt.Token)
-		claim := token.Claims.(*Claims)
-		data.Cid = claim.Cid
-		data.Uid = claim.Uid
-		data.Permission = claim.Permission
-		data.Ip = ctx.RealIP()
-		data.UserAgent = ctx.Request().UserAgent()
-		return controller.storeService.SaveUploadImages(data).Response(ctx)
 	}
+	data := &RequestUploadImage{File: file}
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("UploadImage jwt token parse error: %v", err)
+	}
+	return controller.storeService.SaveUploadImage(data).Response(ctx)
+}
+
+func (controller *FileController) UploadFile(ctx echo.Context) error {
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		controller.logger.ErrorF("UploadFile form file error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
+	data := &RequestUploadFile{File: file}
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("UploadFile jwt token parse error: %v", err)
+	}
+	return controller.storeService.SaveUploadFile(data).Response(ctx)
 }

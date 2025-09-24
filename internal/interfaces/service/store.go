@@ -26,7 +26,6 @@ type FileType int
 const (
 	IMAGES FileType = iota
 	FILES
-	UNKNOWN
 )
 
 // StoreInfo 文件存储信息
@@ -82,9 +81,23 @@ func (fileType FileType) GenerateStoreInfo(fileLimit *config.HttpServerStoreFile
 }
 
 type StoreServiceInterface interface {
-	SaveImageFile(file *multipart.FileHeader) (*StoreInfo, *ApiStatus)
 	DeleteImageFile(file string) (*StoreInfo, error)
-	SaveUploadImages(req *RequestUploadFile) *ApiResponse[ResponseUploadFile]
+	GetStoreInfo(fileType FileType, fileLimit *config.HttpServerStoreFileLimit, file *multipart.FileHeader) (*StoreInfo, *ApiStatus)
+	SaveFile(storeInfo *StoreInfo, file *multipart.FileHeader) *ApiStatus
+	DeleteFile(storeInfo *StoreInfo) error
+	SaveUploadImage(req *RequestUploadImage) *ApiResponse[ResponseUploadImage]
+	SaveUploadFile(req *RequestUploadFile) *ApiResponse[ResponseUploadFile]
+}
+
+type RequestUploadImage struct {
+	JwtHeader
+	EchoContentHeader
+	File *multipart.FileHeader
+}
+
+type ResponseUploadImage struct {
+	FileSize   int64  `json:"file_size"`
+	AccessPath string `json:"access_path"`
 }
 
 type RequestUploadFile struct {

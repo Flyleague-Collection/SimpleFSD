@@ -64,6 +64,7 @@ func (controller *ControllerApplicationController) SubmitApplication(ctx echo.Co
 	}
 	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
 		controller.logger.ErrorF("SubmitApplication jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.applicationService.SubmitControllerApplication(data).Response(ctx)
 }
@@ -76,6 +77,7 @@ func (controller *ControllerApplicationController) CancelSelfApplication(ctx ech
 	}
 	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
 		controller.logger.ErrorF("CancelSelfApplication jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.applicationService.CancelSelfApplication(data).Response(ctx)
 }
