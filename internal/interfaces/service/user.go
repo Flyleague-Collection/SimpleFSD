@@ -56,6 +56,7 @@ type RequestUserCurrentProfile struct {
 type ResponseUserCurrentProfile *operation.User
 
 type RequestUserEditCurrentProfile struct {
+	JwtHeader
 	ID             uint   `json:"id"`
 	Cid            int    `json:"cid"`
 	Username       string `json:"username"`

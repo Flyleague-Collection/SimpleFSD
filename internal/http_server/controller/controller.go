@@ -2,7 +2,6 @@
 package controller
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo/v4"
@@ -39,11 +38,10 @@ func (controller *ATCController) GetControllers(ctx echo.Context) error {
 		controller.logger.ErrorF("GetControllers bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Cid = claim.Cid
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetControllers jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.controllerService.GetControllerList(data).Response(ctx)
 }
 
@@ -62,13 +60,10 @@ func (controller *ATCController) UpdateControllerRating(ctx echo.Context) error 
 		controller.logger.ErrorF("UpdateControllerRating bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Cid = claim.Cid
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("UpdateControllerRating jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.controllerService.UpdateControllerRating(data).Response(ctx)
 }
 
@@ -78,11 +73,10 @@ func (controller *ATCController) GetCurrentControllerRecord(ctx echo.Context) er
 		controller.logger.ErrorF("GetCurrentControllerRecord bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Cid = claim.Cid
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetCurrentControllerRecord jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.controllerService.GetCurrentControllerRecord(data).Response(ctx)
 }
 
@@ -92,11 +86,10 @@ func (controller *ATCController) GetControllerRecord(ctx echo.Context) error {
 		controller.logger.ErrorF("GetControllerRecord bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Cid = claim.Cid
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetControllerRecord jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.controllerService.GetControllerRecord(data).Response(ctx)
 }
 
@@ -106,13 +99,10 @@ func (controller *ATCController) AddControllerRecord(ctx echo.Context) error {
 		controller.logger.ErrorF("AddControllerRecord bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Cid = claim.Cid
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("AddControllerRecord jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.controllerService.AddControllerRecord(data).Response(ctx)
 }
 
@@ -122,12 +112,9 @@ func (controller *ATCController) DeleteControllerRecord(ctx echo.Context) error 
 		controller.logger.ErrorF("DeleteControllerRecord bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Cid = claim.Cid
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("DeleteControllerRecord jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.controllerService.DeleteControllerRecord(data).Response(ctx)
 }

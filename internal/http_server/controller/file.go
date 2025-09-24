@@ -33,6 +33,7 @@ func (controller *FileController) UploadImage(ctx echo.Context) error {
 	data := &RequestUploadImage{File: file}
 	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
 		controller.logger.ErrorF("UploadImage jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.storeService.SaveUploadImage(data).Response(ctx)
 }
@@ -46,6 +47,7 @@ func (controller *FileController) UploadFile(ctx echo.Context) error {
 	data := &RequestUploadFile{File: file}
 	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
 		controller.logger.ErrorF("UploadFile jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.storeService.SaveUploadFile(data).Response(ctx)
 }

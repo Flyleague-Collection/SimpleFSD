@@ -2,7 +2,6 @@
 package controller
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo/v4"
@@ -31,10 +30,10 @@ func (controller *AuditLogController) GetAuditLogs(ctx echo.Context) error {
 		controller.logger.ErrorF("GetAuditLogs bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetAuditLogs jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.auditService.GetAuditLogPage(data).Response(ctx)
 }
 
@@ -44,12 +43,9 @@ func (controller *AuditLogController) LogUnlawfulOverreach(ctx echo.Context) err
 		controller.logger.ErrorF("LogUnlawfulOverreach bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Cid = claim.Cid
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("LogUnlawfulOverreach jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.auditService.LogUnlawfulOverreach(data).Response(ctx)
 }

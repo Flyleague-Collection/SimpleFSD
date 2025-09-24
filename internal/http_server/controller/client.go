@@ -2,7 +2,6 @@
 package controller
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo/v4"
@@ -45,47 +44,38 @@ func (controller *ClientController) GetClientPath(ctx echo.Context) error {
 func (controller *ClientController) SendMessageToClient(ctx echo.Context) error {
 	data := &RequestSendMessageToClient{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("sendMessageToClient bind error: %v", err)
+		controller.logger.ErrorF("SendMessageToClient bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Cid = claim.Cid
-	data.Permission = claim.Permission
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("SendMessageToClient jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.clientService.SendMessageToClient(data).Response(ctx)
 }
 
 func (controller *ClientController) KillClient(ctx echo.Context) error {
 	data := &RequestKillClient{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("killClient bind error: %v", err)
+		controller.logger.ErrorF("KillClient bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Cid = claim.Cid
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("KillClient jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.clientService.KillClient(data).Response(ctx)
 }
 
 func (controller *ClientController) BroadcastMessage(ctx echo.Context) error {
 	data := &RequestSendBroadcastMessage{}
 	if err := ctx.Bind(data); err != nil {
-		controller.logger.ErrorF("broadcastMessage bind error: %v", err)
+		controller.logger.ErrorF("BroadcastMessage bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Cid = claim.Cid
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("BroadcastMessage jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.clientService.SendBroadcastMessage(data).Response(ctx)
 }

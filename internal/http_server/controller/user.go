@@ -63,9 +63,10 @@ func (controller *UserController) CheckUserAvailability(ctx echo.Context) error 
 
 func (controller *UserController) GetCurrentUserProfile(ctx echo.Context) error {
 	data := &RequestUserCurrentProfile{}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetCurrentUserProfile jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.service.GetCurrentProfile(data).Response(ctx)
 }
 
@@ -75,10 +76,10 @@ func (controller *UserController) EditCurrentProfile(ctx echo.Context) error {
 		controller.logger.ErrorF("EditCurrentProfile bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.ID = claim.Uid
-	data.Cid = claim.Cid
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("EditCurrentProfile jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.service.EditCurrentProfile(data).Response(ctx)
 }
 
@@ -88,10 +89,10 @@ func (controller *UserController) GetUserProfile(ctx echo.Context) error {
 		controller.logger.ErrorF("GetUserProfile bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetUserProfile jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.service.GetUserProfile(data).Response(ctx)
 }
 
@@ -101,13 +102,10 @@ func (controller *UserController) EditProfile(ctx echo.Context) error {
 		controller.logger.ErrorF("EditProfile bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.JwtHeader.Cid = claim.Cid
-	data.Permission = claim.Permission
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("EditProfile jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.service.EditUserProfile(data).Response(ctx)
 }
 
@@ -117,10 +115,10 @@ func (controller *UserController) GetUsers(ctx echo.Context) error {
 		controller.logger.ErrorF("GetUsers bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetUsers jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.service.GetUserList(data).Response(ctx)
 }
 
@@ -130,23 +128,19 @@ func (controller *UserController) EditUserPermission(ctx echo.Context) error {
 		controller.logger.ErrorF("EditUserPermission bind error: %v", err)
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Cid = claim.Cid
-	data.Ip = ctx.RealIP()
-	data.UserAgent = ctx.Request().UserAgent()
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("EditUserPermission jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.service.EditUserPermission(data).Response(ctx)
 }
 
 func (controller *UserController) GetUserHistory(ctx echo.Context) error {
 	data := &RequestGetUserHistory{}
-	token := ctx.Get("user").(*jwt.Token)
-	claim := token.Claims.(*Claims)
-	data.Uid = claim.Uid
-	data.Permission = claim.Permission
-	data.Cid = claim.Cid
+	if err := SetJwtInfo(data, ctx); err != nil {
+		controller.logger.ErrorF("GetUserHistory jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
 	return controller.service.GetUserHistory(data).Response(ctx)
 }
 

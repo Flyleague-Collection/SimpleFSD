@@ -317,6 +317,8 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 }
 
 func (userService *UserService) EditCurrentProfile(req *RequestUserEditCurrentProfile) *ApiResponse[ResponseUserEditCurrentProfile] {
+	req.ID = req.JwtHeader.Uid
+	req.Cid = req.JwtHeader.Cid
 	err, _, _ := userService.editUserProfile(req, false, false)
 	if err != nil {
 		return NewApiResponse[ResponseUserEditCurrentProfile](err, nil)
