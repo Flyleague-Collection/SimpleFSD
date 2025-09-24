@@ -1,11 +1,24 @@
+// Package packet
 package packet
 
 import (
 	"bufio"
 	"bytes"
 	"errors"
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"net"
+	"strings"
 )
+
+func parserCommandLine(line []byte, possibleCommands [][]byte) (ClientCommand, []string) {
+	for _, prefix := range possibleCommands {
+		if bytes.HasPrefix(line, prefix) {
+			decodeLine := string(line[len(prefix):])
+			return ClientCommand(prefix), strings.Split(decodeLine, ":")
+		}
+	}
+	return TempData, nil
+}
 
 func isNetClosedError(err error) bool {
 	if errors.Is(err, net.ErrClosed) {

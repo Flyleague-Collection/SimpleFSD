@@ -2,6 +2,7 @@ package fsd_server
 
 import (
 	"context"
+	"github.com/half-nothing/simple-fsd/internal/fsd_server/command"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server/packet"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
@@ -61,6 +62,32 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 
 	applicationContent.Cleaner().Add(NewFsdCloseCallback(applicationContent.ClientManager()))
 
+	commandContent := command.NewCommandContent(logger, applicationContent)
+	commandHandler := command.NewCommandHandler()
+
+	commandHandler.Register(fsd.PilotPosition, commandContent.HandlePilotPosUpdate, &fsd.CommandRequirement{RequireLength: 10, Fatal: false})
+	commandHandler.Register(fsd.AtcPosition, commandContent.HandleAtcPosUpdate, &fsd.CommandRequirement{RequireLength: 8, Fatal: false})
+	commandHandler.Register(fsd.AtcSubVisPoint, commandContent.HandleAtcVisPointUpdate, &fsd.CommandRequirement{RequireLength: 4, Fatal: false})
+	commandHandler.Register(fsd.Message, commandContent.HandleMessage, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
+	commandHandler.Register(fsd.ClientQuery, commandContent.HandleClientQuery, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
+	commandHandler.Register(fsd.ClientResponse, commandContent.HandleClientResponse, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
+	commandHandler.Register(fsd.WeatherQuery, commandContent.HandleWeatherQuery, &fsd.CommandRequirement{RequireLength: 4, Fatal: false})
+	commandHandler.Register(fsd.Plan, commandContent.HandlePlan, &fsd.CommandRequirement{RequireLength: 17, Fatal: false})
+	commandHandler.Register(fsd.AtcEditPlan, commandContent.HandleAtcEditPlan, &fsd.CommandRequirement{RequireLength: 18, Fatal: false})
+	commandHandler.Register(fsd.RequestHandoff, commandContent.HandleRequest, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
+	commandHandler.Register(fsd.AcceptHandoff, commandContent.HandleRequest, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
+	commandHandler.Register(fsd.ProController, commandContent.HandleRequest, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
+	commandHandler.Register(fsd.SquawkBox, commandContent.HandleSquawkBox, &fsd.CommandRequirement{RequireLength: 2, Fatal: false})
+	commandHandler.Register(fsd.AddAtc, commandContent.HandleAddAtc, &fsd.CommandRequirement{RequireLength: 12, Fatal: true})
+	commandHandler.Register(fsd.RemoveAtc, commandContent.RemoveClient, nil)
+	commandHandler.Register(fsd.AddPilot, commandContent.HandleAddPilot, &fsd.CommandRequirement{RequireLength: 8, Fatal: true})
+	commandHandler.Register(fsd.RemovePilot, commandContent.RemoveClient, nil)
+	commandHandler.Register(fsd.KillClient, commandContent.HandleKillClient, &fsd.CommandRequirement{RequireLength: 2, Fatal: false})
+
+	commandHandler.GeneratePossibleCommands()
+
+	sessionContent := packet.NewSessionContent(logger, commandHandler, applicationContent.ClientManager(), config.Server.FSDServer.HeartbeatDuration)
+
 	// 循环接受新的连接
 	for {
 		conn, err := ln.Accept()
@@ -74,8 +101,8 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 		// 使用信号量控制并发连接数
 		sem <- struct{}{}
 		go func(c net.Conn) {
-			connection := packet.NewSession(applicationContent, conn)
-			connection.HandleConnection(config.Server.FSDServer.HeartbeatDuration)
+			session := packet.NewSession(conn)
+			sessionContent.HandleConnection(session)
 			// 释放信号量
 			<-sem
 		}(conn)

@@ -77,7 +77,7 @@ func BroadcastToClientInRange(toClient, fromClient ClientInterface) bool {
 	case toClient.IsAtc():
 		threshold = toClient.VisualRange()
 	case fromClient.IsAtc():
-		threshold = fromClient.VisualRange()
+		threshold = toClient.VisualRange()
 	default:
 		threshold = toClient.VisualRange() + fromClient.VisualRange()
 	}

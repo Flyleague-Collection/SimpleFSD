@@ -8,7 +8,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/database"
 	"github.com/half-nothing/simple-fsd/internal/email"
 	"github.com/half-nothing/simple-fsd/internal/fsd_server"
-	"github.com/half-nothing/simple-fsd/internal/fsd_server/packet"
+	"github.com/half-nothing/simple-fsd/internal/fsd_server/client"
 	"github.com/half-nothing/simple-fsd/internal/http_server"
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
@@ -127,7 +127,7 @@ func main() {
 
 	cleaner.Add(messageQueue.ShutdownCallback())
 
-	clientManager := packet.NewClientManager(fsdLogger, config)
+	clientManager := client.NewClientManager(fsdLogger, config)
 
 	messageQueue.Subscribe(queue.KickClientFromServer, clientManager.HandleKickClientFromServerMessage)
 	messageQueue.Subscribe(queue.SendMessageToClient, clientManager.HandleSendMessageToClientMessage)

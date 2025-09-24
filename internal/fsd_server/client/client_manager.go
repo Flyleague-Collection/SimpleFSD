@@ -1,4 +1,4 @@
-package packet
+package client
 
 import (
 	"bytes"
@@ -47,7 +47,7 @@ func (cm *ClientManager) sendRawMessageTo(from int, to string, message string) e
 		return ErrCallsignNotFound
 	}
 
-	packet := makePacket(Message, fmt.Sprintf("(%04d)", from), to, message)
+	packet := MakePacket(Message, fmt.Sprintf("(%04d)", from), to, message)
 
 	client.SendLine(packet)
 	return nil
@@ -94,7 +94,7 @@ func (cm *ClientManager) broadcastMessage(message *BroadcastMessageData) error {
 		filter = BroadcastToAllClient
 	}
 
-	packet := makePacket(Message, fmt.Sprintf("(%04d)", message.From), message.Target.String(), message.Message)
+	packet := MakePacket(Message, fmt.Sprintf("(%04d)", message.From), message.Target.String(), message.Message)
 
 	for _, client := range clients {
 		if client.Disconnected() {
@@ -137,7 +137,7 @@ func (cm *ClientManager) KickClientFromServer(callsign string, reason string) (C
 	if !exists {
 		return nil, ErrCallsignNotFound
 	}
-	client.SendError(ResultError(Custom, true, callsign, fmt.Errorf("you were kicked from the server, reason: %s", reason)))
+	client.SendError(ResultError(Custom, true, callsign, fmt.Errorf("you were kicked from the server, reason is %s", reason)))
 	return client, nil
 }
 
@@ -348,10 +348,9 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 		return
 	}
 
-	// 准备完整消息（包含分割符）
-	fullMsg := make([]byte, len(message), len(message)+len(splitSign))
+	fullMsg := make([]byte, len(message), len(message)+len(SplitSign))
 	copy(fullMsg, message)
-	fullMsg = append(fullMsg, splitSign...)
+	fullMsg = append(fullMsg, SplitSign...)
 
 	// 并发广播
 	var wg sync.WaitGroup

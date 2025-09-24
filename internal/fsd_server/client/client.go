@@ -1,4 +1,4 @@
-package packet
+package client
 
 import (
 	"bytes"
@@ -194,7 +194,7 @@ func (client *Client) Reconnect(socket SessionInterface) bool {
 		return false
 	}
 
-	client.logger.InfoF("[%s](%s) client reconnected", client.socket.ConnId, client.callsign)
+	client.logger.InfoF("[%s](%s) client reconnected", client.socket.ConnId(), client.callsign)
 
 	if client.reconnectTimer != nil {
 		client.reconnectTimer.Stop()
@@ -317,7 +317,7 @@ func (client *Client) SendError(result *Result) {
 		errString = result.Errno.String()
 	}
 
-	packet := makePacket(Error, global.FSDServerName, client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, errString)
+	packet := MakePacket(Error, global.FSDServerName, client.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, errString)
 	client.SendLine(packet)
 
 	if result.Fatal {
@@ -336,8 +336,8 @@ func (client *Client) SendLineWithoutLog(line []byte) error {
 		return ErrClientDisconnected
 	}
 
-	if !bytes.HasSuffix(line, splitSign) {
-		line = append(line, splitSign...)
+	if !bytes.HasSuffix(line, SplitSign) {
+		line = append(line, SplitSign...)
 	}
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
@@ -356,11 +356,11 @@ func (client *Client) SendLine(line []byte) {
 	client.lock.RLock()
 	defer client.lock.RUnlock()
 
-	if !bytes.HasSuffix(line, splitSign) {
+	if !bytes.HasSuffix(line, SplitSign) {
 		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line)
-		line = append(line, splitSign...)
+		line = append(line, SplitSign...)
 	} else {
-		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line[:len(line)-splitSignLen])
+		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line[:len(line)-SplitSignLen])
 	}
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
@@ -376,7 +376,7 @@ func (client *Client) SendMotd() {
 
 	buffer := bytes.Buffer{}
 	for _, message := range client.config.Server.FSDServer.Motd {
-		buffer.Write(makePacket(Message, global.FSDServerName, client.callsign, message))
+		buffer.Write(MakePacket(Message, global.FSDServerName, client.callsign, message))
 	}
 
 	client.motdBytes = buffer.Bytes()
