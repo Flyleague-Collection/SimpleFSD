@@ -32,7 +32,7 @@ type User struct {
 	AuditLogs         []*AuditLog         `gorm:"foreignKey:Subject;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
 	ControllerRecords []*ControllerRecord `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
 	Tickets           []*Ticket           `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"-"`
-	CreatedAt         time.Time           `json:"-"`
+	CreatedAt         time.Time           `json:"register_time"`
 	UpdatedAt         time.Time           `json:"-"`
 }
 

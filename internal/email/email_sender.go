@@ -6,15 +6,16 @@ import (
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 	"gopkg.in/gomail.v2"
-	"html/template"
 	"strings"
 	"time"
 )
 
 type EmailSender struct {
-	logger log.LoggerInterface
-	config *config.EmailConfig
+	logger         log.LoggerInterface
+	config         *config.EmailConfig
+	templateConfig *config.EmailTemplateConfigs
 }
 
 func NewEmailSender(
@@ -22,56 +23,59 @@ func NewEmailSender(
 	config *config.EmailConfig,
 ) *EmailSender {
 	return &EmailSender{
-		logger: log.NewLoggerAdapter(logger, "EmailSender"),
-		config: config,
+		logger:         log.NewLoggerAdapter(logger, "EmailSender"),
+		config:         config,
+		templateConfig: config.Template,
 	}
 }
 
-func formatCid(cid int) string {
-	return fmt.Sprintf("%04d", cid)
-}
-func (sender *EmailSender) renderTemplate(template *template.Template, data interface{}) (string, error) {
-	if template == nil {
+func (sender *EmailSender) renderTemplate(template *config.EmailTemplateConfig, data interface{}) (string, error) {
+	if template.Template == nil {
 		return "", ErrTemplateNotInitialized
 	}
 
 	var sb strings.Builder
-	if err := template.Execute(&sb, data); err != nil {
+	if err := template.Template.Execute(&sb, data); err != nil {
 		return "", err
 	}
 	return sb.String(), nil
 }
 
-func (sender *EmailSender) generateEmail(email string, title string, content string) *gomail.Message {
+func (sender *EmailSender) generateEmail(email string, config *config.EmailTemplateConfig, data interface{}) (*gomail.Message, error) {
+	content, err := sender.renderTemplate(config, data)
+	if err != nil {
+		return nil, err
+	}
+
 	m := gomail.NewMessage()
 	m.SetHeader("From", sender.config.Username)
 	m.SetHeader("To", email)
-	m.SetHeader("Subject", title)
+	m.SetHeader("Subject", config.EmailTitle)
 	m.SetBody("text/html", content)
 
-	return m
+	return m, nil
 }
 
 func (sender *EmailSender) SendApplicationPassedEmail(data *ApplicationPassedEmailData) error {
 	if sender.config.EmailServer == nil {
 		return nil
 	}
-
-	email := strings.ToLower(data.User.Email)
-	d := &ApplicationPassedEmail{
-		Cid:      formatCid(data.User.Cid),
-		Operator: formatCid(data.Operator.Cid),
-		Rating:   data.Rating,
-		Contact:  data.Operator.Email,
+	if !sender.templateConfig.ApplicationPassedEmail.Enable {
+		return nil
 	}
 
-	message, err := sender.renderTemplate(sender.config.Template.ApplicationPassedTemplate, d)
+	email := strings.ToLower(data.User.Email)
+
+	m, err := sender.generateEmail(email, sender.templateConfig.ApplicationPassedEmail, &ApplicationPassedEmail{
+		Cid:      utils.FormatCid(data.User.Cid),
+		Operator: utils.FormatCid(data.Operator.Cid),
+		Contact:  data.Operator.Email,
+		Message:  data.Message,
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering application passed email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "管制员申请通过", message)
 
 	sender.logger.InfoF("Sending application passed email to %s(%d)", email, data.User.Cid)
 
@@ -82,24 +86,25 @@ func (sender *EmailSender) SendApplicationProcessingEmail(data *ApplicationProce
 	if sender.config.EmailServer == nil {
 		return nil
 	}
+	if !sender.templateConfig.ApplicationProcessingEmail.Enable {
+		return nil
+	}
 
 	email := strings.ToLower(data.User.Email)
-	times := make([]string, len(data.AvailableTimes))
+	times := make([]string, 0, len(data.AvailableTimes))
 	for _, availableTime := range data.AvailableTimes {
 		times = append(times, availableTime.Format("2006-01-02 15:04:05 MST"))
 	}
-	d := &ApplicationProcessingEmail{
-		Cid:  formatCid(data.User.Cid),
-		Time: strings.Join(times, ", "),
-	}
 
-	message, err := sender.renderTemplate(sender.config.Template.ApplicationProcessingTemplate, d)
+	m, err := sender.generateEmail(email, sender.templateConfig.ApplicationProcessingEmail, &ApplicationProcessingEmail{
+		Cid:     utils.FormatCid(data.User.Cid),
+		Time:    strings.Join(times, ", "),
+		Contact: data.Operator.Email,
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering application processing email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "管制员申请进度通知", message)
 
 	sender.logger.InfoF("Sending password application processing email to %s(%d)", email, data.User.Cid)
 
@@ -110,22 +115,22 @@ func (sender *EmailSender) SendApplicationRejectedEmail(data *ApplicationRejecte
 	if sender.config.EmailServer == nil {
 		return nil
 	}
-
-	email := strings.ToLower(data.User.Email)
-	d := &ApplicationRejectedEmail{
-		Cid:      formatCid(data.User.Cid),
-		Operator: formatCid(data.Operator.Cid),
-		Reason:   data.Reason,
-		Contact:  data.Operator.Email,
+	if !sender.templateConfig.ApplicationRejectedEmail.Enable {
+		return nil
 	}
 
-	message, err := sender.renderTemplate(sender.config.Template.ApplicationRejectedTemplate, d)
+	email := strings.ToLower(data.User.Email)
+
+	m, err := sender.generateEmail(email, sender.templateConfig.ApplicationRejectedEmail, &ApplicationRejectedEmail{
+		Cid:      utils.FormatCid(data.User.Cid),
+		Operator: utils.FormatCid(data.Operator.Cid),
+		Reason:   data.Reason,
+		Contact:  data.Operator.Email,
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering application rejected email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "飞控密码更改通知", message)
 
 	sender.logger.InfoF("Sending application rejected email to %s(%d)", email, data.User.Cid)
 
@@ -136,23 +141,23 @@ func (sender *EmailSender) SendAtcRatingChangeEmail(data *AtcRatingChangeEmailDa
 	if sender.config.EmailServer == nil {
 		return nil
 	}
+	if !sender.templateConfig.ATCRatingChangeEmail.Enable {
+		return nil
+	}
 
 	email := strings.ToLower(data.User.Email)
-	d := &AtcRatingChangeEmail{
+
+	m, err := sender.generateEmail(email, sender.templateConfig.ATCRatingChangeEmail, &AtcRatingChangeEmail{
 		Cid:      fmt.Sprintf("%04d", data.User.Cid),
 		OldValue: data.OldRating,
 		NewValue: data.NewRating,
 		Operator: fmt.Sprintf("%04d", data.Operator.Cid),
 		Contact:  data.Operator.Email,
-	}
-
-	message, err := sender.renderTemplate(sender.config.Template.ATCRatingChangeTemplate, d)
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering rating change email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "管制权限变更通知", message)
 
 	sender.logger.InfoF("Sending rating change email to %s(%d)", email, data.User.Cid)
 
@@ -166,19 +171,15 @@ func (sender *EmailSender) SendEmailVerifyEmail(data *EmailVerifyEmailData) erro
 
 	email := strings.ToLower(data.Email)
 
-	d := &EmailVerifyEmail{
+	m, err := sender.generateEmail(email, sender.templateConfig.VerifyCodeEmail, &EmailVerifyEmail{
 		Cid:     fmt.Sprintf("%04d", data.Cid),
 		Code:    fmt.Sprintf("%06d", data.Code),
 		Expired: fmt.Sprintf("%.0f", sender.config.VerifyExpiredDuration.Minutes()),
-	}
-
-	message, err := sender.renderTemplate(sender.config.Template.EmailVerifyTemplate, d)
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering email verification template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "您的验证码", message)
 
 	sender.logger.InfoF("Sending email verification code(%d) to %s(%d)", data.Code, email, data.Cid)
 
@@ -189,23 +190,23 @@ func (sender *EmailSender) SendKickedFromServerEmail(data *KickedFromServerEmail
 	if sender.config.EmailServer == nil {
 		return nil
 	}
+	if !sender.templateConfig.KickedFromServerEmail.Enable {
+		return nil
+	}
 
 	email := strings.ToLower(data.User.Email)
-	d := &KickedFromServerEmail{
+
+	m, err := sender.generateEmail(email, sender.templateConfig.KickedFromServerEmail, &KickedFromServerEmail{
 		Cid:      fmt.Sprintf("%04d", data.User.Cid),
 		Time:     time.Now().Format(time.DateTime),
 		Reason:   data.Reason,
 		Operator: fmt.Sprintf("%04d", data.Operator.Cid),
 		Contact:  data.Operator.Email,
-	}
-
-	message, err := sender.renderTemplate(sender.config.Template.KickedFromServerTemplate, d)
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering kick message email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "踢出服务器通知", message)
 
 	sender.logger.InfoF("Sending kick message email to %s(%d)", email, data.User.Cid)
 
@@ -216,22 +217,22 @@ func (sender *EmailSender) SendPasswordChangeEmail(data *PasswordChangeEmailData
 	if sender.config.EmailServer == nil {
 		return nil
 	}
+	if !sender.templateConfig.PasswordChangeEmail.Enable {
+		return nil
+	}
 
 	email := strings.ToLower(data.User.Email)
-	d := &PasswordChangeEmail{
-		Cid:       formatCid(data.User.Cid),
+
+	m, err := sender.generateEmail(email, sender.templateConfig.PasswordChangeEmail, &PasswordChangeEmail{
+		Cid:       utils.FormatCid(data.User.Cid),
 		IP:        data.Ip,
 		UserAgent: data.UserAgent,
 		Time:      time.Now().Format(time.DateTime),
-	}
-
-	message, err := sender.renderTemplate(sender.config.Template.PasswordChangeTemplate, d)
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering password change email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "飞控密码更改通知", message)
 
 	sender.logger.InfoF("Sending password change email to %s(%d)", email, data.User.Cid)
 
@@ -242,22 +243,22 @@ func (sender *EmailSender) SendPermissionChangeEmail(data *PermissionChangeEmail
 	if sender.config.EmailServer == nil {
 		return nil
 	}
+	if !sender.templateConfig.PermissionChangeEmail.Enable {
+		return nil
+	}
 
 	email := strings.ToLower(data.User.Email)
-	d := &PermissionChangeEmail{
+
+	m, err := sender.generateEmail(email, sender.templateConfig.PermissionChangeEmail, &PermissionChangeEmail{
 		Cid:         fmt.Sprintf("%04d", data.User.Cid),
 		Operator:    fmt.Sprintf("%04d", data.Operator.Cid),
 		Contact:     data.Operator.Email,
 		Permissions: strings.Join(data.Permissions, ", "),
-	}
-
-	message, err := sender.renderTemplate(sender.config.Template.PermissionChangeTemplate, d)
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering permission change email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "管理权限变更通知", message)
 
 	sender.logger.InfoF("Sending permission change email to %s(%d)", email, data.User.Cid)
 
@@ -268,21 +269,21 @@ func (sender *EmailSender) SendTicketReplyEmail(data *TicketReplyEmailData) erro
 	if sender.config.EmailServer == nil {
 		return nil
 	}
-
-	email := strings.ToLower(data.User.Email)
-	d := &TicketReplyEmail{
-		Cid:   formatCid(data.User.Cid),
-		Title: data.Title,
-		Reply: data.Reply,
+	if !sender.templateConfig.TicketReplyEmail.Enable {
+		return nil
 	}
 
-	message, err := sender.renderTemplate(sender.config.Template.TicketReplyTemplate, d)
+	email := strings.ToLower(data.User.Email)
+
+	m, err := sender.generateEmail(email, sender.templateConfig.TicketReplyEmail, &TicketReplyEmail{
+		Cid:   utils.FormatCid(data.User.Cid),
+		Title: data.Title,
+		Reply: data.Reply,
+	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering ticket reply email template: %v", err)
 		return ErrRenderingTemplate
 	}
-
-	m := sender.generateEmail(email, "工单回复通知", message)
 
 	sender.logger.InfoF("Sending ticket reply email to %s(%d)", email, data.User.Cid)
 

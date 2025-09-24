@@ -10,16 +10,16 @@ import (
 )
 
 type EmailConfig struct {
-	Host                  string               `json:"host"`
-	Port                  int                  `json:"port"`
-	EmailServer           *gomail.Dialer       `json:"-"`
-	Username              string               `json:"username"`
-	Password              string               `json:"password"`
-	VerifyExpiredTime     string               `json:"verify_expired_time"`
-	VerifyExpiredDuration time.Duration        `json:"-"`
-	SendInterval          string               `json:"send_interval"`
-	SendDuration          time.Duration        `json:"-"`
-	Template              *EmailTemplateConfig `json:"template"`
+	Host                  string                `json:"host"`
+	Port                  int                   `json:"port"`
+	EmailServer           *gomail.Dialer        `json:"-"`
+	Username              string                `json:"username"`
+	Password              string                `json:"password"`
+	VerifyExpiredTime     string                `json:"verify_expired_time"`
+	VerifyExpiredDuration time.Duration         `json:"-"`
+	SendInterval          string                `json:"send_interval"`
+	SendDuration          time.Duration         `json:"-"`
+	Template              *EmailTemplateConfigs `json:"template"`
 }
 
 func defaultEmailConfig() *EmailConfig {

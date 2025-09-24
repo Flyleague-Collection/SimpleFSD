@@ -59,16 +59,38 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type PageArguments struct {
+	Page     int `query:"page_number"`
+	PageSize int `query:"page_size"`
+}
+
+type PageResponse[T any] struct {
+	Items    []T   `json:"items"`
+	Page     int   `json:"page"`
+	PageSize int   `json:"page_size"`
+	Total    int64 `json:"total"`
+}
+
 type EchoContentHeader struct {
 	Ip        string
 	UserAgent string
 }
+
+func (content *EchoContentHeader) SetIp(ip string) { content.Ip = ip }
+
+func (content *EchoContentHeader) SetUserAgent(ua string) { content.UserAgent = ua }
 
 type JwtHeader struct {
 	Uid        uint
 	Permission uint64
 	Cid        int
 }
+
+func (jwt *JwtHeader) SetUid(uid uint) { jwt.Uid = uid }
+
+func (jwt *JwtHeader) SetCid(cid int) { jwt.Cid = cid }
+
+func (jwt *JwtHeader) SetPermission(permission uint64) { jwt.Permission = permission }
 
 func NewClaims(config *config.JWTConfig, user *operation.User, flushToken bool) *Claims {
 	expiredDuration := config.ExpiresDuration
@@ -108,24 +130,26 @@ func TextResponse(ctx echo.Context, httpCode int, content string) error {
 }
 
 var (
-	ErrIllegalParam          = NewApiStatus("PARAM_ERROR", "参数不正确", BadRequest)
-	ErrParseParam            = NewApiStatus("PARAM_PARSE_ERROR", "参数解析错误", BadRequest)
-	ErrNoPermission          = NewApiStatus("NO_PERMISSION", "无权这么做", PermissionDenied)
-	ErrDatabaseFail          = NewApiStatus("DATABASE_ERROR", "服务器内部错误", ServerInternalError)
-	ErrUserNotFound          = NewApiStatus("USER_NOT_FOUND", "指定用户不存在", NotFound)
-	ErrActivityNotFound      = NewApiStatus("ACTIVITY_NOT_FOUND", "活动不存在", NotFound)
-	ErrFlightPlanNotFound    = NewApiStatus("FLIGHT_PLAN_NOT_FOUND", "飞行计划不存在", NotFound)
-	ErrFlightPlanLocked      = NewApiStatus("FLIGHT_PLAN_LOCKED", "飞行计划已锁定", Conflict)
-	ErrTicketNotFound        = NewApiStatus("TICKET_NOT_FOUND", "工单不存在", NotFound)
-	ErrTicketAlreadyClosed   = NewApiStatus("TICKET_ALREADY_CLOSED", "工单已回复", Conflict)
-	ErrFacilityNotFound      = NewApiStatus("FACILITY_NOT_FOUND", "管制席位不存在", NotFound)
-	ErrRegisterFail          = NewApiStatus("REGISTER_FAIL", "注册失败", ServerInternalError)
-	ErrIdentifierTaken       = NewApiStatus("USER_EXISTS", "用户已存在", BadRequest)
-	ErrMissingOrMalformedJwt = NewApiStatus("MISSING_OR_MALFORMED_JWT", "缺少JWT令牌或者令牌格式错误", BadRequest)
-	ErrInvalidOrExpiredJwt   = NewApiStatus("INVALID_OR_EXPIRED_JWT", "无效或过期的JWT令牌", Unauthorized)
-	ErrInvalidJwtType        = NewApiStatus("INVALID_JWT_TYPE", "非法的JWT令牌类型", Unauthorized)
-	ErrUnknownJwtError       = NewApiStatus("UNKNOWN_JWT_ERROR", "未知的JWT解析错误", ServerInternalError)
-	ErrUnknownServerError    = NewApiStatus("UNKNOWN_ERROR", "未知服务器错误", ServerInternalError)
+	ErrIllegalParam             = NewApiStatus("PARAM_ERROR", "参数不正确", BadRequest)
+	ErrParseParam               = NewApiStatus("PARAM_PARSE_ERROR", "参数解析错误", BadRequest)
+	ErrNoPermission             = NewApiStatus("NO_PERMISSION", "无权这么做", PermissionDenied)
+	ErrDatabaseFail             = NewApiStatus("DATABASE_ERROR", "服务器内部错误", ServerInternalError)
+	ErrUserNotFound             = NewApiStatus("USER_NOT_FOUND", "指定用户不存在", NotFound)
+	ErrActivityNotFound         = NewApiStatus("ACTIVITY_NOT_FOUND", "活动不存在", NotFound)
+	ErrFlightPlanNotFound       = NewApiStatus("FLIGHT_PLAN_NOT_FOUND", "飞行计划不存在", NotFound)
+	ErrFlightPlanLocked         = NewApiStatus("FLIGHT_PLAN_LOCKED", "飞行计划已锁定", Conflict)
+	ErrTicketNotFound           = NewApiStatus("TICKET_NOT_FOUND", "工单不存在", NotFound)
+	ErrTicketAlreadyClosed      = NewApiStatus("TICKET_ALREADY_CLOSED", "工单已回复", Conflict)
+	ErrApplicationNotFound      = NewApiStatus("APPLICATION_NOT_FOUND", "未找到存在的申请", NotFound)
+	ErrApplicationAlreadyExists = NewApiStatus("APPLICATION_ALREADY_EXISTS", "已有一个活动的管制员申请", Conflict)
+	ErrFacilityNotFound         = NewApiStatus("FACILITY_NOT_FOUND", "管制席位不存在", NotFound)
+	ErrRegisterFail             = NewApiStatus("REGISTER_FAIL", "注册失败", ServerInternalError)
+	ErrIdentifierTaken          = NewApiStatus("USER_EXISTS", "用户已存在", BadRequest)
+	ErrMissingOrMalformedJwt    = NewApiStatus("MISSING_OR_MALFORMED_JWT", "缺少JWT令牌或者令牌格式错误", BadRequest)
+	ErrInvalidOrExpiredJwt      = NewApiStatus("INVALID_OR_EXPIRED_JWT", "无效或过期的JWT令牌", Unauthorized)
+	ErrInvalidJwtType           = NewApiStatus("INVALID_JWT_TYPE", "非法的JWT令牌类型", Unauthorized)
+	ErrUnknownJwtError          = NewApiStatus("UNKNOWN_JWT_ERROR", "未知的JWT解析错误", ServerInternalError)
+	ErrUnknownServerError       = NewApiStatus("UNKNOWN_ERROR", "未知服务器错误", ServerInternalError)
 )
 
 func NewErrorResponse(ctx echo.Context, codeStatus *ApiStatus) error {
@@ -165,6 +189,10 @@ func CheckDatabaseError[T any](err error) *ApiResponse[T] {
 		return NewApiResponse[T](ErrActivityIdMismatch, nil)
 	case errors.Is(err, operation.ErrControllerRecordNotFound):
 		return NewApiResponse[T](ErrRecordNotFound, nil)
+	case errors.Is(err, operation.ErrApplicationNotFound):
+		return NewApiResponse[T](ErrApplicationNotFound, nil)
+	case errors.Is(err, operation.ErrApplicationAlreadyExists):
+		return NewApiResponse[T](ErrApplicationAlreadyExists, nil)
 	case err != nil:
 		return NewApiResponse[T](ErrDatabaseFail, nil)
 	default:

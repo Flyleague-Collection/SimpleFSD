@@ -112,16 +112,14 @@ func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiRespo
 		return NewApiResponse[ResponseKillClient](ErrUnknownServerError, nil)
 	}
 
-	if clientService.config.Email.Template.EnableKickedFromServerEmail {
-		clientService.messageQueue.Publish(&queue.Message{
-			Type: queue.SendKickedFromServerEmail,
-			Data: &interfaces.KickedFromServerEmailData{
-				User:     client.User(),
-				Operator: user,
-				Reason:   req.Reason,
-			},
-		})
-	}
+	clientService.messageQueue.Publish(&queue.Message{
+		Type: queue.SendKickedFromServerEmail,
+		Data: &interfaces.KickedFromServerEmailData{
+			User:     client.User(),
+			Operator: user,
+			Reason:   req.Reason,
+		},
+	})
 
 	clientService.messageQueue.Publish(&queue.Message{
 		Type: queue.AuditLog,

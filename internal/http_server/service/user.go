@@ -487,16 +487,14 @@ func (userService *UserService) EditUserPermission(req *RequestUserEditPermissio
 		return res
 	}
 
-	if userService.config.Email.Template.EnablePermissionChangeEmail {
-		userService.messageQueue.Publish(&queue.Message{
-			Type: queue.SendPermissionChangeEmail,
-			Data: &interfaces.PermissionChangeEmailData{
-				User:        targetUser,
-				Operator:    user,
-				Permissions: permissions,
-			},
-		})
-	}
+	userService.messageQueue.Publish(&queue.Message{
+		Type: queue.SendPermissionChangeEmail,
+		Data: &interfaces.PermissionChangeEmailData{
+			User:        targetUser,
+			Operator:    user,
+			Permissions: permissions,
+		},
+	})
 
 	userService.messageQueue.Publish(&queue.Message{
 		Type: queue.AuditLogs,

@@ -2,6 +2,7 @@
 package operation
 
 import (
+	"errors"
 	"time"
 )
 
@@ -29,13 +30,27 @@ const (
 	Rejected
 )
 
+var AllowedStatusMap = map[ControllerApplicationStatus][]ControllerApplicationStatus{
+	Submitted:       {UnderProcessing, Passed, Rejected},
+	UnderProcessing: {Passed, Rejected},
+	Passed:          {},
+	Rejected:        {},
+}
+
 func IsValidApplicationStatus(s int) bool {
 	return int(Submitted) <= s && s <= int(Rejected)
 }
 
+var (
+	ErrApplicationNotFound      = errors.New("application does not exist")
+	ErrApplicationAlreadyExists = errors.New("application already exists")
+)
+
 type ControllerApplicationOperationInterface interface {
-	NewApplication(userId uint, reason string, record string, guset bool, platform string, evidence string, status int) *ControllerApplication
+	NewApplication(userId uint, reason string, record string, guset bool, platform string, evidence string) *ControllerApplication
 	GetApplicationByUserId(userId uint) (*ControllerApplication, error)
+	GetApplicationById(id uint) (application *ControllerApplication, err error)
+	GetApplications(page, pageSize int) ([]*ControllerApplication, int64, error)
 	SaveApplication(application *ControllerApplication) error
 	ConfirmApplicationUnderProcessing(application *ControllerApplication) error
 	UpdateApplicationStatus(application *ControllerApplication, status ControllerApplicationStatus, message string) error

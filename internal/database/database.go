@@ -86,10 +86,20 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) 
 	auditLogOperation := NewAuditLogOperation(lg, db, queryTimeout)
 	controllerOperation := NewControllerOperation(lg, db, queryTimeout)
 	controllerRecordOperation := NewControllerRecordOperation(lg, db, queryTimeout)
+	controllerApplicationOperation := NewControllerApplicationOperation(lg, db, queryTimeout)
 	ticketOperation := NewTicketOperation(lg, db, queryTimeout)
 
 	return NewDBCloseCallback(lg, db),
-		NewDatabaseOperations(userOperation, flightPlanOperation, historyOperation, activityOperation,
-			auditLogOperation, controllerOperation, controllerRecordOperation, nil, ticketOperation),
+		NewDatabaseOperations(
+			userOperation,
+			flightPlanOperation,
+			historyOperation,
+			activityOperation,
+			auditLogOperation,
+			controllerOperation,
+			controllerRecordOperation,
+			controllerApplicationOperation,
+			ticketOperation,
+		),
 		nil
 }

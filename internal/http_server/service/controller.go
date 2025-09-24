@@ -225,17 +225,15 @@ func (controllerService *ControllerService) UpdateControllerRating(req *RequestU
 
 	newRatingStr := fsd.ToRatingString(req.Rating, targetUser.Tier2, req.UnderMonitor, req.UnderSolo)
 
-	if controllerService.config.Email.Template.EnableRatingChangeEmail {
-		controllerService.messageQueue.Publish(&queue.Message{
-			Type: queue.SendAtcRatingChangeEmail,
-			Data: &interfaces.AtcRatingChangeEmailData{
-				User:      targetUser,
-				Operator:  user,
-				OldRating: oldRatingStr,
-				NewRating: newRatingStr,
-			},
-		})
-	}
+	controllerService.messageQueue.Publish(&queue.Message{
+		Type: queue.SendAtcRatingChangeEmail,
+		Data: &interfaces.AtcRatingChangeEmailData{
+			User:      targetUser,
+			Operator:  user,
+			OldRating: oldRatingStr,
+			NewRating: newRatingStr,
+		},
+	})
 
 	controllerService.messageQueue.Publish(&queue.Message{
 		Type: queue.AuditLog,

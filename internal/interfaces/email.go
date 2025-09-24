@@ -40,26 +40,28 @@ type EmailMessageHandlerInterface interface {
 type ApplicationPassedEmailData struct {
 	User     *operation.User
 	Operator *operation.User
-	Rating   string
+	Message  string
 }
 
 // ApplicationPassedEmail 管制员申请通过
 type ApplicationPassedEmail struct {
 	Cid      string // 用户CID
 	Operator string // 操作者CID
-	Rating   string // 管制等级
+	Message  string // 通过信息
 	Contact  string // 操作者邮箱
 }
 
 type ApplicationProcessingEmailData struct {
 	User           *operation.User
+	Operator       *operation.User
 	AvailableTimes []time.Time
 }
 
 // ApplicationProcessingEmail 管制员申请进度通知
 type ApplicationProcessingEmail struct {
-	Cid  string // 申请者CID
-	Time string // 可用时间, 例: 2025-09-24 12:00:00 CST, 025-09-25 12:00:00 CST
+	Cid     string // 申请者CID
+	Time    string // 可用时间, 例: 2025-09-24 12:00:00 CST, 025-09-25 12:00:00 CST
+	Contact string // 回复邮件
 }
 
 type ApplicationRejectedEmailData struct {
