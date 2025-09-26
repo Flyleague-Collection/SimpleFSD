@@ -172,9 +172,10 @@ func (sender *EmailSender) SendEmailVerifyEmail(data *EmailVerifyEmailData) erro
 	email := strings.ToLower(data.Email)
 
 	m, err := sender.generateEmail(email, sender.templateConfig.VerifyCodeEmail, &EmailVerifyEmail{
-		Cid:     fmt.Sprintf("%04d", data.Cid),
-		Code:    fmt.Sprintf("%06d", data.Code),
-		Expired: fmt.Sprintf("%.0f", sender.config.VerifyExpiredDuration.Minutes()),
+		Cid:       fmt.Sprintf("%04d", data.Cid),
+		Code:      fmt.Sprintf("%06d", data.Code),
+		Expired:   fmt.Sprintf("%.0f", sender.config.VerifyExpiredDuration.Minutes()),
+		ExpiredAt: time.Now().Add(sender.config.VerifyExpiredDuration).Format("2006-01-02 15:04:05 MST"),
 	})
 	if err != nil {
 		sender.logger.WarnF("Error rendering email verification template: %v", err)
