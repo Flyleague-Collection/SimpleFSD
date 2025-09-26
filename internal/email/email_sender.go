@@ -93,7 +93,7 @@ func (sender *EmailSender) SendApplicationProcessingEmail(data *ApplicationProce
 	email := strings.ToLower(data.User.Email)
 	times := make([]string, 0, len(data.AvailableTimes))
 	for _, availableTime := range data.AvailableTimes {
-		times = append(times, availableTime.Format("2006-01-02 15:04:05 MST"))
+		times = append(times, availableTime.Local().Format("2006-01-02 15:04:05 MST"))
 	}
 
 	m, err := sender.generateEmail(email, sender.templateConfig.ApplicationProcessingEmail, &ApplicationProcessingEmail{

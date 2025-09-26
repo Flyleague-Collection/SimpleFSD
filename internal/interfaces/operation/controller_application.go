@@ -17,7 +17,7 @@ type ControllerApplication struct {
 	Evidence              string    `gorm:"not null" json:"evidence"`
 	Status                int       `gorm:"not null" json:"status"`
 	Message               string    `gorm:"type:text;not null" json:"message"`
-	CreatedAt             time.Time `json:"-"`
+	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"-"`
 }
 

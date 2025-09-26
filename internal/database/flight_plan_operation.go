@@ -140,6 +140,16 @@ func (flightPlanOperation *FlightPlanOperation) UnlockFlightPlan(flightPlan *Fli
 	return flightPlanOperation.db.WithContext(ctx).Model(flightPlan).Select("locked").Updates(&FlightPlan{Locked: false}).Error
 }
 
+func (flightPlanOperation *FlightPlanOperation) DeleteSelfFlightPlan(cid int) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
+	defer cancel()
+	result := flightPlanOperation.db.WithContext(ctx).Delete(&FlightPlan{}, "cid = ? and locked = ?", cid, false)
+	if result.RowsAffected == 0 {
+		return ErrFlightPlanNotFound
+	}
+	return result.Error
+}
+
 func (flightPlanOperation *FlightPlanOperation) DeleteFlightPlan(cid int) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), flightPlanOperation.queryTimeout)
 	defer cancel()

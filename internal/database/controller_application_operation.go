@@ -76,7 +76,7 @@ func (operation *ControllerApplicationOperation) SaveApplication(application *Co
 	defer cancel()
 	if application.ID == 0 {
 		applicationCheck, err := operation.GetApplicationByUserId(application.UserId)
-		if err == nil && applicationCheck != nil {
+		if err == nil && applicationCheck != nil && applicationCheck.Status != int(Passed) && applicationCheck.Status != int(Rejected) {
 			return ErrApplicationAlreadyExists
 		}
 		return operation.db.WithContext(ctx).Create(application).Error

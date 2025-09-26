@@ -16,6 +16,7 @@ var (
 	DownloadPrefix          = flag.String("download_prefix", "https://raw.githubusercontent.com/Flyleague-Collection/SimpleFSD/refs/heads/main", "auto download prefix")
 	MetarCacheCleanInterval = flag.Duration("metar_cache_clean_interval", 30*time.Minute, "metar cache cleanup interval")
 	MetarQueryThread        = flag.Int("metar_query_thread", 32, "metar query thread")
+	FsdRecordFilter         = flag.Int("fsd_record_filter", 10, "record the minimum amount of time in the connection history")
 )
 
 const (
@@ -31,6 +32,7 @@ const (
 	EnvDownloadPrefix          = "DOWNLOAD_PREFIX"
 	EnvMetarCacheCleanInterval = "METAR_CACHE_CLEAN_INTERVAL"
 	EnvMetarQueryThread        = "METAR_QUERY_THREAD"
+	EnvFsdRecordFilter         = "FSD_RECORD_FILTER"
 
 	LogFilePath = "logs"
 	MainLogName = "main"

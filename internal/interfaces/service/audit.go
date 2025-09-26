@@ -24,7 +24,6 @@ type ResponseGetAuditLog struct {
 type RequestLogUnlawfulOverreach struct {
 	JwtHeader
 	EchoContentHeader
-	Cid        int
 	AccessPath string `json:"access_path"`
 }
 

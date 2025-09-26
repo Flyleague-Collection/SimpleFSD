@@ -11,6 +11,7 @@ type FlightPlanControllerInterface interface {
 	SubmitFlightPlan(ctx echo.Context) error
 	GetFlightPlan(ctx echo.Context) error
 	GetFlightPlans(ctx echo.Context) error
+	DeleteSelfFlightPlan(ctx echo.Context) error
 	DeleteFlightPlan(ctx echo.Context) error
 	LockFlightPlan(ctx echo.Context) error
 	UnlockFlightPlan(ctx echo.Context) error
@@ -68,6 +69,19 @@ func (controller *FlightPlanController) GetFlightPlans(ctx echo.Context) error {
 		return NewErrorResponse(ctx, ErrParseParam)
 	}
 	return controller.flightPlanService.GetFlightPlans(data).Response(ctx)
+}
+
+func (controller *FlightPlanController) DeleteSelfFlightPlan(ctx echo.Context) error {
+	data := &RequestDeleteSelfFlightPlan{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.ErrorF("DeleteSelfFlightPlan bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
+	if err := SetJwtInfoAndEchoContent(data, ctx); err != nil {
+		controller.logger.ErrorF("DeleteSelfFlightPlan jwt token parse error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
+	return controller.flightPlanService.DeleteSelfFlightPlan(data).Response(ctx)
 }
 
 func (controller *FlightPlanController) DeleteFlightPlan(ctx echo.Context) error {

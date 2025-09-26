@@ -67,7 +67,7 @@ func (ticketService *TicketService) GetUserTickets(req *RequestGetUserTickets) *
 		return NewApiResponse[ResponseGetUserTickets](ErrIllegalParam, nil)
 	}
 
-	records, total, err := ticketService.ticketOperation.GetUserTickets(req.Cid, req.Page, req.PageSize)
+	records, total, err := ticketService.ticketOperation.GetUserTickets(req.Uid, req.Page, req.PageSize)
 	if res := CheckDatabaseError[ResponseGetUserTickets](err); res != nil {
 		return res
 	}

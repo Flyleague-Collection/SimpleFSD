@@ -15,7 +15,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strings"
 )
 
@@ -68,7 +67,6 @@ func (store *TencentCosStoreService) SaveFile(storeInfo *StoreInfo, file *multip
 	if res := store.localStore.SaveFile(storeInfo, file); res != nil {
 		return res
 	}
-	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
 
 	reader, err := file.Open()
 	if err != nil {
@@ -94,8 +92,6 @@ func (store *TencentCosStoreService) DeleteImageFile(file string) (*StoreInfo, e
 }
 
 func (store *TencentCosStoreService) DeleteFile(storeInfo *StoreInfo) error {
-	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
-
 	_, err := store.client.Object.Delete(context.Background(), storeInfo.RemotePath)
 	if err != nil {
 		store.logger.ErrorF("TencentCosStoreService.DeleteImageFile delete image from remote storage errors: %v", err)

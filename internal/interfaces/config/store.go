@@ -48,7 +48,7 @@ func (config *HttpServerStore) checkValid(logger log.LoggerInterface) *ValidResu
 	if err := os.MkdirAll(filepath.Clean(config.LocalStorePath), global.DefaultDirectoryPermission); err != nil {
 		return ValidFailWith(fmt.Errorf("error while creating local store path(%s)", config.LocalStorePath), err)
 	}
-	if result := config.FileLimit.CreateDir(logger, config.LocalStorePath); result.IsFail() {
+	if result := config.FileLimit.CreateDir(logger, config.LocalStorePath, config.RemoteStorePath); result.IsFail() {
 		return result
 	}
 	switch config.StoreType {

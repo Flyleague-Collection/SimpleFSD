@@ -14,7 +14,6 @@ import (
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"mime/multipart"
 	"net/url"
-	"path/filepath"
 	"strings"
 )
 
@@ -61,9 +60,8 @@ func (store *ALiYunOssStoreService) GetStoreInfo(fileType FileType, fileLimit *c
 
 func (store *ALiYunOssStoreService) SaveFile(storeInfo *StoreInfo, file *multipart.FileHeader) *ApiStatus {
 	if res := store.localStore.SaveFile(storeInfo, file); res != nil {
-		return nil
+		return res
 	}
-	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
 
 	reader, err := file.Open()
 	if err != nil {
@@ -87,8 +85,6 @@ func (store *ALiYunOssStoreService) SaveFile(storeInfo *StoreInfo, file *multipa
 }
 
 func (store *ALiYunOssStoreService) DeleteFile(storeInfo *StoreInfo) error {
-	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.RemoteStorePath, storeInfo.FileName), "\\", "/", -1)
-
 	delRequest := &oss.DeleteObjectRequest{
 		Bucket: oss.Ptr(store.config.Bucket),
 		Key:    oss.Ptr(storeInfo.RemotePath),

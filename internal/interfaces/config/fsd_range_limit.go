@@ -13,6 +13,9 @@ type FsdRangeLimit struct {
 	Tower          int  `json:"tower"`
 	Approach       int  `json:"approach"`
 	Center         int  `json:"center"`
+	Apron          int  `json:"apron"`
+	Supervisor     int  `json:"supervisor"`
+	Administrator  int  `json:"administrator"`
 	FSS            int  `json:"fss"`
 }
 
@@ -25,6 +28,9 @@ func defaultFsdRangeLimitConfig() *FsdRangeLimit {
 		Tower:          50,
 		Approach:       150,
 		Center:         600,
+		Apron:          20,
+		Supervisor:     300,
+		Administrator:  300,
 		FSS:            1500,
 	}
 }

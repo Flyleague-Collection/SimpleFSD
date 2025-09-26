@@ -108,6 +108,31 @@ func (flightPlanService *FlightPlanService) GetFlightPlans(req *RequestGetFlight
 	})
 }
 
+var SuccessDeleteSelfFlightPlan = NewApiStatus("DELETE_SELF_FLIGHT_PLAN", "成功删除自己的飞行计划", Ok)
+
+func (flightPlanService *FlightPlanService) DeleteSelfFlightPlan(req *RequestDeleteSelfFlightPlan) *ApiResponse[ResponseDeleteSelfFlightPlan] {
+	if res := CallDBFuncWithoutRet[ResponseDeleteSelfFlightPlan](func() error {
+		return flightPlanService.flightPlanOperation.DeleteSelfFlightPlan(req.Cid)
+	}); res != nil {
+		return res
+	}
+
+	flightPlanService.messageQueue.Publish(&queue.Message{
+		Type: queue.AuditLog,
+		Data: flightPlanService.auditLogOperation.NewAuditLog(
+			operation.FlightPlanSelfDeleted,
+			req.Cid,
+			fmt.Sprintf("%04d", req.Cid),
+			req.Ip,
+			req.UserAgent,
+			nil,
+		),
+	})
+
+	data := ResponseDeleteSelfFlightPlan(true)
+	return NewApiResponse(SuccessDeleteSelfFlightPlan, &data)
+}
+
 var SuccessDeleteFlightPlan = NewApiStatus("DELETE_FLIGHT_PLAN", "成功删除飞行计划", Ok)
 
 func (flightPlanService *FlightPlanService) DeleteFlightPlan(req *RequestDeleteFlightPlan) *ApiResponse[ResponseDeleteFlightPlan] {

@@ -69,6 +69,7 @@ func main() {
 	checkStringEnv(global.EnvDownloadPrefix, global.DownloadPrefix)
 	checkDurationEnv(global.EnvMetarCacheCleanInterval, global.MetarCacheCleanInterval)
 	checkIntEnv(global.EnvMetarQueryThread, global.MetarQueryThread, 32)
+	checkIntEnv(global.EnvFsdRecordFilter, global.FsdRecordFilter, 10)
 
 	defer recoverFromError()
 

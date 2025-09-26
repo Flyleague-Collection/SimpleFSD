@@ -32,8 +32,15 @@ func (historyOperation *HistoryOperation) NewHistory(cid int, callsign string, i
 func (historyOperation *HistoryOperation) SaveHistory(history *History) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), historyOperation.queryTimeout)
 	defer cancel()
-
+	if history.ID == 0 {
+		return historyOperation.db.WithContext(ctx).Create(history).Error
+	}
 	return historyOperation.db.WithContext(ctx).Save(history).Error
+}
+
+func (historyOperation *HistoryOperation) EndRecord(history *History) {
+	history.EndTime = time.Now()
+	history.OnlineTime = int(history.EndTime.Sub(history.StartTime).Seconds())
 }
 
 func (historyOperation *HistoryOperation) EndRecordAndSaveHistory(history *History) (err error) {

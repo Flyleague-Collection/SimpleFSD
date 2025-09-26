@@ -7,6 +7,7 @@ type FlightPlanServiceInterface interface {
 	SubmitFlightPlan(req *RequestSubmitFlightPlan) *ApiResponse[ResponseSubmitFlightPlan]
 	GetFlightPlan(req *RequestGetFlightPlan) *ApiResponse[ResponseGetFlightPlan]
 	GetFlightPlans(req *RequestGetFlightPlans) *ApiResponse[ResponseGetFlightPlans]
+	DeleteSelfFlightPlan(req *RequestDeleteSelfFlightPlan) *ApiResponse[ResponseDeleteSelfFlightPlan]
 	DeleteFlightPlan(req *RequestDeleteFlightPlan) *ApiResponse[ResponseDeleteFlightPlan]
 	LockFlightPlan(req *RequestLockFlightPlan) *ApiResponse[ResponseLockFlightPlan]
 }
@@ -38,6 +39,13 @@ type ResponseGetFlightPlans struct {
 	PageSize int                     `json:"page_size"`
 	Total    int64                   `json:"total"`
 }
+
+type RequestDeleteSelfFlightPlan struct {
+	JwtHeader
+	EchoContentHeader
+}
+
+type ResponseDeleteSelfFlightPlan bool
 
 type RequestDeleteFlightPlan struct {
 	JwtHeader

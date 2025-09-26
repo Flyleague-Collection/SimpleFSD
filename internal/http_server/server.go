@@ -306,6 +306,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	flightPlanGroup.POST("", flightPlanController.SubmitFlightPlan, jwtMiddleware, requireNoFlushToken)
 	flightPlanGroup.GET("", flightPlanController.GetFlightPlans, jwtMiddleware, requireNoFlushToken)
 	flightPlanGroup.GET("/self", flightPlanController.GetFlightPlan, jwtMiddleware, requireNoFlushToken)
+	flightPlanGroup.DELETE("/self", flightPlanController.DeleteSelfFlightPlan, jwtMiddleware, requireNoFlushToken)
 	flightPlanGroup.PUT("/:cid/lock", flightPlanController.LockFlightPlan, jwtMiddleware, requireNoFlushToken)
 	flightPlanGroup.DELETE("/:cid/lock", flightPlanController.UnlockFlightPlan, jwtMiddleware, requireNoFlushToken)
 	flightPlanGroup.DELETE("/:cid", flightPlanController.DeleteFlightPlan, jwtMiddleware, requireNoFlushToken)

@@ -21,6 +21,7 @@ type HistoryOperationInterface interface {
 	NewHistory(cid int, callsign string, isAtc bool) (history *History)
 	// SaveHistory 保存联飞记录到数据库, 当err为nil时保存成功
 	SaveHistory(history *History) (err error)
+	EndRecord(history *History)
 	// EndRecordAndSaveHistory 结束联飞记录并保存到数据库, 当err为nil时保存成功
 	EndRecordAndSaveHistory(history *History) (err error)
 	// GetUserHistory 获取用户最近十次的连线记录, 当err为nil时返回值userHistory有效

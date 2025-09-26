@@ -47,6 +47,7 @@ const (
 	ControllerApplicationProcessing AuditEventType = "ControllerApplicationProcessing"
 	ControllerApplicationRejected   AuditEventType = "ControllerApplicationRejected"
 	FlightPlanDeleted               AuditEventType = "FlightPlanDeleted"
+	FlightPlanSelfDeleted           AuditEventType = "FlightPlanSelfDeleted"
 	FlightPlanLock                  AuditEventType = "FlightPlanLock"
 	FlightPlanUnlock                AuditEventType = "FlightPlanUnlock"
 	FileUpload                      AuditEventType = "FileUpload"

@@ -11,7 +11,7 @@ type FlightPlan struct {
 	Cid              int       `gorm:"index;not null" json:"cid"`
 	Callsign         string    `gorm:"size:16;uniqueIndex;not null" json:"callsign"`
 	FlightType       string    `gorm:"size:4;not null" json:"flight_rules"`
-	AircraftType     string    `gorm:"size:16;not null" json:"aircraft"`
+	AircraftType     string    `gorm:"size:128;not null" json:"aircraft"`
 	Tas              int       `gorm:"not null" json:"cruise_tas"`
 	DepartureAirport string    `gorm:"size:4;not null" json:"departure"`
 	DepartureTime    int       `gorm:"not null" json:"departure_time"`
@@ -25,7 +25,7 @@ type FlightPlan struct {
 	AlternateAirport string    `gorm:"size:4;not null" json:"alternate"`
 	Remarks          string    `gorm:"type:text;not null" json:"remarks"`
 	Route            string    `gorm:"type:text;not null" json:"route"`
-	Locked           bool      `gorm:"default:0;not null" json:"-"`
+	Locked           bool      `gorm:"default:0;not null" json:"locked"`
 	FromWeb          bool      `gorm:"default:0;not null" json:"-"`
 	CreatedAt        time.Time `json:"-"`
 	UpdatedAt        time.Time `json:"-"`
@@ -53,6 +53,7 @@ type FlightPlanOperationInterface interface {
 	GetFlightPlans(page, pageSize int) (flightPlans []*FlightPlan, total int64, err error)
 	LockFlightPlan(flightPlan *FlightPlan) (err error)
 	UnlockFlightPlan(flightPlan *FlightPlan) (err error)
+	DeleteSelfFlightPlan(cid int) (err error)
 	DeleteFlightPlan(cid int) (err error)
 	// UpdateCruiseAltitude 更新巡航高度, 当err为nil时更新成功
 	UpdateCruiseAltitude(flightPlan *FlightPlan, cruiseAltitude string) (err error)

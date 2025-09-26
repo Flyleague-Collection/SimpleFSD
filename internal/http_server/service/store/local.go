@@ -41,9 +41,9 @@ func NewLocalStoreService(
 func (store *LocalStoreService) DeleteImageFile(file string) (*StoreInfo, error) {
 	storeInfo := NewStoreInfo(IMAGES, store.config.FileLimit.ImageLimit, nil)
 
-	storeInfo.FileName = filepath.Join(store.config.FileLimit.ImageLimit.StorePrefix, filepath.Base(file))
-	storeInfo.FilePath = filepath.Join(store.config.FileLimit.ImageLimit.RootPath, storeInfo.FileName)
-	storeInfo.RemotePath = strings.Replace(storeInfo.FileName, "\\", "/", -1)
+	storeInfo.LocalAccessPath = filepath.Base(file)
+	storeInfo.LocalPath = filepath.Join(store.config.FileLimit.ImageLimit.LocalRootPath, storeInfo.LocalAccessPath)
+	storeInfo.RemotePath = strings.Replace(filepath.Join(store.config.FileLimit.ImageLimit.RemoteRootPath, storeInfo.LocalAccessPath), "\\", "/", -1)
 
 	return storeInfo, store.DeleteFile(storeInfo)
 }
@@ -53,6 +53,9 @@ func (store *LocalStoreService) GetStoreInfo(fileType FileType, fileLimit *confi
 }
 
 func (store *LocalStoreService) SaveFile(storeInfo *StoreInfo, file *multipart.FileHeader) *ApiStatus {
+	if !storeInfo.StoreInServer {
+		return nil
+	}
 	src, err := file.Open()
 	defer func(src multipart.File) {
 		_ = src.Close()
@@ -62,7 +65,7 @@ func (store *LocalStoreService) SaveFile(storeInfo *StoreInfo, file *multipart.F
 		return ErrFileSaveFail
 	}
 
-	dst, err := os.OpenFile(storeInfo.FilePath, os.O_WRONLY|os.O_CREATE, global.DefaultFilePermissions)
+	dst, err := os.OpenFile(storeInfo.LocalPath, os.O_WRONLY|os.O_CREATE, global.DefaultFilePermissions)
 	defer func(dst *os.File) {
 		_ = dst.Close()
 	}(dst)
@@ -84,7 +87,7 @@ func (store *LocalStoreService) DeleteFile(storeInfo *StoreInfo) error {
 		return nil
 	}
 
-	if err := os.Remove(storeInfo.FilePath); err != nil {
+	if err := os.Remove(storeInfo.LocalPath); err != nil {
 		store.logger.ErrorF("DeleteFile remove file error: %v", err)
 		return err
 	}
@@ -106,7 +109,7 @@ func (store *LocalStoreService) SaveUploadImage(req *RequestUploadImage) *ApiRes
 		Data: store.auditLogOperation.NewAuditLog(
 			operation.FileUpload,
 			req.Cid,
-			storeInfo.RemotePath,
+			storeInfo.LocalPath,
 			req.Ip,
 			req.UserAgent,
 			nil,
@@ -115,7 +118,7 @@ func (store *LocalStoreService) SaveUploadImage(req *RequestUploadImage) *ApiRes
 
 	return NewApiResponse(SuccessUploadFile, &ResponseUploadImage{
 		FileSize:   req.File.Size,
-		AccessPath: storeInfo.RemotePath,
+		AccessPath: storeInfo.LocalAccessPath,
 	})
 }
 
@@ -134,7 +137,7 @@ func (store *LocalStoreService) SaveUploadFile(req *RequestUploadFile) *ApiRespo
 		Data: store.auditLogOperation.NewAuditLog(
 			operation.FileUpload,
 			req.Cid,
-			storeInfo.RemotePath,
+			storeInfo.LocalPath,
 			req.Ip,
 			req.UserAgent,
 			nil,
@@ -143,6 +146,6 @@ func (store *LocalStoreService) SaveUploadFile(req *RequestUploadFile) *ApiRespo
 
 	return NewApiResponse(SuccessUploadFile, &ResponseUploadFile{
 		FileSize:   req.File.Size,
-		AccessPath: storeInfo.RemotePath,
+		AccessPath: storeInfo.LocalAccessPath,
 	})
 }

@@ -68,8 +68,6 @@ func (content *CommandContent) checkRangeLimit(_ SessionInterface, realFacility 
 }
 
 func (content *CommandContent) HandleAddAtc(session SessionInterface, data []string, rawLine []byte) *Result {
-	// #AA 2352_OBS SERVER 2352 2352 123456  1  9  1  0  29.86379 119.49287 100
-	// [0] [   1  ] [  2 ] [ 3] [ 4] [  5 ] [6][7][8][9] [  10  ] [   11  ] [12]
 	callsign := data[0]
 	cid := operation.GetUserId(data[3])
 	password := data[4]
@@ -112,8 +110,6 @@ func (content *CommandContent) HandleAddAtc(session SessionInterface, data []str
 }
 
 func (content *CommandContent) HandleAddPilot(session SessionInterface, data []string, rawLine []byte) *Result {
-	//	#AP CES2352 SERVER 2352 123456  1   9  16  Half_nothing ZGHA
-	//  [0] [  1  ] [  2 ] [ 3] [  4 ] [5] [6] [7] [       8       ]
 	callsign := data[0]
 	cid := operation.GetUserId(data[2])
 	password := data[3]
@@ -153,15 +149,19 @@ func (content *CommandContent) HandleAddPilot(session SessionInterface, data []s
 }
 
 func (content *CommandContent) HandleAtcPosUpdate(session SessionInterface, data []string, rawLine []byte) *Result {
-	//  %  ZSHA_CTR 24550  6  600  5  27.28025 118.28701  0
-	// [0] [   1  ] [ 2 ] [3] [4] [5] [   6  ] [   7   ] [8]
 	callsign := data[0]
 	rating := Rating(utils.StrToInt(data[4], 0))
 	facility := Facility(1 << utils.StrToInt(data[2], 0))
+	// 检查权限能否匹配席位
+	// 比如用OBS权限上FSS席位
+	// 这里的席位指的是es上设置的席位
 	if !rating.CheckRatingFacility(facility) {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
 	}
-	if !session.FacilityIdent().CheckFacility(facility) {
+	// 这里也是检查权限能否匹配席位
+	// 比如用SUP权限上ADM席位
+	// 这里的席位指的是通过呼号判断的席位
+	if !rating.CheckRatingFacility(session.FacilityIdent()) {
 		return ResultError(CallsignInvalid, true, callsign, errors.New("callsign and faility mismatch"))
 	}
 	if res := content.checkRangeLimit(session, facility, utils.StrToInt(data[3], 0)); res != nil {
@@ -180,8 +180,6 @@ func (content *CommandContent) HandleAtcPosUpdate(session SessionInterface, data
 }
 
 func (content *CommandContent) HandlePilotPosUpdate(session SessionInterface, data []string, rawLine []byte) *Result {
-	//	@   S  CPA421 7000  1  38.96244 121.53479 87   0  4290770974 278
-	// [0] [1] [  2 ] [ 3] [4] [   5  ] [   6   ] [7] [8] [    9   ] [10]
 	transponder := utils.StrToInt(data[2], 0)
 	latitude := utils.StrToFloat(data[4], 0)
 	longitude := utils.StrToFloat(data[5], 0)
@@ -197,8 +195,6 @@ func (content *CommandContent) HandlePilotPosUpdate(session SessionInterface, da
 }
 
 func (content *CommandContent) HandleAtcVisPointUpdate(session SessionInterface, data []string, _ []byte) *Result {
-	//  '  ZSHA_CTR  0  36.67349 120.45621
-	// [0] [   1  ] [2] [   3  ] [   4   ]
 	visPos := utils.StrToInt(data[1], 0)
 	latitude := utils.StrToFloat(data[2], 0)
 	longitude := utils.StrToFloat(data[3], 0)
@@ -229,13 +225,6 @@ func (content *CommandContent) sendFrequencyMessage(session SessionInterface, ta
 }
 
 func (content *CommandContent) HandleClientQuery(session SessionInterface, data []string, rawLine []byte) *Result {
-	//	查询飞行计划
-	//	$CQ ZYSH_CTR SERVER FP  CPA421
-	//  [0] [  1   ] [  2 ] [3] [  4 ]
-	//
-	//	修改飞行计划
-	//	$CQ ZYSH_CTR @94835 FA  CPA421 31100
-	//	[0] [  1   ] [  2 ] [3] [  4 ] [ 5 ]
 	if session.Client() == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
@@ -322,10 +311,6 @@ func (content *CommandContent) HandleClientQuery(session SessionInterface, data 
 }
 
 func (content *CommandContent) HandleClientResponse(session SessionInterface, data []string, rawLine []byte) *Result {
-	//	$CR ZSHA_CTR ZSSS_APP CAPS ATCINFO=1 SECPOS=1 MODELDESC=1 ONGOINGCOORD=1 NEWINFO=1 TEAMSPEAK=1 ICAOEQ=1
-	//  [0] [   1  ] [   2  ] [ 3] [   4   ] [  5   ] [    6    ] [     7      ] [   8   ] [     9   ] [  10  ]
-	//	$CR ZSHA_CTR SERVER ATIS  T  ZSHA_CTR Shanghai Control
-	//	[0] [   1  ] [  2 ] [ 3] [4] [           5           ]
 	if session.Client() == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
@@ -354,8 +339,6 @@ func (content *CommandContent) HandleClientResponse(session SessionInterface, da
 }
 
 func (content *CommandContent) HandleMessage(session SessionInterface, data []string, rawLine []byte) *Result {
-	// #TM ZSHA_CTR ZSSS_APP 111
-	// [0] [   1  ] [   2  ] [3]
 	targetStation := data[1]
 	if strings.HasPrefix(targetStation, "@") {
 		result := content.sendFrequencyMessage(session, targetStation, rawLine)
@@ -380,10 +363,6 @@ func (content *CommandContent) HandleMessage(session SessionInterface, data []st
 }
 
 func (content *CommandContent) HandlePlan(session SessionInterface, data []string, rawLine []byte) *Result {
-	// $FP CPA421 SERVER  I  H/A320/L 474 ZYTL 1115  0  FL371 ZYHB  1    18   2    26  ZYCC
-	// [0] [  1 ] [  2 ] [3] [  4   ] [5] [ 6] [ 7] [8] [ 9 ] [10] [11] [12] [13] [14] [15]
-	// /V/ SEL/AHFL VENOS A588 NULRA W206 MAGBI W656 ISLUK W629 LARUN
-	// [    16    ] [                      17                       ]
 	if session.Client() == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
@@ -400,10 +379,6 @@ func (content *CommandContent) HandlePlan(session SessionInterface, data []strin
 }
 
 func (content *CommandContent) HandleAtcEditPlan(session SessionInterface, data []string, _ []byte) *Result {
-	// $AM ZYSH_CTR SERVER CPA421  I  H/A320/L 474 ZYTL 1115  0  FL371 ZYHB  11  8     22   6   ZYCC
-	// [0] [   1  ] [  2 ] [  3 ] [4] [   5  ] [6] [ 7] [ 8] [9] [ 10] [11] [12] [13] [14] [15] [16]
-	// /V/ SEL/AHFL CHI19D/28 VENOS A588 NULRA W206 MAGBI W656 ISLUK W629 LARUN
-	// [     17   ] [                             18                          ]
 	if session.Client() == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
@@ -431,7 +406,6 @@ func (content *CommandContent) HandleAtcEditPlan(session SessionInterface, data 
 }
 
 func (content *CommandContent) HandleKillClient(session SessionInterface, data []string, _ []byte) *Result {
-	// $!! ZSHA_CTR CPA421 test
 	if session.Client() == nil {
 		return ResultError(Custom, false, "", fmt.Errorf("client not register"))
 	}

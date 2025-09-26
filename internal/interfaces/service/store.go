@@ -30,28 +30,29 @@ const (
 
 // StoreInfo 文件存储信息
 type StoreInfo struct {
-	FileType      FileType                         // 文件类型 [FileType]
-	FileLimit     *config.HttpServerStoreFileLimit // 该类型文件限制 [config.HttpServerStoreFileLimit]
-	RootPath      string                           // 存储根目录
-	FilePath      string                           // 文件存储路径
-	RemotePath    string                           // 远程文件存储路径
-	FileName      string                           // 文件名
-	FileExt       string                           // 文件扩展名
-	FileContent   *multipart.FileHeader            // 文件内容 [multipart.FileHeader]
-	StoreInServer bool                             // 是否保存在本地
+	FileType        FileType                         // 文件类型 [FileType]
+	FileLimit       *config.HttpServerStoreFileLimit // 该类型文件限制 [config.HttpServerStoreFileLimit]
+	RootPath        string                           // 存储根目录
+	LocalAccessPath string                           // 本地文件访问路径
+	LocalPath       string                           // 本地文件存储路径
+	RemotePath      string                           // 远程文件存储路径
+	FileName        string                           // 文件名
+	FileExt         string                           // 文件扩展名
+	FileContent     *multipart.FileHeader            // 文件内容 [multipart.FileHeader]
+	StoreInServer   bool                             // 是否保存在本地
 }
 
 func NewStoreInfo(fileType FileType, fileLimit *config.HttpServerStoreFileLimit, file *multipart.FileHeader) *StoreInfo {
 	return &StoreInfo{
-		FileType:      fileType,
-		FileLimit:     fileLimit,
-		RootPath:      fileLimit.RootPath,
-		FilePath:      "",
-		FileName:      "",
-		RemotePath:    "",
-		FileExt:       "",
-		FileContent:   file,
-		StoreInServer: fileLimit.StoreInServer,
+		FileType:        fileType,
+		FileLimit:       fileLimit,
+		RootPath:        fileLimit.LocalRootPath,
+		LocalAccessPath: "",
+		FileName:        "",
+		RemotePath:      "",
+		FileExt:         "",
+		FileContent:     file,
+		StoreInServer:   fileLimit.StoreInServer,
 	}
 }
 
@@ -73,9 +74,10 @@ func (fileType FileType) GenerateStoreInfo(fileLimit *config.HttpServerStoreFile
 	storeInfo := NewStoreInfo(fileType, fileLimit, file)
 
 	storeInfo.FileExt = ext
-	storeInfo.FileName = filepath.Join(fileLimit.StorePrefix, fmt.Sprintf("%d%s", time.Now().UnixNano(), ext))
-	storeInfo.FilePath = filepath.Join(fileLimit.RootPath, storeInfo.FileName)
-	storeInfo.RemotePath = strings.Replace(storeInfo.FileName, "\\", "/", -1)
+	storeInfo.FileName = file.Filename
+	storeInfo.LocalAccessPath = filepath.Join(fileLimit.StorePrefix, fmt.Sprintf("%d%s", time.Now().UnixNano(), ext))
+	storeInfo.LocalPath = filepath.Join(fileLimit.LocalRootPath, storeInfo.LocalAccessPath)
+	storeInfo.RemotePath = strings.Replace(filepath.Join(fileLimit.RemoteRootPath, storeInfo.LocalAccessPath), "\\", "/", -1)
 
 	return storeInfo, nil
 }

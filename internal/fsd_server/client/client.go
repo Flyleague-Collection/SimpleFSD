@@ -155,14 +155,29 @@ func (client *Client) Delete() {
 		return
 	}
 
+	// 断线后解锁飞行计划
+	if client.flightPlan != nil {
+		err := client.flightPlanOperation.UnlockFlightPlan(client.flightPlan)
+		if err != nil {
+			client.logger.ErrorF("[%s](%s) Failed to unlock flight plan", client.socket.ConnId(), client.callsign)
+		}
+	}
+
 	// 不计入ATIS时长
 	if client.isAtis {
 		return
 	}
 
+	client.historyOperation.EndRecord(client.history)
+
+	// 不计算小于指定秒数的记录
+	if client.history.OnlineTime < *global.FsdRecordFilter {
+		return
+	}
+
 	if client.isAtc {
 		// 写入管制连线时长
-		if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
+		if err := client.historyOperation.SaveHistory(client.history); err != nil {
 			client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
 		}
 		if err := client.userOperation.UpdateUserAtcTime(client.user, client.history.OnlineTime); err != nil {
@@ -170,18 +185,11 @@ func (client *Client) Delete() {
 		}
 	} else {
 		// 写入机组连线时长
-		if err := client.historyOperation.EndRecordAndSaveHistory(client.history); err != nil {
+		if err := client.historyOperation.SaveHistory(client.history); err != nil {
 			client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
 		}
 		if err := client.userOperation.UpdateUserPilotTime(client.user, client.history.OnlineTime); err != nil {
 			client.logger.ErrorF("[%s](%s) Failed to add pilot time: %v", client.socket.ConnId(), client.callsign, err)
-		}
-	}
-
-	if client.flightPlan != nil {
-		err := client.flightPlanOperation.UnlockFlightPlan(client.flightPlan)
-		if err != nil {
-			client.logger.ErrorF("[%s](%s) Failed to unlock flight plan", client.socket.ConnId(), client.callsign)
 		}
 	}
 }

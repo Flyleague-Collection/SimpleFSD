@@ -14,33 +14,39 @@ type FacilityModel struct {
 	LongName  string `json:"long_name"`
 }
 
-type Facility byte
+type Facility uint
 
 const (
-	Pilot Facility = 1 << iota
-	OBS
+	OBS Facility = 1 << iota
+	FSS
 	DEL
 	GND
 	TWR
 	APP
 	CTR
-	FSS
+	Pilot
+	RMP
+	SUP
+	ADM
 )
 
 var Facilities = []*FacilityModel{
-	{0, "Pilot", "Pilot"},
-	{1, "OBS", "Observer"},
+	{0, "OBS", "Observer"},
+	{1, "FSS", "Flight Service Station"},
 	{2, "DEL", "Clearance Delivery"},
 	{3, "GND", "Ground"},
 	{4, "TWR", "Tower"},
 	{5, "APP", "Approach/Departure"},
 	{6, "CTR", "Enroute"},
-	{7, "FSS", "Flight Service Station"},
+	{7, "Pilot", "Pilot"},
+	{8, "RMP", "Apron"},
+	{9, "SUP", "Supervisor"},
+	{10, "ADM", "Administrator"},
 }
 
-var facilitiesIndex = map[Facility]int{Pilot: 0, OBS: 1, DEL: 2, GND: 3, TWR: 4, APP: 5, CTR: 6, FSS: 7}
+var facilitiesIndex = map[Facility]int{OBS: 0, FSS: 1, DEL: 2, GND: 3, TWR: 4, APP: 5, CTR: 6, Pilot: 7, RMP: 8, SUP: 9, ADM: 10}
 
-var facilityRangeLimit = map[Facility]int{Pilot: 50, OBS: 300, DEL: 20, GND: 20, TWR: 50, APP: 150, CTR: 600, FSS: 600}
+var facilityRangeLimit = map[Facility]int{Pilot: 50, OBS: 300, DEL: 20, GND: 20, TWR: 50, APP: 150, CTR: 600, FSS: 600, RMP: 20, SUP: 300, ADM: 300}
 
 func (f Facility) String() string {
 	return Facilities[f.Index()].ShortName
@@ -98,4 +104,7 @@ func SyncRangeLimit(config *config.FsdRangeLimit) {
 	facilityRangeLimit[APP] = config.Approach
 	facilityRangeLimit[CTR] = config.Center
 	facilityRangeLimit[FSS] = config.FSS
+	facilityRangeLimit[RMP] = config.Apron
+	facilityRangeLimit[SUP] = config.Supervisor
+	facilityRangeLimit[ADM] = config.Administrator
 }
