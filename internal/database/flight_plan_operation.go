@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/utils"
@@ -189,9 +190,9 @@ func (flightPlanOperation *FlightPlanOperation) UpdateCruiseAltitude(flightPlan 
 	return nil
 }
 
-func (flightPlanOperation *FlightPlanOperation) ToString(flightPlan *FlightPlan, receiver string) string {
+func (flightPlanOperation *FlightPlanOperation) ToString(flightPlan *FlightPlan) string {
 	return fmt.Sprintf("$FP%s:%s:%s:%s:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\r\n",
-		flightPlan.Callsign, receiver, flightPlan.FlightType, flightPlan.AircraftType, flightPlan.Tas,
+		flightPlan.Callsign, fsd.AllATC, flightPlan.FlightType, flightPlan.AircraftType, flightPlan.Tas,
 		flightPlan.DepartureAirport, fmt.Sprintf("%04d", flightPlan.DepartureTime),
 		fmt.Sprintf("%04d", flightPlan.AtcDepartureTime), flightPlan.CruiseAltitude,
 		flightPlan.ArrivalAirport, flightPlan.RouteTimeHour, flightPlan.RouteTimeMinute, flightPlan.FuelTimeHour,

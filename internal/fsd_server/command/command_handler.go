@@ -246,7 +246,7 @@ func (content *CommandContent) HandleClientQuery(session SessionInterface, data 
 			if !ok || client.FlightPlan() == nil {
 				return ResultError(NoFlightPlan, false, session.Client().Callsign(), nil)
 			}
-			session.Client().SendLine([]byte(content.flightPlanOperation.ToString(client.FlightPlan(), data[0])))
+			session.Client().SendLine([]byte(content.flightPlanOperation.ToString(client.FlightPlan())))
 		case AvailableAtc:
 			available := isValidAtc(data[0])
 			if available {
@@ -400,7 +400,7 @@ func (content *CommandContent) HandleAtcEditPlan(session SessionInterface, data 
 	if err := content.flightPlanOperation.UpdateFlightPlan(client.FlightPlan(), data[1:], true); err != nil {
 		return ResultError(Syntax, false, session.Client().Callsign(), err)
 	}
-	go content.clientManager.BroadcastMessage([]byte(content.flightPlanOperation.ToString(client.FlightPlan(), string(AllATC))),
+	go content.clientManager.BroadcastMessage([]byte(content.flightPlanOperation.ToString(client.FlightPlan())),
 		session.Client(), CombineBroadcastFilter(BroadcastToAtc, BroadcastToClientInRange))
 	return ResultSuccess()
 }

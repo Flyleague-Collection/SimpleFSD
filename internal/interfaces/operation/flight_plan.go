@@ -58,5 +58,5 @@ type FlightPlanOperationInterface interface {
 	// UpdateCruiseAltitude 更新巡航高度, 当err为nil时更新成功
 	UpdateCruiseAltitude(flightPlan *FlightPlan, cruiseAltitude string) (err error)
 	// ToString 将飞行计划转换为ES和Swift可识别的形式
-	ToString(flightPlan *FlightPlan, receiver string) (str string)
+	ToString(flightPlan *FlightPlan) (str string)
 }
