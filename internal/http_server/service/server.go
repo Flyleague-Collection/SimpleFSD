@@ -114,19 +114,13 @@ func (serverService *ServerService) getTimeRating() *ResponseGetTimeRating {
 	return data
 }
 
-var SuccessGetServerConfig = NewApiStatus("GET_SERVER_CONFIG", "成功获取服务器配置", Ok)
-
 func (serverService *ServerService) GetServerConfig() *ApiResponse[ResponseGetServerConfig] {
 	return NewApiResponse(SuccessGetServerConfig, serverService.serverConfig.GetValue())
 }
 
-var SuccessGetServerInfo = NewApiStatus("GET_SERVER_INFO", "成功获取服务器信息", Ok)
-
 func (serverService *ServerService) GetServerInfo() *ApiResponse[ResponseGetServerInfo] {
 	return NewApiResponse(SuccessGetServerInfo, serverService.serverInfo.GetValue())
 }
-
-var SuccessGetTimeRating = NewApiStatus("GET_TIME_RATING", "成功获取服务器排行榜", Ok)
 
 func (serverService *ServerService) GetTimeRating() *ApiResponse[ResponseGetTimeRating] {
 	return NewApiResponse(SuccessGetTimeRating, serverService.serverOnlineTime.GetValue())

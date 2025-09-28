@@ -37,8 +37,8 @@ var AllowedStatusMap = map[ControllerApplicationStatus][]ControllerApplicationSt
 	Rejected:        {},
 }
 
-func IsValidApplicationStatus(s int) bool {
-	return int(Submitted) <= s && s <= int(Rejected)
+func IsValidApplicationStatus(val int) bool {
+	return int(Submitted) <= val && val <= int(Rejected)
 }
 
 var (

@@ -10,6 +10,7 @@ const (
 	UserGetProfile
 	UserSetPassword
 	UserEditBaseInfo
+	UserShowPermission
 	UserEditPermission
 	ControllerShowList
 	ControllerTier2Rating
@@ -41,6 +42,10 @@ const (
 	ClientSendMessage
 	ClientSendBroadcastMessage
 	ClientKill
+	AnnouncementShowList
+	AnnouncementPublish
+	AnnouncementEdit
+	AnnouncementDelete
 )
 
 var PermissionMap = map[string]Permission{
@@ -49,6 +54,7 @@ var PermissionMap = map[string]Permission{
 	"UserGetProfile":                UserGetProfile,
 	"UserSetPassword":               UserSetPassword,
 	"UserEditBaseInfo":              UserEditBaseInfo,
+	"UserShowPermission":            UserShowPermission,
 	"UserEditPermission":            UserEditPermission,
 	"ControllerShowList":            ControllerShowList,
 	"ControllerTier2Rating":         ControllerTier2Rating,
@@ -80,11 +86,10 @@ var PermissionMap = map[string]Permission{
 	"ClientSendMessage":             ClientSendMessage,
 	"ClientKill":                    ClientKill,
 	"ClientSendBroadcastMessage":    ClientSendBroadcastMessage,
-}
-
-func (p *Permission) IsValid() bool {
-	maxPerm := ClientSendBroadcastMessage<<1 - 1 // 计算最大有效位
-	return *p >= 0 && *p <= maxPerm
+	"AnnouncementShowList":          AnnouncementShowList,
+	"AnnouncementPublish":           AnnouncementPublish,
+	"AnnouncementEdit":              AnnouncementEdit,
+	"AnnouncementDelete":            AnnouncementDelete,
 }
 
 func (p *Permission) HasPermission(perm Permission) bool {

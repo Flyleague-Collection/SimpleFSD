@@ -51,6 +51,9 @@ const (
 	FlightPlanLock                  AuditEventType = "FlightPlanLock"
 	FlightPlanUnlock                AuditEventType = "FlightPlanUnlock"
 	FileUpload                      AuditEventType = "FileUpload"
+	AnnouncementPublished           AuditEventType = "AnnouncementPublished"
+	AnnouncementUpdated             AuditEventType = "AnnouncementUpdated"
+	AnnouncementDeleted             AuditEventType = "AnnouncementDeleted"
 )
 
 type AuditLogOperationInterface interface {

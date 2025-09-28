@@ -38,8 +38,6 @@ func (auditLogService *AudioLogService) HandleAuditLogsMessage(message *queue.Me
 	return queue.ErrMessageDataType
 }
 
-var SuccessGetAuditLog = NewApiStatus("GET_AUDIT_LOG", "成功获取审计日志", Ok)
-
 func (auditLogService *AudioLogService) GetAuditLogPage(req *RequestGetAuditLog) *ApiResponse[ResponseGetAuditLog] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseGetAuditLog](ErrIllegalParam, nil)
@@ -61,8 +59,6 @@ func (auditLogService *AudioLogService) GetAuditLogPage(req *RequestGetAuditLog)
 		Total:    total,
 	})
 }
-
-var SuccessLogUnlawfulOverreach = NewApiStatus("LOG_UNLAWFUL_OVERREACH", "成功记录非法访问", Ok)
 
 func (auditLogService *AudioLogService) LogUnlawfulOverreach(req *RequestLogUnlawfulOverreach) *ApiResponse[ResponseLogUnlawfulOverreach] {
 	auditLog := auditLogService.auditOperation.NewAuditLog(

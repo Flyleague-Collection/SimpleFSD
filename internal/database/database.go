@@ -57,7 +57,7 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) 
 	}
 
 	if err = db.Migrator().AutoMigrate(&User{}, &FlightPlan{}, &History{}, &Activity{}, &ActivityATC{},
-		&ActivityPilot{}, &ActivityFacility{}, &AuditLog{}, &ControllerRecord{}, &Ticket{}, &ControllerApplication{}); err != nil {
+		&ActivityPilot{}, &ActivityFacility{}, &AuditLog{}, &ControllerRecord{}, &Ticket{}, &ControllerApplication{}, &Announcement{}); err != nil {
 		return nil, nil, Errorf("error occured while migrating operation: %v", err)
 	}
 
@@ -79,27 +79,18 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) 
 	}
 	lg.Info("Database initialized and connection established")
 
-	userOperation := NewUserOperation(lg, db, queryTimeout, config.Server.General)
-	flightPlanOperation := NewFlightPlanOperation(lg, db, queryTimeout, config.Server.General)
-	historyOperation := NewHistoryOperation(lg, db, queryTimeout)
-	activityOperation := NewActivityOperation(lg, db, queryTimeout)
-	auditLogOperation := NewAuditLogOperation(lg, db, queryTimeout)
-	controllerOperation := NewControllerOperation(lg, db, queryTimeout)
-	controllerRecordOperation := NewControllerRecordOperation(lg, db, queryTimeout)
-	controllerApplicationOperation := NewControllerApplicationOperation(lg, db, queryTimeout)
-	ticketOperation := NewTicketOperation(lg, db, queryTimeout)
-
 	return NewDBCloseCallback(lg, db),
 		NewDatabaseOperations(
-			userOperation,
-			flightPlanOperation,
-			historyOperation,
-			activityOperation,
-			auditLogOperation,
-			controllerOperation,
-			controllerRecordOperation,
-			controllerApplicationOperation,
-			ticketOperation,
+			NewUserOperation(lg, db, queryTimeout, config.Server.General),
+			NewFlightPlanOperation(lg, db, queryTimeout, config.Server.General),
+			NewHistoryOperation(lg, db, queryTimeout),
+			NewActivityOperation(lg, db, queryTimeout),
+			NewAuditLogOperation(lg, db, queryTimeout),
+			NewControllerOperation(lg, db, queryTimeout),
+			NewControllerRecordOperation(lg, db, queryTimeout),
+			NewControllerApplicationOperation(lg, db, queryTimeout),
+			NewTicketOperation(lg, db, queryTimeout),
+			NewAnnouncementOperation(lg, db, queryTimeout),
 		),
 		nil
 }

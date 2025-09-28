@@ -11,6 +11,7 @@ type DatabaseOperations struct {
 	controllerRecordOperation      ControllerRecordOperationInterface      // 管制员履历操作
 	controllerApplicationOperation ControllerApplicationOperationInterface // 管制员申请操作
 	ticketOperation                TicketOperationInterface                // 工单操作
+	announcementOperation          AnnouncementOperationInterface          // 公告操作
 }
 
 func NewDatabaseOperations(
@@ -23,6 +24,7 @@ func NewDatabaseOperations(
 	controllerRecordOperation ControllerRecordOperationInterface,
 	controllerApplicationOperation ControllerApplicationOperationInterface,
 	tickerOperation TicketOperationInterface,
+	announcementOperation AnnouncementOperationInterface,
 ) *DatabaseOperations {
 	return &DatabaseOperations{
 		userOperation:                  userOperation,
@@ -34,6 +36,7 @@ func NewDatabaseOperations(
 		controllerRecordOperation:      controllerRecordOperation,
 		controllerApplicationOperation: controllerApplicationOperation,
 		ticketOperation:                tickerOperation,
+		announcementOperation:          announcementOperation,
 	}
 }
 
@@ -70,3 +73,7 @@ func (db *DatabaseOperations) ControllerApplicationOperation() ControllerApplica
 }
 
 func (db *DatabaseOperations) TicketOperation() TicketOperationInterface { return db.ticketOperation }
+
+func (db *DatabaseOperations) AnnouncementOperation() AnnouncementOperationInterface {
+	return db.announcementOperation
+}

@@ -5,6 +5,15 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 )
 
+var (
+	ErrSendMessage              = NewApiStatus("FAIL_SEND_MESSAGE", "发送消息失败", ServerInternalError)
+	ErrClientNotFound           = NewApiStatus("CLIENT_NOT_FOUND", "指定客户端不存在", NotFound)
+	SuccessSendMessage          = NewApiStatus("SEND_MESSAGE", "发送成功", Ok)
+	SuccessKillClient           = NewApiStatus("KILL_CLIENT", "成功踢出客户端", Ok)
+	SuccessGetClientPath        = NewApiStatus("GET_CLIENT_PATH", "获取客户端飞行路径", Ok)
+	SuccessSendBroadcastMessage = NewApiStatus("SEND_BROADCAST_MESSAGE", "获取客户端飞行路径", Ok)
+)
+
 type ClientServiceInterface interface {
 	GetOnlineClients() *fsd.OnlineClients
 	SendMessageToClient(req *RequestSendMessageToClient) *ApiResponse[ResponseSendMessageToClient]

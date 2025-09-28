@@ -38,8 +38,6 @@ func NewControllerApplicationService(
 	}
 }
 
-var SuccessGetSelfApplication = NewApiStatus("GET_SELF_APPLICATION", "获取管制员申请成功", Ok)
-
 func (service *ControllerApplicationService) GetSelfApplication(req *RequestGetSelfApplication) *ApiResponse[ResponseGetSelfApplication] {
 	application, res := CallDBFunc[*operation.ControllerApplication, ResponseGetSelfApplication](func() (*operation.ControllerApplication, error) {
 		return service.applicationOperation.GetApplicationByUserId(req.Uid)
@@ -51,8 +49,6 @@ func (service *ControllerApplicationService) GetSelfApplication(req *RequestGetS
 	data := ResponseGetSelfApplication(application)
 	return NewApiResponse(SuccessGetSelfApplication, &data)
 }
-
-var SuccessGetApplications = NewApiStatus("GET_APPLICATIONS", "获取管制员申请列表成功", Ok)
 
 func (service *ControllerApplicationService) GetApplications(req *RequestGetApplications) *ApiResponse[ResponseGetApplications] {
 	if req.Page <= 0 || req.PageSize <= 0 {
@@ -76,8 +72,6 @@ func (service *ControllerApplicationService) GetApplications(req *RequestGetAppl
 	})
 	return NewApiResponse(SuccessGetApplications, &data)
 }
-
-var SuccessSubmitApplication = NewApiStatus("SUBMIT_APPLICATION", "成功提交申请", Ok)
 
 func (service *ControllerApplicationService) SubmitControllerApplication(req *RequestSubmitControllerApplication) *ApiResponse[ResponseSubmitControllerApplication] {
 	if req.ControllerApplication == nil || req.WhyWantToBeController == "" || req.ControllerRecord == "" {
@@ -119,8 +113,6 @@ func (service *ControllerApplicationService) SubmitControllerApplication(req *Re
 	return NewApiResponse(SuccessSubmitApplication, &data)
 }
 
-var SuccessCancelApplication = NewApiStatus("CANCEL_APPLICATION", "成功取消申请", Ok)
-
 func (service *ControllerApplicationService) CancelSelfApplication(req *RequestCancelSelfApplication) *ApiResponse[ResponseCancelSelfApplication] {
 	application, res := CallDBFunc[*operation.ControllerApplication, ResponseCancelSelfApplication](func() (*operation.ControllerApplication, error) {
 		return service.applicationOperation.GetApplicationByUserId(req.Uid)
@@ -154,12 +146,6 @@ func (service *ControllerApplicationService) CancelSelfApplication(req *RequestC
 	data := ResponseCancelSelfApplication(true)
 	return NewApiResponse(SuccessCancelApplication, &data)
 }
-
-var (
-	ErrStatusCantFallBack    = NewApiStatus("STATUS_CAN_NOT_FALLBACK", "状态无法回退", BadRequest)
-	ErrSameApplicationStatus = NewApiStatus("SAME_APPLICATION_STATUS", "相同的申请状态", BadRequest)
-	SuccessUpdateApplication = NewApiStatus("UPDATE_APPLICATION", "成功更新申请", Ok)
-)
 
 func (service *ControllerApplicationService) UpdateApplicationStatus(req *RequestUpdateApplicationStatus) *ApiResponse[ResponseUpdateApplicationStatus] {
 	if req.ApplicationId <= 0 || !operation.IsValidApplicationStatus(req.Status) {

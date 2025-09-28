@@ -36,8 +36,6 @@ func NewTicketService(
 	}
 }
 
-var SuccessGetTickets = NewApiStatus("GET_TICKETS", "成功获取工单数据", Ok)
-
 func (ticketService *TicketService) GetTickets(req *RequestGetTickets) *ApiResponse[ResponseGetTickets] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseGetTickets](ErrIllegalParam, nil)
@@ -60,8 +58,6 @@ func (ticketService *TicketService) GetTickets(req *RequestGetTickets) *ApiRespo
 	})
 }
 
-var SuccessGetUserTickets = NewApiStatus("GET_USER_TICKETS", "成功获取用户工单数据", Ok)
-
 func (ticketService *TicketService) GetUserTickets(req *RequestGetUserTickets) *ApiResponse[ResponseGetUserTickets] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseGetUserTickets](ErrIllegalParam, nil)
@@ -79,8 +75,6 @@ func (ticketService *TicketService) GetUserTickets(req *RequestGetUserTickets) *
 		PageSize: req.PageSize,
 	})
 }
-
-var SuccessCreateTicket = NewApiStatus("CREATE_TICKET", "成功创建工单", Ok)
 
 func (ticketService *TicketService) CreateTicket(req *RequestCreateTicket) *ApiResponse[ResponseCreateTicket] {
 	if req.Title == "" || req.Content == "" || !operation.IsValidTicketType(req.Type) {
@@ -116,8 +110,6 @@ func (ticketService *TicketService) CreateTicket(req *RequestCreateTicket) *ApiR
 	data := ResponseCreateTicket(true)
 	return NewApiResponse(SuccessCreateTicket, &data)
 }
-
-var SuccessCloseTicket = NewApiStatus("CLOSE_TICKET", "成功关闭工单", Ok)
 
 func (ticketService *TicketService) CloseTicket(req *RequestCloseTicket) *ApiResponse[ResponseCloseTicket] {
 	if req.TicketId <= 0 || req.Reply == "" {
@@ -168,8 +160,6 @@ func (ticketService *TicketService) CloseTicket(req *RequestCloseTicket) *ApiRes
 	data := ResponseCloseTicket(true)
 	return NewApiResponse(SuccessCloseTicket, &data)
 }
-
-var SuccessDeleteTicket = NewApiStatus("DELETE_TICKET", "成功删除工单", Ok)
 
 func (ticketService *TicketService) DeleteTicket(req *RequestDeleteTicket) *ApiResponse[ResponseDeleteTicket] {
 	if req.TicketId <= 0 {

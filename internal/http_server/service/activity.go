@@ -45,11 +45,6 @@ func NewActivityService(
 	}
 }
 
-var (
-	ErrParseTime         = NewApiStatus("TIME_FORMAT_ERROR", "格式错误", BadRequest)
-	SuccessGetActivities = NewApiStatus("GET_ACTIVITIES", "成功获取活动", Ok)
-)
-
 func (activityService *ActivityService) GetActivities(req *RequestGetActivities) *ApiResponse[ResponseGetActivities] {
 	targetMonth, err := time.Parse("2006-01", req.Time)
 	if err != nil {
@@ -66,8 +61,6 @@ func (activityService *ActivityService) GetActivities(req *RequestGetActivities)
 	data := ResponseGetActivities(activities)
 	return NewApiResponse[ResponseGetActivities](SuccessGetActivities, &data)
 }
-
-var SuccessGetActivitiesPage = NewApiStatus("GET_ACTIVITIES_PAGE", "成功获取活动分页", Ok)
 
 func (activityService *ActivityService) GetActivitiesPage(req *RequestGetActivitiesPage) *ApiResponse[ResponseGetActivitiesPage] {
 	if req.Page <= 0 || req.PageSize <= 0 {
@@ -88,8 +81,6 @@ func (activityService *ActivityService) GetActivitiesPage(req *RequestGetActivit
 	})
 }
 
-var SuccessGetActivityInfo = NewApiStatus("GET_ACTIVITY_INFO", "成功获取活动信息", Ok)
-
 func (activityService *ActivityService) GetActivityInfo(req *RequestActivityInfo) *ApiResponse[ResponseActivityInfo] {
 	if req.ActivityId <= 0 {
 		return NewApiResponse[ResponseActivityInfo](ErrIllegalParam, nil)
@@ -102,8 +93,6 @@ func (activityService *ActivityService) GetActivityInfo(req *RequestActivityInfo
 	}
 	return NewApiResponse(SuccessGetActivityInfo, (*ResponseActivityInfo)(activity))
 }
-
-var SuccessAddActivity = NewApiStatus("ADD_ACTIVITY", "成功添加活动", Ok)
 
 func (activityService *ActivityService) AddActivity(req *RequestAddActivity) *ApiResponse[ResponseAddActivity] {
 	if req.Activity == nil {
@@ -142,8 +131,6 @@ func (activityService *ActivityService) AddActivity(req *RequestAddActivity) *Ap
 	return NewApiResponse[ResponseAddActivity](SuccessAddActivity, &data)
 }
 
-var SuccessDeleteActivity = NewApiStatus("DELETE_ACTIVITY", "成功删除活动", Ok)
-
 func (activityService *ActivityService) DeleteActivity(req *RequestDeleteActivity) *ApiResponse[ResponseDeleteActivity] {
 	if req.ActivityId <= 0 {
 		return NewApiResponse[ResponseDeleteActivity](ErrIllegalParam, nil)
@@ -174,13 +161,6 @@ func (activityService *ActivityService) DeleteActivity(req *RequestDeleteActivit
 	data := ResponseDeleteActivity(true)
 	return NewApiResponse(SuccessDeleteActivity, &data)
 }
-
-var (
-	ErrRatingTooLow          = NewApiStatus("RATING_TOO_LOW", "管制权限不够", PermissionDenied)
-	ErrFacilityAlreadyExist  = NewApiStatus("FACILITY_ALREADY_EXIST", "你不能同时报名两个以上的席位", Conflict)
-	ErrFacilityAlreadySigned = NewApiStatus("FACILITY_ALREADY_SIGNED", "已有其他管制员报名", Conflict)
-	SuccessSignFacility      = NewApiStatus("SIGNED_FACILITY", "报名成功", Ok)
-)
 
 func (activityService *ActivityService) ControllerJoin(req *RequestControllerJoin) *ApiResponse[ResponseControllerJoin] {
 	if req.ActivityId <= 0 || req.FacilityId <= 0 {
@@ -230,12 +210,6 @@ func (activityService *ActivityService) ControllerJoin(req *RequestControllerJoi
 	return NewApiResponse(SuccessSignFacility, &data)
 }
 
-var (
-	ErrFacilityUnSigned    = NewApiStatus("FACILITY_UNSIGNED", "该席位尚未有人报名", Conflict)
-	ErrFacilityNotYourSign = NewApiStatus("FACILITY_NOT_YOUR_SIGN", "这不是你报名的席位", Conflict)
-	SuccessUnsignFacility  = NewApiStatus("UNSIGNED_FACILITY", "成功取消报名", Ok)
-)
-
 func (activityService *ActivityService) ControllerLeave(req *RequestControllerLeave) *ApiResponse[ResponseControllerLeave] {
 	if req.ActivityId <= 0 || req.FacilityId <= 0 {
 		return NewApiResponse[ResponseControllerLeave](ErrIllegalParam, nil)
@@ -273,12 +247,6 @@ func (activityService *ActivityService) ControllerLeave(req *RequestControllerLe
 	return NewApiResponse(SuccessUnsignFacility, &data)
 }
 
-var (
-	ErrAlreadySigned      = NewApiStatus("ALREADY_SIGNED", "你已经报名该活动了", Conflict)
-	ErrCallsignUsed       = NewApiStatus("CALLSIGN_USED", "呼号已被占用", Conflict)
-	SuccessSignedActivity = NewApiStatus("SIGNED_ACTIVITY", "报名成功", Ok)
-)
-
 func (activityService *ActivityService) PilotJoin(req *RequestPilotJoin) *ApiResponse[ResponsePilotJoin] {
 	if req.ActivityId <= 0 || req.Callsign == "" || req.AircraftType == "" {
 		return NewApiResponse[ResponsePilotJoin](ErrIllegalParam, nil)
@@ -309,11 +277,6 @@ func (activityService *ActivityService) PilotJoin(req *RequestPilotJoin) *ApiRes
 	return NewApiResponse(SuccessSignedActivity, &data)
 }
 
-var (
-	ErrNoSigned             = NewApiStatus("NO_SIGNED", "你还没有报名该活动", Conflict)
-	SuccessUnsignedActivity = NewApiStatus("UNSIGNED_ACTIVITY", "取消报名成功", Ok)
-)
-
 func (activityService *ActivityService) PilotLeave(req *RequestPilotLeave) *ApiResponse[ResponsePilotLeave] {
 	if req.ActivityId <= 0 {
 		return NewApiResponse[ResponsePilotLeave](ErrIllegalParam, nil)
@@ -340,8 +303,6 @@ func (activityService *ActivityService) PilotLeave(req *RequestPilotLeave) *ApiR
 	data := ResponsePilotLeave(true)
 	return NewApiResponse(SuccessUnsignedActivity, &data)
 }
-
-var SuccessEditActivity = NewApiStatus("EDIT_ACTIVITY", "修改活动成功", Ok)
 
 func (activityService *ActivityService) EditActivity(req *RequestEditActivity) *ApiResponse[ResponseEditActivity] {
 	if req.Activity == nil {
@@ -395,8 +356,6 @@ func (activityService *ActivityService) EditActivity(req *RequestEditActivity) *
 	return NewApiResponse(SuccessEditActivity, &data)
 }
 
-var SuccessEditActivityStatus = NewApiStatus("EDIT_ACTIVITY_STATUS", "成功修改活动状态", Ok)
-
 func (activityService *ActivityService) EditActivityStatus(req *RequestEditActivityStatus) *ApiResponse[ResponseEditActivityStatus] {
 	if req.ActivityId <= 0 || req.Status < int(operation.Open) || req.Status > int(operation.Closed) {
 		return NewApiResponse[ResponseEditActivityStatus](ErrIllegalParam, nil)
@@ -417,8 +376,6 @@ func (activityService *ActivityService) EditActivityStatus(req *RequestEditActiv
 	data := ResponseEditActivityStatus(true)
 	return NewApiResponse(SuccessEditActivityStatus, &data)
 }
-
-var SuccessEditPilotsStatus = NewApiStatus("EDIT_PILOTS_STATUS", "成功修改活动机组状态", Ok)
 
 func (activityService *ActivityService) EditPilotStatus(req *RequestEditPilotStatus) *ApiResponse[ResponseEditPilotStatus] {
 	if req.ActivityId <= 0 || req.UserId <= 0 || req.Status < int(operation.Signed) || req.Status > int(operation.Landing) {

@@ -46,12 +46,6 @@ func (clientService *ClientService) GetOnlineClients() *fsd.OnlineClients {
 	return clientService.clientManager.GetWhazzupContent()
 }
 
-var (
-	ErrSendMessage     = NewApiStatus("FAIL_SEND_MESSAGE", "发送消息失败", ServerInternalError)
-	ErrClientNotFound  = NewApiStatus("CLIENT_NOT_FOUND", "指定客户端不存在", NotFound)
-	SuccessSendMessage = NewApiStatus("SEND_MESSAGE", "发送成功", Ok)
-)
-
 func (clientService *ClientService) SendMessageToClient(req *RequestSendMessageToClient) *ApiResponse[ResponseSendMessageToClient] {
 	if req.Uid <= 0 || req.SendTo == "" || req.Message == "" {
 		return NewApiResponse[ResponseSendMessageToClient](ErrIllegalParam, nil)
@@ -90,8 +84,6 @@ func (clientService *ClientService) SendMessageToClient(req *RequestSendMessageT
 	data := ResponseSendMessageToClient(true)
 	return NewApiResponse[ResponseSendMessageToClient](SuccessSendMessage, &data)
 }
-
-var SuccessKillClient = NewApiStatus("KILL_CLIENT", "成功踢出客户端", Ok)
 
 func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiResponse[ResponseKillClient] {
 	if req.Uid <= 0 || req.TargetCallsign == "" {
@@ -137,8 +129,6 @@ func (clientService *ClientService) KillClient(req *RequestKillClient) *ApiRespo
 	return NewApiResponse[ResponseKillClient](SuccessKillClient, &data)
 }
 
-var SuccessGetClientPath = NewApiStatus("GET_CLIENT_PATH", "获取客户端飞行路径", Ok)
-
 func (clientService *ClientService) GetClientFlightPath(req *RequestClientPath) *ApiResponse[ResponseClientPath] {
 	if req.Callsign == "" {
 		return NewApiResponse[ResponseClientPath](ErrIllegalParam, nil)
@@ -152,8 +142,6 @@ func (clientService *ClientService) GetClientFlightPath(req *RequestClientPath) 
 	data := ResponseClientPath(client.Paths())
 	return NewApiResponse(SuccessGetClientPath, &data)
 }
-
-var SuccessSendBroadcastMessage = NewApiStatus("SEND_BROADCAST_MESSAGE", "获取客户端飞行路径", Ok)
 
 func (clientService *ClientService) SendBroadcastMessage(req *RequestSendBroadcastMessage) *ApiResponse[ResponseSendBroadcastMessage] {
 	if req.Message == "" || !fsd.IsValidBroadcastTarget(req.Target) {

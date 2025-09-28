@@ -76,12 +76,6 @@ func (emailService *EmailService) VerifyEmailCode(email string, code string, cid
 	return nil
 }
 
-var (
-	ErrRenderTemplate = NewApiStatus("RENDER_TEMPLATE_ERROR", "邮件发送失败", ServerInternalError)
-	ErrSendEmail      = NewApiStatus("EMAIL_SEND_ERROR", "发送失败", ServerInternalError)
-	SendEmailSuccess  = NewApiStatus("SEND_EMAIL_SUCCESS", "邮件发送成功", Ok)
-)
-
 func (emailService *EmailService) SendEmailVerifyCode(req *RequestEmailVerifyCode) *ApiResponse[ResponseEmailVerifyCode] {
 	if emailService.config.EmailServer == nil {
 		return NewApiResponse(SendEmailSuccess, &ResponseEmailVerifyCode{Email: req.Email})

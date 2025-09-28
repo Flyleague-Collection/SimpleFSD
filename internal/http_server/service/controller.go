@@ -45,8 +45,6 @@ func NewControllerService(
 	}
 }
 
-var SuccessGetControllers = NewApiStatus("GET_CONTROLLER_PAGE", "获取管制员信息分页成功", Ok)
-
 func (controllerService *ControllerService) GetControllerList(req *RequestControllerList) *ApiResponse[ResponseControllerList] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseControllerList](ErrIllegalParam, nil)
@@ -68,8 +66,6 @@ func (controllerService *ControllerService) GetControllerList(req *RequestContro
 		Total:    total,
 	})
 }
-
-var SuccessGetCurrentControllerRecord = NewApiStatus("GET_CURRENT_CONTROLLER_RECORD", "获取管制员履历成功", Ok)
 
 func (controllerService *ControllerService) GetCurrentControllerRecord(req *RequestGetCurrentControllerRecord) *ApiResponse[ResponseGetCurrentControllerRecord] {
 	if req.Page <= 0 || req.PageSize <= 0 {
@@ -111,8 +107,6 @@ func (controllerService *ControllerService) GetControllerRecord(req *RequestGetC
 	})
 }
 
-var SuccessGetControllerRatings = NewApiStatus("GET_CONTROLLER_RATINGS", "成功获取权限公示", Ok)
-
 func (controllerService *ControllerService) GetControllerRatings(req *RequestControllerRatingList) *ApiResponse[ResponseControllerRatingList] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseControllerRatingList](ErrIllegalParam, nil)
@@ -144,11 +138,6 @@ func (controllerService *ControllerService) GetControllerRatings(req *RequestCon
 		Total:    total,
 	})
 }
-
-var (
-	ErrSameRating                 = NewApiStatus("SAME_RATING", "用户已是该权限", BadRequest)
-	SuccessUpdateControllerRating = NewApiStatus("UPDATE_CONTROLLER_RATING", "编辑用户管制权限成功", Ok)
-)
 
 func (controllerService *ControllerService) UpdateControllerRating(req *RequestUpdateControllerRating) *ApiResponse[ResponseUpdateControllerRating] {
 	if req.TargetUid <= 0 || !fsd.IsValidRating(req.Rating) || (req.UnderSolo && (req.SoloUntil.IsZero() || req.SoloUntil.Before(time.Now()))) || (req.Guest && (req.UnderMonitor || req.UnderSolo)) {
@@ -254,8 +243,6 @@ func (controllerService *ControllerService) UpdateControllerRating(req *RequestU
 	return NewApiResponse(SuccessUpdateControllerRating, &data)
 }
 
-var SuccessAddControllerRecord = NewApiStatus("ADD_CONTROLLER_RECORD", "添加管制员履历成功", Ok)
-
 func (controllerService *ControllerService) AddControllerRecord(req *RequestAddControllerRecord) *ApiResponse[ResponseAddControllerRecord] {
 	if req.TargetUid <= 0 || req.Content == "" || !operation.IsValidControllerRecordType(req.Type) {
 		return NewApiResponse[ResponseAddControllerRecord](ErrIllegalParam, nil)
@@ -301,8 +288,6 @@ func (controllerService *ControllerService) AddControllerRecord(req *RequestAddC
 	data := ResponseAddControllerRecord(true)
 	return NewApiResponse(SuccessAddControllerRecord, &data)
 }
-
-var SuccessDeleteControllerRecord = NewApiStatus("DELETE_CONTROLLER_RECORD", "删除管制员履历成功", Ok)
 
 func (controllerService *ControllerService) DeleteControllerRecord(req *RequestDeleteControllerRecord) *ApiResponse[ResponseDeleteControllerRecord] {
 	if req.TargetRecord <= 0 {

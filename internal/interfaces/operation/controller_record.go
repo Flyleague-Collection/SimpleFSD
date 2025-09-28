@@ -29,8 +29,8 @@ const (
 	Other                                    // 其他未定义内容
 )
 
-func IsValidControllerRecordType(s int) bool {
-	return int(Interview) <= s && s <= int(Other)
+func IsValidControllerRecordType(val int) bool {
+	return int(Interview) <= val && val <= int(Other)
 }
 
 var (

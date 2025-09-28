@@ -51,14 +51,6 @@ func NewUserService(
 	}
 }
 
-var (
-	ErrCidNotMatch      = NewApiStatus("CID_NOT_MATCH", "注册cid与验证码发送时的cid不一致", BadRequest)
-	ErrEmailExpired     = NewApiStatus("EMAIL_CODE_EXPIRED", "验证码已过期", BadRequest)
-	ErrEmailIllegal     = NewApiStatus("EMAIL_CODE_ILLEGAL", "非法验证码", BadRequest)
-	ErrEmailCodeInvalid = NewApiStatus("EMAIL_CODE_INVALID", "邮箱验证码错误", BadRequest)
-	SuccessRegister     = NewApiStatus("REGISTER_SUCCESS", "注册成功", Ok)
-)
-
 func (userService *UserService) verifyEmailCode(email string, emailCode string, cid int) *ApiStatus {
 	err := userService.emailService.VerifyEmailCode(email, emailCode, cid)
 	switch {
@@ -115,12 +107,6 @@ func (userService *UserService) UserRegister(req *RequestUserRegister) *ApiRespo
 	return NewApiResponse(SuccessRegister, &data)
 }
 
-var (
-	ErrAccountSuspended        = NewApiStatus("ACCOUNT_SUSPENDED", "您已被封禁", PermissionDenied)
-	ErrWrongUsernameOrPassword = NewApiStatus("WRONG_USERNAME_OR_PASSWORD", "用户名或密码错误", NotFound)
-	SuccessLogin               = NewApiStatus("LOGIN_SUCCESS", "登陆成功", Ok)
-)
-
 func (userService *UserService) UserLogin(req *RequestUserLogin) *ApiResponse[ResponseUserLogin] {
 	if req.Username == "" || req.Password == "" {
 		return NewApiResponse[ResponseUserLogin](ErrIllegalParam, nil)
@@ -152,11 +138,6 @@ func (userService *UserService) UserLogin(req *RequestUserLogin) *ApiResponse[Re
 	})
 }
 
-var (
-	NameNotAvailability = NewApiStatus("INFO_NOT_AVAILABILITY", "用户信息不可用", Ok)
-	NameAvailability    = NewApiStatus("INFO_AVAILABILITY", "用户信息可用", Ok)
-)
-
 func (userService *UserService) CheckAvailability(req *RequestUserAvailability) *ApiResponse[ResponseUserAvailability] {
 	if req.Username == "" && req.Email == "" && req.Cid == "" {
 		return NewApiResponse[ResponseUserAvailability](ErrIllegalParam, nil)
@@ -174,8 +155,6 @@ func (userService *UserService) CheckAvailability(req *RequestUserAvailability) 
 	return NewApiResponse(NameAvailability, &data)
 }
 
-var SuccessGetCurrentProfile = NewApiStatus("GET_CURRENT_PROFILE_SUCCESS", "获取当前用户信息成功", Ok)
-
 func (userService *UserService) GetCurrentProfile(req *RequestUserCurrentProfile) *ApiResponse[ResponseUserCurrentProfile] {
 	user, res := CallDBFunc[*operation.User, ResponseUserCurrentProfile](func() (*operation.User, error) {
 		return userService.userOperation.GetUserByUid(req.Uid)
@@ -187,14 +166,6 @@ func (userService *UserService) GetCurrentProfile(req *RequestUserCurrentProfile
 	data := ResponseUserCurrentProfile(user)
 	return NewApiResponse(SuccessGetCurrentProfile, &data)
 }
-
-var (
-	ErrOriginPasswordRequired = NewApiStatus("ORIGIN_PASSWORD_REQUIRED", "未提供原始密码", BadRequest)
-	ErrNewPasswordRequired    = NewApiStatus("NEW_PASSWORD_REQUIRED", "未提供新密码", BadRequest)
-	ErrWrongOriginPassword    = NewApiStatus("WRONG_ORIGIN_PASSWORD_ERROR", "原始密码不正确", BadRequest)
-	ErrQQInvalid              = NewApiStatus("QQ_INVALID", "qq号不正确", BadRequest)
-	SuccessEditCurrentProfile = NewApiStatus("SUCCESS_EDIT_CURRENT_PROFILE", "编辑用户信息成功", Ok)
-)
 
 func checkQQ(qq int) *ApiStatus {
 	// QQ 号码应当在 10000 - 100000000000之间
@@ -327,8 +298,6 @@ func (userService *UserService) EditCurrentProfile(req *RequestUserEditCurrentPr
 	return NewApiResponse(SuccessEditCurrentProfile, &data)
 }
 
-var SuccessGetProfile = NewApiStatus("GET_PROFILE_SUCCESS", "获取用户信息成功", Ok)
-
 func (userService *UserService) GetUserProfile(req *RequestUserProfile) *ApiResponse[ResponseUserProfile] {
 	if req.TargetUid <= 0 {
 		return NewApiResponse[ResponseUserProfile](ErrIllegalParam, nil)
@@ -348,8 +317,6 @@ func (userService *UserService) GetUserProfile(req *RequestUserProfile) *ApiResp
 	data := ResponseUserProfile(user)
 	return NewApiResponse(SuccessGetProfile, &data)
 }
-
-var SuccessEditUserProfile = NewApiStatus("EDIT_USER_PROFILE", "修改用户信息成功", Ok)
 
 func (userService *UserService) EditUserProfile(req *RequestUserEditProfile) *ApiResponse[ResponseUserEditProfile] {
 	if req.TargetUid <= 0 {
@@ -396,8 +363,6 @@ func (userService *UserService) EditUserProfile(req *RequestUserEditProfile) *Ap
 	return NewApiResponse(SuccessEditUserProfile, &data)
 }
 
-var SuccessGetUsers = NewApiStatus("GET_USER_PAGE", "获取用户信息分页成功", Ok)
-
 func (userService *UserService) GetUserList(req *RequestUserList) *ApiResponse[ResponseUserList] {
 	if req.Page <= 0 || req.PageSize <= 0 {
 		return NewApiResponse[ResponseUserList](ErrIllegalParam, nil)
@@ -419,11 +384,6 @@ func (userService *UserService) GetUserList(req *RequestUserList) *ApiResponse[R
 		Total:    total,
 	})
 }
-
-var (
-	ErrPermissionNodeNotExists = NewApiStatus("PERMISSION_NODE_NOT_EXISTS", "无效权限节点", BadRequest)
-	SuccessEditUserPermission  = NewApiStatus("EDIT_USER_PERMISSION", "编辑用户权限成功", Ok)
-)
 
 func (userService *UserService) EditUserPermission(req *RequestUserEditPermission) *ApiResponse[ResponseUserEditPermission] {
 	if req.TargetUid <= 0 || len(req.Permissions) == 0 {
@@ -507,8 +467,6 @@ func (userService *UserService) EditUserPermission(req *RequestUserEditPermissio
 	return NewApiResponse(SuccessEditUserPermission, &data)
 }
 
-var SuccessGetUserHistory = NewApiStatus("GET_USER_HISTORY", "成功获取用户历史数据", Ok)
-
 func (userService *UserService) GetUserHistory(req *RequestGetUserHistory) *ApiResponse[ResponseGetUserHistory] {
 	user, res := CallDBFunc[*operation.User, ResponseGetUserHistory](func() (*operation.User, error) {
 		return userService.userOperation.GetUserByCid(req.Cid)
@@ -530,8 +488,6 @@ func (userService *UserService) GetUserHistory(req *RequestGetUserHistory) *ApiR
 		UserHistory:    userHistory,
 	})
 }
-
-var SuccessGetToken = NewApiStatus("GET_TOKEN", "成功刷新秘钥", Ok)
 
 func (userService *UserService) GetTokenWithFlushToken(req *RequestGetToken) *ApiResponse[ResponseGetToken] {
 	if !req.FlushToken {

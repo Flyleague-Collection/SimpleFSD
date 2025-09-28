@@ -36,8 +36,6 @@ func NewFlightPlanService(
 	}
 }
 
-var SuccessSubmitFlightPlan = NewApiStatus("SUBMIT_FLIGHT_PLAN", "成功提交计划", Ok)
-
 func (flightPlanService *FlightPlanService) SubmitFlightPlan(req *RequestSubmitFlightPlan) *ApiResponse[ResponseSubmitFlightPlan] {
 	if req.FlightPlan == nil {
 		return NewApiResponse[ResponseSubmitFlightPlan](ErrIllegalParam, nil)
@@ -71,8 +69,6 @@ func (flightPlanService *FlightPlanService) SubmitFlightPlan(req *RequestSubmitF
 	return NewApiResponse(SuccessSubmitFlightPlan, &data)
 }
 
-var SuccessGetFlightPlan = NewApiStatus("GET_FLIGHT_PLAN", "成功获取计划", Ok)
-
 func (flightPlanService *FlightPlanService) GetFlightPlan(req *RequestGetFlightPlan) *ApiResponse[ResponseGetFlightPlan] {
 	flightPlan, res := CallDBFunc[*operation.FlightPlan, ResponseGetFlightPlan](func() (*operation.FlightPlan, error) {
 		return flightPlanService.flightPlanOperation.GetFlightPlanByCid(req.Cid)
@@ -83,8 +79,6 @@ func (flightPlanService *FlightPlanService) GetFlightPlan(req *RequestGetFlightP
 
 	return NewApiResponse(SuccessGetFlightPlan, &ResponseGetFlightPlan{FlightPlan: flightPlan})
 }
-
-var SuccessGetFlightPlans = NewApiStatus("GET_FLIGHT_PLANS", "成功获取计划", Ok)
 
 func (flightPlanService *FlightPlanService) GetFlightPlans(req *RequestGetFlightPlans) *ApiResponse[ResponseGetFlightPlans] {
 	if req.Page <= 0 || req.PageSize <= 0 {
@@ -108,8 +102,6 @@ func (flightPlanService *FlightPlanService) GetFlightPlans(req *RequestGetFlight
 	})
 }
 
-var SuccessDeleteSelfFlightPlan = NewApiStatus("DELETE_SELF_FLIGHT_PLAN", "成功删除自己的飞行计划", Ok)
-
 func (flightPlanService *FlightPlanService) DeleteSelfFlightPlan(req *RequestDeleteSelfFlightPlan) *ApiResponse[ResponseDeleteSelfFlightPlan] {
 	if res := CallDBFuncWithoutRet[ResponseDeleteSelfFlightPlan](func() error {
 		return flightPlanService.flightPlanOperation.DeleteSelfFlightPlan(req.Cid)
@@ -132,8 +124,6 @@ func (flightPlanService *FlightPlanService) DeleteSelfFlightPlan(req *RequestDel
 	data := ResponseDeleteSelfFlightPlan(true)
 	return NewApiResponse(SuccessDeleteSelfFlightPlan, &data)
 }
-
-var SuccessDeleteFlightPlan = NewApiStatus("DELETE_FLIGHT_PLAN", "成功删除飞行计划", Ok)
 
 func (flightPlanService *FlightPlanService) DeleteFlightPlan(req *RequestDeleteFlightPlan) *ApiResponse[ResponseDeleteFlightPlan] {
 	if req.TargetCid <= 0 {
@@ -166,12 +156,6 @@ func (flightPlanService *FlightPlanService) DeleteFlightPlan(req *RequestDeleteF
 	return NewApiResponse(SuccessDeleteFlightPlan, &data)
 }
 
-var (
-	ErrAlreadyLocked      = NewApiStatus("ALREADY_LOCKED", "飞行计划已锁定", Conflict)
-	ErrAlreadyUnlocked    = NewApiStatus("ALREADY_UNLOCKED", "飞行计划未锁定", Conflict)
-	SuccessLockFlightPlan = NewApiStatus("LOCK_FLIGHT_PLAN", "成功修改计划锁定状态", Ok)
-)
-
 func (flightPlanService *FlightPlanService) LockFlightPlan(req *RequestLockFlightPlan) *ApiResponse[ResponseLockFlightPlan] {
 	if req.TargetCid <= 0 {
 		return NewApiResponse[ResponseLockFlightPlan](ErrIllegalParam, nil)
@@ -190,9 +174,9 @@ func (flightPlanService *FlightPlanService) LockFlightPlan(req *RequestLockFligh
 
 	if flightPlan.Locked == req.Lock {
 		if req.Lock {
-			return NewApiResponse[ResponseLockFlightPlan](ErrAlreadyLocked, nil)
+			return NewApiResponse[ResponseLockFlightPlan](ErrFlightPlanLocked, nil)
 		} else {
-			return NewApiResponse[ResponseLockFlightPlan](ErrAlreadyUnlocked, nil)
+			return NewApiResponse[ResponseLockFlightPlan](ErrFlightPlanUnlocked, nil)
 		}
 	}
 

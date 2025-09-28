@@ -5,6 +5,12 @@ import (
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 )
 
+var (
+	SuccessGetServerConfig = NewApiStatus("GET_SERVER_CONFIG", "成功获取服务器配置", Ok)
+	SuccessGetServerInfo   = NewApiStatus("GET_SERVER_INFO", "成功获取服务器信息", Ok)
+	SuccessGetTimeRating   = NewApiStatus("GET_TIME_RATING", "成功获取服务器排行榜", Ok)
+)
+
 type ServerServiceInterface interface {
 	GetServerConfig() *ApiResponse[ResponseGetServerConfig]
 	GetServerInfo() *ApiResponse[ResponseGetServerInfo]

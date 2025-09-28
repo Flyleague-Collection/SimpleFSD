@@ -24,11 +24,6 @@ func NewMetarService(
 	}
 }
 
-var (
-	ErrMetarNotFound = NewApiStatus("METAR_NOT_FOUND", "未找到Metar信息", NotFound)
-	SuccessGetMetar  = NewApiStatus("GET_METAR", "成功获取Metar", Ok)
-)
-
 func (metarService *MetarService) QueryMetar(req *RequestQueryMetar) *ApiResponse[ResponseQueryMetar] {
 	if req.ICAO == "" {
 		return NewApiResponse[ResponseQueryMetar](ErrIllegalParam, nil)

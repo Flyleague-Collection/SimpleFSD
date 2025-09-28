@@ -7,7 +7,14 @@ import (
 )
 
 var (
-	ErrRecordNotFound = NewApiStatus("RECORD_NOT_FOUND", "管制员履历不存在", NotFound)
+	ErrRecordNotFound                 = NewApiStatus("RECORD_NOT_FOUND", "管制员履历不存在", NotFound)
+	ErrSameRating                     = NewApiStatus("SAME_RATING", "用户已是该权限", BadRequest)
+	SuccessGetControllers             = NewApiStatus("GET_CONTROLLER_PAGE", "获取管制员信息分页成功", Ok)
+	SuccessGetCurrentControllerRecord = NewApiStatus("GET_CURRENT_CONTROLLER_RECORD", "获取管制员履历成功", Ok)
+	SuccessGetControllerRatings       = NewApiStatus("GET_CONTROLLER_RATINGS", "成功获取权限公示", Ok)
+	SuccessUpdateControllerRating     = NewApiStatus("UPDATE_CONTROLLER_RATING", "编辑用户管制权限成功", Ok)
+	SuccessAddControllerRecord        = NewApiStatus("ADD_CONTROLLER_RECORD", "添加管制员履历成功", Ok)
+	SuccessDeleteControllerRecord     = NewApiStatus("DELETE_CONTROLLER_RECORD", "删除管制员履历成功", Ok)
 )
 
 type ControllerServiceInterface interface {

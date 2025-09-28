@@ -183,6 +183,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	activityOperation := applicationContent.Operations().ActivityOperation()
 	ticketOperation := applicationContent.Operations().TicketOperation()
 	flightPlanOperation := applicationContent.Operations().FlightPlanOperation()
+	announcementOperation := applicationContent.Operations().AnnouncementOperation()
 	metarManager := applicationContent.MetarManager()
 
 	messageQueue := applicationContent.MessageQueue()
@@ -216,6 +217,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	controllerApplicationService := impl.NewControllerApplicationService(logger, messageQueue, controllerApplicationOperation, userOperation, auditLogOperation)
 	ticketService := impl.NewTicketService(logger, messageQueue, userOperation, ticketOperation, auditLogOperation)
 	flightPlanService := impl.NewFlightPlanService(logger, messageQueue, userOperation, flightPlanOperation, auditLogOperation)
+	announcementService := impl.NewAnnouncementService(logger, messageQueue, announcementOperation, auditLogOperation)
 	metarService := impl.NewMetarService(logger, metarManager)
 
 	logger.Info("Controller initializing...")
@@ -231,6 +233,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	controllerApplicationController := controller.NewControllerApplicationController(logger, controllerApplicationService)
 	ticketController := controller.NewTicketController(logger, ticketService)
 	flightPlanController := controller.NewFlightPlanController(logger, flightPlanService)
+	announcementController := controller.NewAnnouncementController(logger, announcementService)
 	metarServiceController := controller.NewMetarServiceController(logger, metarService)
 
 	logger.Info("Applying router...")
@@ -310,6 +313,13 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	flightPlanGroup.PUT("/:cid/lock", flightPlanController.LockFlightPlan, jwtMiddleware, requireNoFlushToken)
 	flightPlanGroup.DELETE("/:cid/lock", flightPlanController.UnlockFlightPlan, jwtMiddleware, requireNoFlushToken)
 	flightPlanGroup.DELETE("/:cid", flightPlanController.DeleteFlightPlan, jwtMiddleware, requireNoFlushToken)
+
+	announcementGroup := apiGroup.Group("/announcements")
+	announcementGroup.GET("", announcementController.GetAnnouncements, jwtMiddleware, requireNoFlushToken)
+	announcementGroup.GET("/detail", announcementController.GetDetailAnnouncements, jwtMiddleware, requireNoFlushToken)
+	announcementGroup.POST("", announcementController.CreateAnnouncement, jwtMiddleware, requireNoFlushToken)
+	announcementGroup.PUT("/:aid", announcementController.UpdateAnnouncement, jwtMiddleware, requireNoFlushToken)
+	announcementGroup.DELETE("/:aid", announcementController.DeleteAnnouncement, jwtMiddleware, requireNoFlushToken)
 
 	fileGroup := apiGroup.Group("/files")
 	fileGroup.POST("/images", fileController.UploadImage, jwtMiddleware, requireNoFlushToken)
