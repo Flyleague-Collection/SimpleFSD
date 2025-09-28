@@ -129,6 +129,10 @@ func (service *AnnouncementService) EditAnnouncement(req *RequestEditAnnouncemen
 
 	updateData := map[string]interface{}{}
 
+	if req.Title != "" && req.Title != announcement.Title {
+		updateData["title"] = req.Title
+	}
+
 	if req.Content != "" && req.Content != announcement.Content {
 		updateData["content"] = req.Content
 	}
@@ -157,7 +161,7 @@ func (service *AnnouncementService) EditAnnouncement(req *RequestEditAnnouncemen
 		Data: service.auditLogOperation.NewAuditLog(
 			operation.AnnouncementUpdated,
 			req.Cid,
-			strconv.Itoa(int(req.Announcement.ID)),
+			strconv.Itoa(int(announcement.ID)),
 			req.Ip,
 			req.UserAgent,
 			&operation.ChangeDetail{
