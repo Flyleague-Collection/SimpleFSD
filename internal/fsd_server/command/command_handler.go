@@ -383,7 +383,7 @@ func (content *CommandContent) HandleAtcEditPlan(session SessionInterface, data 
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
 	if !session.Client().IsAtc() {
-		return ResultError(Syntax, false, session.Client().Callsign(), fmt.Errorf("only act can edit flight plan"))
+		return ResultError(Syntax, false, session.Client().Callsign(), fmt.Errorf("only atc can edit flight plan"))
 	}
 	if !session.Client().CheckFacility(AllowAtcFacility) {
 		return ResultError(Syntax, false, session.Client().Callsign(), fmt.Errorf("%s facility not allowed to edit plan", session.Client().Facility().String()))

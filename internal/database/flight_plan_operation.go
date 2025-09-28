@@ -191,10 +191,10 @@ func (flightPlanOperation *FlightPlanOperation) UpdateCruiseAltitude(flightPlan 
 }
 
 func (flightPlanOperation *FlightPlanOperation) ToString(flightPlan *FlightPlan) string {
-	return fmt.Sprintf("$FP%s:%s:%s:%s:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\r\n",
+	return fmt.Sprintf("$FP%s:%s:%s:%s:%d:%s:%d:%d:%s:%s:%d:%d:%d:%d:%s:%s:%s\r\n",
 		flightPlan.Callsign, fsd.AllATC, flightPlan.FlightType, flightPlan.AircraftType, flightPlan.Tas,
-		flightPlan.DepartureAirport, fmt.Sprintf("%04d", flightPlan.DepartureTime),
-		fmt.Sprintf("%04d", flightPlan.AtcDepartureTime), flightPlan.CruiseAltitude,
-		flightPlan.ArrivalAirport, flightPlan.RouteTimeHour, flightPlan.RouteTimeMinute, flightPlan.FuelTimeHour,
-		flightPlan.FuelTimeMinute, flightPlan.AlternateAirport, flightPlan.Remarks, flightPlan.Route)
+		flightPlan.DepartureAirport, flightPlan.DepartureTime, flightPlan.AtcDepartureTime, flightPlan.CruiseAltitude,
+		flightPlan.ArrivalAirport, utils.StrToInt(flightPlan.RouteTimeHour, 0),
+		utils.StrToInt(flightPlan.RouteTimeMinute, 0), utils.StrToInt(flightPlan.FuelTimeHour, 0),
+		utils.StrToInt(flightPlan.FuelTimeMinute, 0), flightPlan.AlternateAirport, flightPlan.Remarks, flightPlan.Route)
 }
