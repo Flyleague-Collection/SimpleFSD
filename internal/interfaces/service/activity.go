@@ -105,7 +105,6 @@ type ResponseDeleteActivity bool
 
 type RequestControllerJoin struct {
 	JwtHeader
-	Rating     int
 	ActivityId uint `param:"activity_id"`
 	FacilityId uint `param:"facility_id"`
 }

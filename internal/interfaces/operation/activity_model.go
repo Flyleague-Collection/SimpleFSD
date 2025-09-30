@@ -93,7 +93,7 @@ type ActivityFacility struct {
 
 func (facility *ActivityFacility) Equal(other *ActivityFacility) bool {
 	return facility.ID == other.ID && facility.ActivityId == other.ActivityId && facility.MinRating == other.MinRating &&
-		facility.Callsign == other.Callsign && facility.Frequency == other.Frequency
+		facility.Callsign == other.Callsign && facility.Frequency == other.Frequency && facility.Tier2Tower == other.Tier2Tower
 }
 
 func (facility *ActivityFacility) Diff(other *ActivityFacility) map[string]interface{} {

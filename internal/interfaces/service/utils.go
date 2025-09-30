@@ -84,6 +84,7 @@ type JwtHeader struct {
 	Uid        uint
 	Permission uint64
 	Cid        int
+	Rating     int
 }
 
 func (jwt *JwtHeader) SetUid(uid uint) { jwt.Uid = uid }
@@ -91,6 +92,8 @@ func (jwt *JwtHeader) SetUid(uid uint) { jwt.Uid = uid }
 func (jwt *JwtHeader) SetCid(cid int) { jwt.Cid = cid }
 
 func (jwt *JwtHeader) SetPermission(permission uint64) { jwt.Permission = permission }
+
+func (jwt *JwtHeader) SetRating(rating int) { jwt.Rating = rating }
 
 func NewClaims(config *config.JWTConfig, user *operation.User, flushToken bool) *Claims {
 	expiredDuration := config.ExpiresDuration
