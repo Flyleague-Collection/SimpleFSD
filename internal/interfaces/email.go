@@ -21,6 +21,7 @@ type EmailSenderInterface interface {
 	SendEmailVerifyEmail(data *EmailVerifyEmailData) error
 	SendKickedFromServerEmail(data *KickedFromServerEmailData) error
 	SendPasswordChangeEmail(data *PasswordChangeEmailData) error
+	SendPasswordResetEmail(data *PasswordResetEmailData) error
 	SendPermissionChangeEmail(data *PermissionChangeEmailData) error
 	SendTicketReplyEmail(data *TicketReplyEmailData) error
 }
@@ -33,6 +34,7 @@ type EmailMessageHandlerInterface interface {
 	HandleSendEmailVerifyEmailMessage(message *queue.Message) error
 	HandleSendKickedFromServerEmailMessage(message *queue.Message) error
 	HandleSendPasswordChangeEmailMessage(message *queue.Message) error
+	HandleSendPasswordResetEmailMessage(message *queue.Message) error
 	HandleSendPermissionChangeEmailMessage(message *queue.Message) error
 	HandleSendTicketReplyEmailMessage(message *queue.Message) error
 }
@@ -142,6 +144,20 @@ type PermissionChangeEmailData struct {
 	User        *operation.User
 	Operator    *operation.User
 	Permissions []string
+}
+
+// PasswordResetEmail 密码修改通知
+type PasswordResetEmail struct {
+	Cid       string // 用户CID
+	IP        string // 用户IP
+	UserAgent string // 用户UA
+	Time      string // 修改时间
+}
+
+type PasswordResetEmailData struct {
+	User      *operation.User
+	Ip        string
+	UserAgent string
 }
 
 // PermissionChangeEmail 飞控权限修改通知

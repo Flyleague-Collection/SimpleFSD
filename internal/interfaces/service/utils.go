@@ -59,6 +59,13 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type FsdClaims struct {
+	ControllerRating int `json:"controller_rating"`
+	PilotRating      int `json:"pilot_rating"`
+	config           *config.JWTConfig
+	jwt.RegisteredClaims
+}
+
 type PageArguments struct {
 	Page     int `query:"page_number"`
 	PageSize int `query:"page_size"`
@@ -118,7 +125,28 @@ func NewClaims(config *config.JWTConfig, user *operation.User, flushToken bool) 
 	}
 }
 
+func NewFsdClaims(config *config.JWTConfig, user *operation.User) *FsdClaims {
+	return &FsdClaims{
+		ControllerRating: user.Rating,
+		PilotRating:      0,
+		config:           config,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "FsdHttpServer",
+			Subject:   user.Username,
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(config.ExpiresDuration)),
+		},
+	}
+}
+
 func (claim *Claims) GenerateKey() string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claim)
+	tokenString, _ := token.SignedString([]byte(claim.config.Secret))
+	return tokenString
+}
+
+func (claim *FsdClaims) GenerateKey() string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claim)
 	tokenString, _ := token.SignedString([]byte(claim.config.Secret))
 	return tokenString

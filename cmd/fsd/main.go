@@ -133,6 +133,8 @@ func main() {
 	messageQueue.Subscribe(queue.KickClientFromServer, clientManager.HandleKickClientFromServerMessage)
 	messageQueue.Subscribe(queue.SendMessageToClient, clientManager.HandleSendMessageToClientMessage)
 	messageQueue.Subscribe(queue.BroadcastMessage, clientManager.HandleBroadcastMessage)
+	messageQueue.Subscribe(queue.FlushFlightPlan, clientManager.HandleFlightPlanFlushMessage)
+	messageQueue.Subscribe(queue.ChangeFlightPlanLockStatus, clientManager.HandleLockChangeMessage)
 
 	emailSender := email.NewEmailSender(mainLogger, config.Server.HttpServer.Email)
 	emailMessageHandler := email.NewEmailMessageHandler(emailSender)
@@ -144,6 +146,7 @@ func main() {
 	messageQueue.Subscribe(queue.SendEmailVerifyEmail, emailMessageHandler.HandleSendEmailVerifyEmailMessage)
 	messageQueue.Subscribe(queue.SendKickedFromServerEmail, emailMessageHandler.HandleSendKickedFromServerEmailMessage)
 	messageQueue.Subscribe(queue.SendPasswordChangeEmail, emailMessageHandler.HandleSendPasswordChangeEmailMessage)
+	messageQueue.Subscribe(queue.SendPasswordResetEmail, emailMessageHandler.HandleSendPasswordResetEmailMessage)
 	messageQueue.Subscribe(queue.SendPermissionChangeEmail, emailMessageHandler.HandleSendPermissionChangeEmailMessage)
 	messageQueue.Subscribe(queue.SendTicketReplyEmail, emailMessageHandler.HandleSendTicketReplyEmailMessage)
 

@@ -53,8 +53,8 @@ type FlightPlanOperationInterface interface {
 	GetFlightPlans(page, pageSize int) (flightPlans []*FlightPlan, total int64, err error)
 	LockFlightPlan(flightPlan *FlightPlan) (err error)
 	UnlockFlightPlan(flightPlan *FlightPlan) (err error)
-	DeleteSelfFlightPlan(cid int) (err error)
-	DeleteFlightPlan(cid int) (err error)
+	DeleteSelfFlightPlan(flightPlan *FlightPlan) (err error)
+	DeleteFlightPlan(flightPlan *FlightPlan) (err error)
 	// UpdateCruiseAltitude 更新巡航高度, 当err为nil时更新成功
 	UpdateCruiseAltitude(flightPlan *FlightPlan, cruiseAltitude string) (err error)
 	// ToString 将飞行计划转换为ES和Swift可识别的形式

@@ -12,7 +12,6 @@ type HttpServerConfig struct {
 	Host           string           `json:"host"`
 	Port           uint             `json:"port"`
 	Address        string           `json:"-"`
-	MaxWorkers     int              `json:"max_workers"` // 并发线程数
 	ProxyType      int              `json:"proxy_type"`
 	TrustedIpRange []string         `json:"trusted_ip_range"`
 	BodyLimit      string           `json:"body_limit"`
@@ -28,7 +27,6 @@ func defaultHttpServerConfig() *HttpServerConfig {
 		Enabled:        false,
 		Host:           "0.0.0.0",
 		Port:           6810,
-		MaxWorkers:     128,
 		ServerAddress:  "http://127.0.0.1:6810",
 		ProxyType:      0,
 		TrustedIpRange: make([]string, 0),

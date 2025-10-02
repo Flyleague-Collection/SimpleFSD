@@ -4,12 +4,14 @@ package command
 import (
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	c "github.com/half-nothing/simple-fsd/internal/fsd_server/client"
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strconv"
 	"strings"
@@ -17,12 +19,12 @@ import (
 )
 
 // verifyUserInfo 验证用户信息与处理客户端重连机制
-func (content *CommandContent) verifyUserInfo(session SessionInterface, callsign string, protocol int, cid operation.UserId, password string) *Result {
+func (content *CommandContent) verifyFsdUserInfo(session SessionInterface, callsign string, protocol int, cid operation.UserId, password string) *Result {
 	if !callsignValid(callsign) {
 		return ResultError(CallsignInvalid, true, callsign, nil)
 	}
 
-	if protocol != 9 {
+	if protocol != 9 && protocol != 101 {
 		return ResultError(InvalidProtocolVision, true, callsign, nil)
 	}
 
@@ -59,6 +61,47 @@ func (content *CommandContent) verifyUserInfo(session SessionInterface, callsign
 	return nil
 }
 
+func (content *CommandContent) verifyVatsimUserInfo(session SessionInterface, callsign string, cid operation.UserId, token string) *Result {
+	if !callsignValid(callsign) {
+		return ResultError(CallsignInvalid, true, callsign, nil)
+	}
+	client, ok := content.clientManager.GetClient(callsign)
+	// 客户端存在且标记为断开连接
+	if ok {
+		if client.Reconnect(session) {
+			// 客户端重连
+			session.SetClient(client)
+		} else {
+			// 呼号已被使用
+			return ResultError(CallsignInUse, true, callsign, nil)
+		}
+	}
+
+	user, err := cid.GetUser(content.userOperation)
+	if err != nil {
+		return ResultError(InvalidCidPassword, true, callsign, err)
+	}
+	if user.Rating <= Ban.Index() {
+		return ResultError(CidSuspended, true, callsign, nil)
+	}
+
+	claims, err := jwt.ParseWithClaims(token, &service.FsdClaims{}, content.defaultKeyFunc)
+	if err != nil {
+		return ResultError(InvalidCidPassword, true, callsign, err)
+	}
+
+	if _, ok := claims.Claims.(*service.FsdClaims); !ok {
+		return ResultError(InvalidCidPassword, true, callsign, errors.New("invalid claims type"))
+	}
+
+	if client != nil {
+		client.SetUser(user)
+	}
+	session.SetUser(user)
+
+	return nil
+}
+
 func (content *CommandContent) checkRangeLimit(_ SessionInterface, realFacility Facility, realRange int) *Result {
 	rangeLimit := realFacility.GetRangeLimit()
 	if rangeLimit > -1 && realRange > rangeLimit {
@@ -67,16 +110,14 @@ func (content *CommandContent) checkRangeLimit(_ SessionInterface, realFacility 
 	return nil
 }
 
-func (content *CommandContent) HandleAddAtc(session SessionInterface, data []string, rawLine []byte) *Result {
-	callsign := data[0]
-	cid := operation.GetUserId(data[3])
-	password := data[4]
-	protocol := utils.StrToInt(data[6], 0)
-	result := content.verifyUserInfo(session, callsign, protocol, cid, password)
-	if result != nil {
-		return result
+func (content *CommandContent) defaultKeyFunc(token *jwt.Token) (interface{}, error) {
+	if token.Method.Alg() != global.SigningMethod {
+		return nil, errors.New("illegal signature methods")
 	}
-	reqRating := utils.StrToInt(data[5], 0)
+	return []byte(content.jwtToken), nil
+}
+
+func (content *CommandContent) checkRatingAndFacility(session SessionInterface, reqRating int, callsign string) *Result {
 	if reqRating > session.User().Rating {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
 	}
@@ -89,6 +130,47 @@ func (content *CommandContent) HandleAddAtc(session SessionInterface, data []str
 		return ResultError(Custom, true, callsign, fmt.Errorf("invalid callsign %s", callsign))
 	} else {
 		session.SetFacilityIdent(facility)
+	}
+	return nil
+}
+
+func (content *CommandContent) HandleVatsimAddAtc(session SessionInterface, data []string, rawLine []byte) *Result {
+	callsign := data[0]
+	cid := operation.GetUserId(data[3])
+	if result := content.verifyVatsimUserInfo(session, callsign, cid, data[4]); result != nil {
+		return result
+	}
+	reqRating := utils.StrToInt(data[5], 0)
+	if result := content.checkRatingAndFacility(session, reqRating, callsign); result != nil {
+		return result
+	}
+	realName := data[2]
+	if session.Client() == nil {
+		client := c.NewClient(content.application, callsign, Rating(reqRating), 0, realName, session, true)
+		_ = content.clientManager.AddClient(client)
+		session.SetClient(client)
+	} else {
+		session.Client().SetRating(Rating(reqRating))
+		session.Client().SetRealName(realName)
+	}
+	session.Client().SendLine(MakePacket(ClientQuery, global.FSDServerName, callsign, "ATIS"))
+	go content.clientManager.BroadcastMessage(rawLine, session.Client(), BroadcastToClientInRange)
+	session.Client().SendMotd()
+	content.logger.InfoF("[%s] ATC login successfully", callsign)
+	return ResultSuccess()
+}
+
+func (content *CommandContent) HandleFsdAddAtc(session SessionInterface, data []string, rawLine []byte) *Result {
+	callsign := data[0]
+	cid := operation.GetUserId(data[3])
+	password := data[4]
+	protocol := utils.StrToInt(data[6], 0)
+	if result := content.verifyFsdUserInfo(session, callsign, protocol, cid, password); result != nil {
+		return result
+	}
+	reqRating := utils.StrToInt(data[5], 0)
+	if result := content.checkRatingAndFacility(session, reqRating, callsign); result != nil {
+		return result
 	}
 	realName := data[2]
 	latitude := utils.StrToFloat(data[9], 0)
@@ -114,7 +196,7 @@ func (content *CommandContent) HandleAddPilot(session SessionInterface, data []s
 	cid := operation.GetUserId(data[2])
 	password := data[3]
 	protocol := utils.StrToInt(data[5], 0)
-	result := content.verifyUserInfo(session, callsign, protocol, cid, password)
+	result := content.verifyFsdUserInfo(session, callsign, protocol, cid, password)
 	if result != nil {
 		return result
 	}
@@ -446,6 +528,9 @@ func (content *CommandContent) HandleRequest(_ SessionInterface, data []string, 
 }
 
 func (content *CommandContent) RemoveClient(session SessionInterface, _ []string, _ []byte) *Result {
+	if session.Client() == nil {
+		return ResultError(Custom, false, "", fmt.Errorf("client not register"))
+	}
 	content.logger.InfoF("[%s] Offline", session.Client().Callsign())
 	return ResultSuccess()
 }
@@ -477,5 +562,10 @@ func (content *CommandContent) HandleWeatherQuery(session SessionInterface, data
 	} else {
 		session.Client().SendLine(MakePacket(WeatherResponse, global.FSDServerName, session.Callsign(), "METAR", result[6:]))
 	}
+	return ResultSuccess()
+}
+
+func (content *CommandContent) HandleClientIdent(session SessionInterface, data []string, _ []byte) *Result {
+	session.SetCallsign(data[0])
 	return ResultSuccess()
 }

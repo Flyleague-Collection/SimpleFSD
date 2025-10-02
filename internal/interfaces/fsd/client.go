@@ -61,4 +61,6 @@ type ClientInterface interface {
 	SetBreak(isBreak bool)
 	SetRating(rating Rating)
 	SetRealName(realName string)
+	ClearFlightPlan()
+	SetFlightPlan(flightPlan *operation.FlightPlan)
 }

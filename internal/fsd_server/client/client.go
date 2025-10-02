@@ -457,3 +457,12 @@ func (client *Client) SetBreak(isBreak bool) { client.isBreak = isBreak }
 func (client *Client) SetRating(rating Rating) { client.rating = rating }
 
 func (client *Client) SetRealName(realName string) { client.realName = realName }
+
+func (client *Client) ClearFlightPlan() {
+	client.flightPlan = nil
+}
+
+func (client *Client) SetFlightPlan(flightPlan *operation.FlightPlan) {
+	client.flightPlan = flightPlan
+	go client.clientManager.BroadcastMessage([]byte(client.flightPlanOperation.ToString(flightPlan)), client, BroadcastToAtc)
+}

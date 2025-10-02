@@ -6,6 +6,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo/v4"
+	"net/http"
 )
 
 type UserControllerInterface interface {
@@ -20,6 +21,8 @@ type UserControllerInterface interface {
 	EditUserPermission(ctx echo.Context) error
 	GetUserHistory(ctx echo.Context) error
 	GetToken(ctx echo.Context) error
+	ResetUserPassword(ctx echo.Context) error
+	UserFsdLogin(ctx echo.Context) error
 }
 
 type UserController struct {
@@ -154,4 +157,23 @@ func (controller *UserController) GetToken(ctx echo.Context) error {
 	claim := token.Claims.(*Claims)
 	data.Claims = claim
 	return controller.service.GetTokenWithFlushToken(data).Response(ctx)
+}
+
+func (controller *UserController) ResetUserPassword(ctx echo.Context) error {
+	data := &RequestResetUserPassword{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.ErrorF("ResetUserPassword bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
+	SetEchoContent(data, ctx)
+	return controller.service.ResetUserPassword(data).Response(ctx)
+}
+
+func (controller *UserController) UserFsdLogin(ctx echo.Context) error {
+	data := &RequestFsdLogin{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.ErrorF("UserFsdLogin bind error: %v", err)
+		return NewErrorResponse(ctx, ErrParseParam)
+	}
+	return ctx.JSON(http.StatusOK, controller.service.UserFsdLogin(data))
 }

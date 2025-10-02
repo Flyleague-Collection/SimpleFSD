@@ -12,6 +12,7 @@ import (
 	impl "github.com/half-nothing/simple-fsd/internal/http_server/service"
 	"github.com/half-nothing/simple-fsd/internal/http_server/service/store"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo-jwt/v4"
@@ -23,6 +24,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -127,14 +129,15 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	}
 	ipPathLimiter.StartCleanup(cleanupInterval)
 
-	whazzupContent := fmt.Sprintf("url0=%s/api/clients", httpConfig.ServerAddress)
+	whazzupUrl, _ := url.JoinPath(httpConfig.ServerAddress, "/api/clients")
+	whazzupContent := fmt.Sprintf("url0=%s", whazzupUrl)
 
 	e.Use(mid.RateLimitMiddleware(ipPathLimiter, mid.CombinedKeyFunc))
 
 	jwtConfig := echojwt.Config{
 		SigningKey:    []byte(httpConfig.JWT.Secret),
 		TokenLookup:   "header:Authorization:Bearer ",
-		SigningMethod: "HS512",
+		SigningMethod: global.SigningMethod,
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
 			return new(service.Claims)
 		},
@@ -172,8 +175,6 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	logger.Info("Service initializing...")
 
-	impl.InitValidator(config.Server.HttpServer.Limits)
-
 	userOperation := applicationContent.Operations().UserOperation()
 	controllerOperation := applicationContent.Operations().ControllerOperation()
 	controllerRecordOperation := applicationContent.Operations().ControllerRecordOperation()
@@ -207,7 +208,9 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	defer emailCodesCache.Close()
 	lastSendTimeCache := cache.NewMemoryCache[time.Time](config.Server.HttpServer.Email.SendDuration)
 	defer lastSendTimeCache.Close()
-	emailService := impl.NewEmailService(logger, config.Server.HttpServer.Email, emailCodesCache, lastSendTimeCache, messageQueue)
+	emailService := impl.NewEmailService(logger, config.Server.HttpServer.Email, emailCodesCache, lastSendTimeCache, userOperation, messageQueue)
+
+	messageQueue.Subscribe(queue.DeleteVerifyCode, emailService.HandleDeleteVerifyCodeMessage)
 
 	userService := impl.NewUserService(logger, httpConfig, messageQueue, userOperation, historyOperation, auditLogOperation, storeService, emailService)
 	clientService := impl.NewClientService(logger, httpConfig, userOperation, auditLogOperation, clientManager, messageQueue)
@@ -246,6 +249,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	userGroup.POST("", userController.UserRegister)
 	userGroup.GET("", userController.GetUsers, jwtMiddleware, requireNoFlushToken)
 	userGroup.POST("/sessions", userController.UserLogin)
+	userGroup.POST("/sessions/fsd", userController.UserFsdLogin)
 	userGroup.GET("/sessions", userController.GetToken, jwtMiddleware, requireFlushToken)
 	userGroup.GET("/availability", userController.CheckUserAvailability)
 	userGroup.GET("/histories/self", userController.GetUserHistory, jwtMiddleware, requireNoFlushToken)
@@ -254,6 +258,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	userGroup.GET("/profiles/:uid", userController.GetUserProfile, jwtMiddleware, requireNoFlushToken)
 	userGroup.PATCH("/profiles/:uid", userController.EditProfile, jwtMiddleware, requireNoFlushToken)
 	userGroup.PATCH("/profiles/:uid/permission", userController.EditUserPermission, jwtMiddleware, requireNoFlushToken)
+	userGroup.POST("/password", userController.ResetUserPassword)
 
 	controllerGroup := apiGroup.Group("/controllers")
 	controllerGroup.GET("", controllerController.GetControllers, jwtMiddleware, requireNoFlushToken)

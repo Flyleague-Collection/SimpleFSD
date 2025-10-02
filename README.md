@@ -1,7 +1,5 @@
 # SimpleFSD
 
-[English](docs/README_en.md)(Outdate)
-
 ### *本项目正在快速迭代中, API接口可能不稳定, 请及时查阅最新的API文档*
 
 一个用于模拟飞行联飞的FSD, 使用Go语言编写  
@@ -148,8 +146,6 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       "host": "0.0.0.0",
       // Http服务器监听端口
       "port": 6810,
-      // Http服务器最大工作线程
-      "max_workers": 128,
       // 代理类型
       // 0 直连无代理服务器
       // 1 代理服务器使用 X-Forwarded-For Http头部
@@ -229,23 +225,7 @@ FSD支持计划同步, 计划锁定, 网页计划提交
         // Api访问限速窗口
         // 即 rate_limit 每 rate_limit_window
         // 滑动窗口计算
-        "rate_limit_window": "1m",
-        // 用户名最小长度
-        "username_length_min": 4,
-        // 用户名最大长度(系统支持的最大长度是64)
-        "username_length_max": 16,
-        // 邮箱最小长度
-        "email_length_min": 4,
-        // 邮箱最大长度(系统支持的最大长度是128)
-        "email_length_max": 64,
-        // 密码最小长度
-        "password_length_min": 6,
-        // 密码最大长度(系统支持的最大长度是128)
-        "password_length_max": 64,
-        // 最小CID
-        "cid_min": 1,
-        // 最大CID(系统支持的最大CID为2147483647)
-        "cid_max": 9999,
+        "rate_limit_window": "1m"
       },
       // 邮箱配置
       "email": {
@@ -391,7 +371,9 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       // 返回json: 返回json格式的数据
       "return_type": "json",
       // jsonpath字符串, 用于提取json中的metar报文
-      "selector": "$.data.metar"
+      "selector": "$.data.metar",
+      "reverse": false,
+      "multiline": "\n"
     }
   ],
   // 数据库配置

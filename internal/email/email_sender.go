@@ -240,6 +240,32 @@ func (sender *EmailSender) SendPasswordChangeEmail(data *PasswordChangeEmailData
 	return sender.config.EmailServer.DialAndSend(m)
 }
 
+func (sender *EmailSender) SendPasswordResetEmail(data *PasswordResetEmailData) error {
+	if sender.config.EmailServer == nil {
+		return nil
+	}
+	if !sender.templateConfig.PasswordChangeEmail.Enable {
+		return nil
+	}
+
+	email := strings.ToLower(data.User.Email)
+
+	m, err := sender.generateEmail(email, sender.templateConfig.PasswordResetEmail, &PasswordResetEmail{
+		Cid:       utils.FormatCid(data.User.Cid),
+		IP:        data.Ip,
+		UserAgent: data.UserAgent,
+		Time:      time.Now().Format(time.DateTime),
+	})
+	if err != nil {
+		sender.logger.WarnF("Error rendering password reset email template: %v", err)
+		return ErrRenderingTemplate
+	}
+
+	sender.logger.InfoF("Sending password reset email to %s(%d)", email, data.User.Cid)
+
+	return sender.config.EmailServer.DialAndSend(m)
+}
+
 func (sender *EmailSender) SendPermissionChangeEmail(data *PermissionChangeEmailData) error {
 	if sender.config.EmailServer == nil {
 		return nil

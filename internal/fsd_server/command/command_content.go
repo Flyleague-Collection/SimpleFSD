@@ -14,6 +14,7 @@ type CommandContent struct {
 	application         *interfaces.ApplicationContent
 	isSimulatorServer   bool
 	refuseOutRange      bool
+	jwtToken            string
 	metarManager        interfaces.MetarManagerInterface
 	clientManager       fsd.ClientManagerInterface
 	messageQueue        queue.MessageQueueInterface
@@ -32,6 +33,7 @@ func NewCommandContent(
 		application:         application,
 		isSimulatorServer:   config.Server.General.SimulatorServer,
 		refuseOutRange:      config.Server.FSDServer.RangeLimit.RefuseOutRange,
+		jwtToken:            config.Server.HttpServer.JWT.Secret,
 		metarManager:        application.MetarManager(),
 		clientManager:       application.ClientManager(),
 		messageQueue:        application.MessageQueue(),

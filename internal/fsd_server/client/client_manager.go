@@ -53,6 +53,38 @@ func (cm *ClientManager) sendRawMessageTo(from int, to string, message string) e
 	return nil
 }
 
+func (cm *ClientManager) HandleLockChangeMessage(message *queue.Message) error {
+	if val, ok := message.Data.(*LockChange); ok {
+		client, ok := cm.GetClient(val.TargetCallsign)
+		if !ok {
+			return ErrCallsignNotFound
+		}
+		if client.User().Cid != val.TargetCid {
+			return ErrCidMissMatch
+		}
+		client.FlightPlan().Locked = val.Locked
+	}
+	return queue.ErrMessageDataType
+}
+
+func (cm *ClientManager) HandleFlightPlanFlushMessage(message *queue.Message) error {
+	if val, ok := message.Data.(*FlushFlightPlan); ok {
+		client, ok := cm.GetClient(val.TargetCallsign)
+		if !ok {
+			return ErrCallsignNotFound
+		}
+		if client.User().Cid != val.TargetCid {
+			return ErrCidMissMatch
+		}
+		if val.FlightPlan == nil {
+			client.ClearFlightPlan()
+		} else {
+			client.SetFlightPlan(val.FlightPlan)
+		}
+	}
+	return queue.ErrMessageDataType
+}
+
 func (cm *ClientManager) HandleSendMessageToClientMessage(message *queue.Message) error {
 	if val, ok := message.Data.(*SendRawMessageData); ok {
 		return cm.sendRawMessageTo(val.From, val.To, val.Message)

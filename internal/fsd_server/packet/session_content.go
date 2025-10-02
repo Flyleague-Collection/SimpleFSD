@@ -60,9 +60,12 @@ func (content *SessionContent) SendError(session *Session, result *Result) {
 }
 
 func (content *SessionContent) handleCommand(session *Session, commandType ClientCommand, data []string, rawLine []byte) *Result {
+	if rawLine == nil {
+		return ResultError(Syntax, false, string(commandType), errors.New("parse command failed"))
+	}
 	res := content.commandHandler.Call(commandType, session, data, rawLine)
 	if res == nil {
-		return ResultError(Syntax, false, string(commandType), errors.New("parse command failed"))
+		return ResultError(Syntax, false, string(commandType), errors.New("handle command failed"))
 	}
 	return res
 }
@@ -92,6 +95,9 @@ func (content *SessionContent) HandleConnection(session *Session) {
 			}
 		})
 	}()
+	if *global.Vatsim {
+		_, _ = session.conn.Write([]byte("$DISERVER:CLIENT:VATSIM FSD V3.53a:0815b2e12302\r\n"))
+	}
 	scanner := bufio.NewScanner(session.conn)
 	scanner.Split(createSplitFunc(SplitSign))
 	_ = session.conn.SetDeadline(time.Now().Add(content.heartbeatTimeout))

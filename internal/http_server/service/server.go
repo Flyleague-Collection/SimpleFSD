@@ -44,19 +44,13 @@ func NewServerService(
 
 func (serverService *ServerService) getServerConfig() *ResponseGetServerConfig {
 	return &ResponseGetServerConfig{
-		Limits: &ServerLimits{
-			UsernameLengthMin: serverService.config.HttpServer.Limits.UsernameLengthMin,
-			UsernameLengthMax: serverService.config.HttpServer.Limits.UsernameLengthMax,
-			PasswordLengthMin: serverService.config.HttpServer.Limits.PasswordLengthMin,
-			PasswordLengthMax: serverService.config.HttpServer.Limits.PasswordLengthMax,
-			EmailLengthMin:    serverService.config.HttpServer.Limits.EmailLengthMin,
-			EmailLengthMax:    serverService.config.HttpServer.Limits.EmailLengthMax,
-			CidMin:            serverService.config.HttpServer.Limits.CidMin,
-			CidMax:            serverService.config.HttpServer.Limits.CidMax,
-		},
-		ImageLimit: &ImageLimit{
+		ImageLimit: &FileLimit{
 			MaxAllowSize: int(serverService.config.HttpServer.Store.FileLimit.ImageLimit.MaxFileSize),
 			AllowedExt:   serverService.config.HttpServer.Store.FileLimit.ImageLimit.AllowedFileExt,
+		},
+		FileLimit: &FileLimit{
+			MaxAllowSize: int(serverService.config.HttpServer.Store.FileLimit.FileLimit.MaxFileSize),
+			AllowedExt:   serverService.config.HttpServer.Store.FileLimit.FileLimit.AllowedFileExt,
 		},
 		EmailSendInterval: int(serverService.config.HttpServer.Email.SendDuration.Seconds()),
 		Facilities:        fsd.Facilities,

@@ -25,6 +25,7 @@ var (
 	ClientQuery     = ClientCommand("$CQ")
 	ClientResponse  = ClientCommand("$CR")
 	TempData        = ClientCommand("$TD")
+	ClientIdent     = ClientCommand("$ID")
 )
 
 type CommandRequirement struct {

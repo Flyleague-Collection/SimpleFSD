@@ -21,6 +21,7 @@ var (
 	ErrNewPasswordRequired     = NewApiStatus("NEW_PASSWORD_REQUIRED", "未提供新密码", BadRequest)
 	ErrWrongOriginPassword     = NewApiStatus("WRONG_ORIGIN_PASSWORD_ERROR", "原始密码不正确", BadRequest)
 	ErrQQInvalid               = NewApiStatus("QQ_INVALID", "qq号不正确", BadRequest)
+	ErrResetPasswordFail       = NewApiStatus("RESET_PASSWORD_FAIL", "重置密码失败", ServerInternalError)
 	NameNotAvailability        = NewApiStatus("INFO_NOT_AVAILABILITY", "用户信息不可用", Ok)
 	NameAvailability           = NewApiStatus("INFO_AVAILABILITY", "用户信息可用", Ok)
 	SuccessRegister            = NewApiStatus("REGISTER_SUCCESS", "注册成功", Ok)
@@ -33,6 +34,7 @@ var (
 	SuccessEditUserPermission  = NewApiStatus("EDIT_USER_PERMISSION", "编辑用户权限成功", Ok)
 	SuccessGetUserHistory      = NewApiStatus("GET_USER_HISTORY", "成功获取用户历史数据", Ok)
 	SuccessGetToken            = NewApiStatus("GET_TOKEN", "成功刷新秘钥", Ok)
+	SuccessResetPassword       = NewApiStatus("RESET_PASSWORD", "成功重置密码", Ok)
 )
 
 type UserServiceInterface interface {
@@ -47,6 +49,8 @@ type UserServiceInterface interface {
 	EditUserPermission(req *RequestUserEditPermission) *ApiResponse[ResponseUserEditPermission]
 	GetUserHistory(req *RequestGetUserHistory) *ApiResponse[ResponseGetUserHistory]
 	GetTokenWithFlushToken(req *RequestGetToken) *ApiResponse[ResponseGetToken]
+	ResetUserPassword(req *RequestResetUserPassword) *ApiResponse[ResponseResetUserPassword]
+	UserFsdLogin(req *RequestFsdLogin) *ResponseFsdLogin
 }
 
 type RequestUserRegister struct {
@@ -156,4 +160,25 @@ type ResponseGetToken struct {
 	User       *operation.User `json:"user"`
 	Token      string          `json:"token"`
 	FlushToken string          `json:"flush_token"`
+}
+
+type RequestResetUserPassword struct {
+	EchoContentHeader
+	Email     string `json:"email"`
+	EmailCode string `json:"email_code"`
+	Password  string `json:"password"`
+}
+
+type ResponseResetUserPassword bool
+
+type RequestFsdLogin struct {
+	Cid        string `json:"cid"`
+	Password   string `json:"password"`
+	IsSweatbox bool   `json:"is_sweatbox"`
+}
+
+type ResponseFsdLogin struct {
+	Success bool   `json:"success"`
+	ErrMsg  string `json:"error_msg"`
+	Token   string `json:"token"`
 }

@@ -16,11 +16,15 @@ const (
 	SendEmailVerifyEmail
 	SendKickedFromServerEmail
 	SendPasswordChangeEmail
+	SendPasswordResetEmail
 	SendPermissionChangeEmail
 	SendTicketReplyEmail
 	SendMessageToClient
+	DeleteVerifyCode
 	KickClientFromServer
 	BroadcastMessage
+	FlushFlightPlan
+	ChangeFlightPlanLockStatus
 	AuditLog
 	AuditLogs
 )
@@ -33,10 +37,14 @@ var messageTypes = []string{
 	"SendEmailVerifyEmail",
 	"SendKickedFromServerEmail",
 	"SendPasswordChangeEmail",
+	"SendPasswordResetEmail",
 	"SendPermissionChangeEmail",
 	"SendTicketReplyEmail",
+	"DeleteVerifyCode",
 	"KickClientFromServer",
 	"BroadcastMessage",
+	"FlushFlightPlan",
+	"ChangeFlightPlanLockStatus",
 	"AuditLog",
 	"AuditLogs",
 }

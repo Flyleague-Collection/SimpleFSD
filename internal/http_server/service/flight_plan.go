@@ -5,6 +5,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
@@ -65,6 +66,15 @@ func (flightPlanService *FlightPlanService) SubmitFlightPlan(req *RequestSubmitF
 		return res
 	}
 
+	flightPlanService.messageQueue.Publish(&queue.Message{
+		Type: queue.FlushFlightPlan,
+		Data: &fsd.FlushFlightPlan{
+			TargetCallsign: req.FlightPlan.Callsign,
+			TargetCid:      req.JwtHeader.Cid,
+			FlightPlan:     req.FlightPlan,
+		},
+	})
+
 	data := ResponseSubmitFlightPlan(true)
 	return NewApiResponse(SuccessSubmitFlightPlan, &data)
 }
@@ -103,8 +113,15 @@ func (flightPlanService *FlightPlanService) GetFlightPlans(req *RequestGetFlight
 }
 
 func (flightPlanService *FlightPlanService) DeleteSelfFlightPlan(req *RequestDeleteSelfFlightPlan) *ApiResponse[ResponseDeleteSelfFlightPlan] {
+	flightPlan, res := CallDBFunc[*operation.FlightPlan, ResponseDeleteSelfFlightPlan](func() (*operation.FlightPlan, error) {
+		return flightPlanService.flightPlanOperation.GetFlightPlanByCid(req.Cid)
+	})
+	if res != nil {
+		return res
+	}
+
 	if res := CallDBFuncWithoutRet[ResponseDeleteSelfFlightPlan](func() error {
-		return flightPlanService.flightPlanOperation.DeleteSelfFlightPlan(req.Cid)
+		return flightPlanService.flightPlanOperation.DeleteSelfFlightPlan(flightPlan)
 	}); res != nil {
 		return res
 	}
@@ -121,6 +138,15 @@ func (flightPlanService *FlightPlanService) DeleteSelfFlightPlan(req *RequestDel
 		),
 	})
 
+	flightPlanService.messageQueue.Publish(&queue.Message{
+		Type: queue.FlushFlightPlan,
+		Data: &fsd.FlushFlightPlan{
+			TargetCallsign: flightPlan.Callsign,
+			TargetCid:      req.Cid,
+			FlightPlan:     nil,
+		},
+	})
+
 	data := ResponseDeleteSelfFlightPlan(true)
 	return NewApiResponse(SuccessDeleteSelfFlightPlan, &data)
 }
@@ -134,8 +160,15 @@ func (flightPlanService *FlightPlanService) DeleteFlightPlan(req *RequestDeleteF
 		return res
 	}
 
+	flightPlan, res := CallDBFunc[*operation.FlightPlan, ResponseDeleteFlightPlan](func() (*operation.FlightPlan, error) {
+		return flightPlanService.flightPlanOperation.GetFlightPlanByCid(req.TargetCid)
+	})
+	if res != nil {
+		return res
+	}
+
 	if res := CallDBFuncWithoutRet[ResponseDeleteFlightPlan](func() error {
-		return flightPlanService.flightPlanOperation.DeleteFlightPlan(req.TargetCid)
+		return flightPlanService.flightPlanOperation.DeleteFlightPlan(flightPlan)
 	}); res != nil {
 		return res
 	}
@@ -152,6 +185,15 @@ func (flightPlanService *FlightPlanService) DeleteFlightPlan(req *RequestDeleteF
 		),
 	})
 
+	flightPlanService.messageQueue.Publish(&queue.Message{
+		Type: queue.FlushFlightPlan,
+		Data: &fsd.FlushFlightPlan{
+			TargetCallsign: flightPlan.Callsign,
+			TargetCid:      req.Cid,
+			FlightPlan:     nil,
+		},
+	})
+
 	data := ResponseDeleteFlightPlan(true)
 	return NewApiResponse(SuccessDeleteFlightPlan, &data)
 }
@@ -166,7 +208,7 @@ func (flightPlanService *FlightPlanService) LockFlightPlan(req *RequestLockFligh
 	}
 
 	flightPlan, res := CallDBFunc[*operation.FlightPlan, ResponseLockFlightPlan](func() (*operation.FlightPlan, error) {
-		return flightPlanService.flightPlanOperation.GetFlightPlanByCid(req.Cid)
+		return flightPlanService.flightPlanOperation.GetFlightPlanByCid(req.TargetCid)
 	})
 	if res != nil {
 		return res
@@ -189,6 +231,15 @@ func (flightPlanService *FlightPlanService) LockFlightPlan(req *RequestLockFligh
 	}); res != nil {
 		return res
 	}
+
+	flightPlanService.messageQueue.Publish(&queue.Message{
+		Type: queue.ChangeFlightPlanLockStatus,
+		Data: &fsd.LockChange{
+			TargetCallsign: flightPlan.Callsign,
+			TargetCid:      req.Cid,
+			Locked:         req.Lock,
+		},
+	})
 
 	var auditLogType operation.AuditEventType
 	if req.Lock {

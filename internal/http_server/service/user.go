@@ -72,22 +72,6 @@ func (userService *UserService) UserRegister(req *RequestUserRegister) *ApiRespo
 		return NewApiResponse[ResponseUserRegister](ErrIllegalParam, nil)
 	}
 
-	if err := usernameValidator.CheckString(req.Username); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, nil)
-	}
-
-	if err := emailValidator.CheckString(req.Email); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, nil)
-	}
-
-	if err := passwordValidator.CheckString(req.Password); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, nil)
-	}
-
-	if err := cidValidator.CheckInt(req.Cid); err != nil {
-		return NewApiResponse[ResponseUserRegister](err, nil)
-	}
-
 	if res := userService.verifyEmailCode(req.Email, req.EmailCode, req.Cid); res != nil {
 		return NewApiResponse[ResponseUserRegister](res, nil)
 	}
@@ -102,6 +86,11 @@ func (userService *UserService) UserRegister(req *RequestUserRegister) *ApiRespo
 	}); res != nil {
 		return res
 	}
+
+	userService.messageQueue.Publish(&queue.Message{
+		Type: queue.DeleteVerifyCode,
+		Data: req.Email,
+	})
 
 	data := ResponseUserRegister(true)
 	return NewApiResponse(SuccessRegister, &data)
@@ -180,33 +169,18 @@ func (userService *UserService) editUserProfile(req *RequestUserEditCurrentProfi
 		return ErrIllegalParam, nil, ""
 	}
 
-	if req.OriginPassword != "" && req.NewPassword != "" {
-		if err := passwordValidator.CheckString(req.NewPassword); err != nil {
-			return err, nil, ""
-		}
-	} else if req.OriginPassword != "" && req.NewPassword == "" {
+	if req.OriginPassword != "" && req.NewPassword == "" {
 		return ErrNewPasswordRequired, nil, ""
 	} else if req.OriginPassword == "" && req.NewPassword != "" && !skipPasswordVerify {
 		return ErrOriginPasswordRequired, nil, ""
 	}
 
-	if req.Username != "" {
-		if err := usernameValidator.CheckString(req.Username); err != nil {
-			return err, nil, ""
+	if req.Email != "" && !skipEmailVerify {
+		if len(req.EmailCode) != 6 {
+			return ErrIllegalParam, nil, ""
 		}
-	}
-
-	if req.Email != "" {
-		if err := emailValidator.CheckString(req.Email); err != nil {
-			return err, nil, ""
-		}
-		if !skipEmailVerify {
-			if len(req.EmailCode) != 6 {
-				return ErrIllegalParam, nil, ""
-			}
-			if res := userService.verifyEmailCode(req.Email, req.EmailCode, req.Cid); res != nil {
-				return res, nil, ""
-			}
+		if res := userService.verifyEmailCode(req.Email, req.EmailCode, req.Cid); res != nil {
+			return res, nil, ""
 		}
 	}
 
@@ -294,6 +268,10 @@ func (userService *UserService) EditCurrentProfile(req *RequestUserEditCurrentPr
 	if err != nil {
 		return NewApiResponse[ResponseUserEditCurrentProfile](err, nil)
 	}
+	userService.messageQueue.Publish(&queue.Message{
+		Type: queue.DeleteVerifyCode,
+		Data: req.Email,
+	})
 	data := ResponseUserEditCurrentProfile(true)
 	return NewApiResponse(SuccessEditCurrentProfile, &data)
 }
@@ -338,6 +316,11 @@ func (userService *UserService) EditUserProfile(req *RequestUserEditProfile) *Ap
 	if err != nil {
 		return NewApiResponse[ResponseUserEditProfile](err, nil)
 	}
+
+	userService.messageQueue.Publish(&queue.Message{
+		Type: queue.DeleteVerifyCode,
+		Data: req.Email,
+	})
 
 	newValue, _ := json.Marshal(user)
 	object := fmt.Sprintf("%04d", user.Cid)
@@ -514,4 +497,70 @@ func (userService *UserService) GetTokenWithFlushToken(req *RequestGetToken) *Ap
 		Token:      token.GenerateKey(),
 		FlushToken: flushToken,
 	})
+}
+
+func (userService *UserService) ResetUserPassword(req *RequestResetUserPassword) *ApiResponse[ResponseResetUserPassword] {
+	if req.Email == "" || len(req.EmailCode) != 6 || req.Password == "" {
+		return NewApiResponse[ResponseResetUserPassword](ErrIllegalParam, nil)
+	}
+
+	if val := userService.verifyEmailCode(req.Email, req.EmailCode, -1); val != nil {
+		return NewApiResponse[ResponseResetUserPassword](val, nil)
+	}
+
+	targetUser, res := CallDBFunc[*operation.User, ResponseResetUserPassword](func() (*operation.User, error) {
+		return userService.userOperation.GetUserByEmail(req.Email)
+	})
+	if res != nil {
+		return res
+	}
+
+	password, err := userService.userOperation.UpdateUserPassword(targetUser, "", req.Password, true)
+	if err != nil {
+		return NewApiResponse[ResponseResetUserPassword](ErrResetPasswordFail, nil)
+	}
+
+	if res := CallDBFuncWithoutRet[ResponseResetUserPassword](func() error {
+		return userService.userOperation.UpdateUserInfo(targetUser, &operation.User{Password: string(password)})
+	}); res != nil {
+		return res
+	}
+
+	userService.messageQueue.Publish(&queue.Message{
+		Type: queue.DeleteVerifyCode,
+		Data: req.Email,
+	})
+
+	userService.messageQueue.Publish(&queue.Message{
+		Type: queue.SendPasswordResetEmail,
+		Data: &interfaces.PasswordResetEmailData{
+			User:      targetUser,
+			Ip:        req.Ip,
+			UserAgent: req.UserAgent,
+		},
+	})
+
+	data := ResponseResetUserPassword(true)
+	return NewApiResponse(SuccessResetPassword, &data)
+}
+
+func (userService *UserService) UserFsdLogin(req *RequestFsdLogin) *ResponseFsdLogin {
+	if req.Cid == "" || req.Password == "" {
+		return &ResponseFsdLogin{Success: false, ErrMsg: "Cid and password properties are both required"}
+	}
+
+	userId := operation.GetUserId(req.Cid)
+
+	user, res := CallDBFunc[*operation.User, ResponseFsdLogin](func() (*operation.User, error) {
+		return userId.GetUser(userService.userOperation)
+	})
+	if res != nil {
+		return &ResponseFsdLogin{Success: false, ErrMsg: "User not found"}
+	}
+
+	if pass := userService.userOperation.VerifyUserPassword(user, req.Password); !pass {
+		return &ResponseFsdLogin{Success: false, ErrMsg: "Password is Incorrect"}
+	}
+
+	return &ResponseFsdLogin{Success: true, Token: NewFsdClaims(userService.config.JWT, user).GenerateKey()}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
@@ -19,6 +20,7 @@ import (
 type EmailService struct {
 	logger            log.LoggerInterface
 	config            *config.EmailConfig
+	userOperation     operation.UserOperationInterface
 	emailCodeCache    interfaces.CacheInterface[*EmailCode]
 	lastSendTimeCache interfaces.CacheInterface[time.Time]
 	messageQueue      queue.MessageQueueInterface
@@ -29,11 +31,13 @@ func NewEmailService(
 	config *config.EmailConfig,
 	emailCodeCache interfaces.CacheInterface[*EmailCode],
 	lastSendTimeCache interfaces.CacheInterface[time.Time],
+	userOperation operation.UserOperationInterface,
 	messageQueue queue.MessageQueueInterface,
 ) *EmailService {
 	return &EmailService{
 		logger:            log.NewLoggerAdapter(logger, "EmailService"),
 		config:            config,
+		userOperation:     userOperation,
 		emailCodeCache:    emailCodeCache,
 		lastSendTimeCache: lastSendTimeCache,
 		messageQueue:      messageQueue,
@@ -72,8 +76,19 @@ func (emailService *EmailService) VerifyEmailCode(email string, code string, cid
 		return ErrCidMismatch
 	}
 
-	emailService.emailCodeCache.Del(email)
 	return nil
+}
+
+func (emailService *EmailService) HandleDeleteVerifyCodeMessage(message *queue.Message) error {
+	if val, ok := message.Data.(string); ok {
+		emailService.deleteVerifyCode(val)
+		return nil
+	}
+	return queue.ErrMessageDataType
+}
+
+func (emailService *EmailService) deleteVerifyCode(email string) {
+	emailService.emailCodeCache.Del(email)
 }
 
 func (emailService *EmailService) SendEmailVerifyCode(req *RequestEmailVerifyCode) *ApiResponse[ResponseEmailVerifyCode] {
@@ -81,7 +96,7 @@ func (emailService *EmailService) SendEmailVerifyCode(req *RequestEmailVerifyCod
 		return NewApiResponse(SendEmailSuccess, &ResponseEmailVerifyCode{Email: req.Email})
 	}
 
-	if req.Email == "" || req.Cid <= 0 {
+	if req.Email == "" || req.Cid == 0 {
 		return NewApiResponse[ResponseEmailVerifyCode](ErrIllegalParam, nil)
 	}
 
@@ -93,12 +108,26 @@ func (emailService *EmailService) SendEmailVerifyCode(req *RequestEmailVerifyCod
 		), nil)
 	}
 
+	var cid int
+
+	if req.Cid == -1 {
+		targetUser, res := CallDBFunc[*operation.User, ResponseEmailVerifyCode](func() (*operation.User, error) {
+			return emailService.userOperation.GetUserByEmail(req.Email)
+		})
+		if res != nil {
+			return res
+		}
+		cid = targetUser.Cid
+	} else {
+		cid = req.Cid
+	}
+
 	code := rand.Intn(1e6)
 	if err := emailService.messageQueue.SyncPublish(&queue.Message{
 		Type: queue.SendEmailVerifyEmail,
 		Data: &interfaces.EmailVerifyEmailData{
 			Email: req.Email,
-			Cid:   req.Cid,
+			Cid:   cid,
 			Code:  code,
 		},
 	}); err != nil {

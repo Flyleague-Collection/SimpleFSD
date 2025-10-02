@@ -24,6 +24,7 @@ type EmailTemplateConfigs struct {
 	PermissionChangeEmail      *EmailTemplateConfig `json:"permission_change_email"`
 	KickedFromServerEmail      *EmailTemplateConfig `json:"kicked_from_server_email"`
 	PasswordChangeEmail        *EmailTemplateConfig `json:"password_change_email"`
+	PasswordResetEmail         *EmailTemplateConfig `json:"password_reset_email"`
 	ApplicationPassedEmail     *EmailTemplateConfig `json:"application_passed_email"`
 	ApplicationRejectedEmail   *EmailTemplateConfig `json:"application_rejected_email"`
 	ApplicationProcessingEmail *EmailTemplateConfig `json:"application_processing_email"`
@@ -55,6 +56,11 @@ func defaultEmailTemplateConfig() *EmailTemplateConfigs {
 		PasswordChangeEmail: &EmailTemplateConfig{
 			FilePath:   "template/password_change.template",
 			EmailTitle: "飞控密码更改通知",
+			Enable:     true,
+		},
+		PasswordResetEmail: &EmailTemplateConfig{
+			FilePath:   "template/password_reset.template",
+			EmailTitle: "飞控密码重置通知",
 			Enable:     true,
 		},
 		ApplicationPassedEmail: &EmailTemplateConfig{
@@ -169,6 +175,17 @@ func (config *EmailTemplateConfigs) checkValid(logger log.LoggerInterface) *Vali
 			"password_change",
 			"fail to load password_change_template",
 			"fail to parse password_change_template",
+		)
+	})
+
+	eg.Go(func() error {
+		return validateTemplate(
+			logger,
+			config.PasswordResetEmail,
+			global.PasswordResetTemplateFilePath,
+			"password_reset",
+			"fail to load password_reset_template",
+			"fail to parse password_reset_template",
 		)
 	})
 

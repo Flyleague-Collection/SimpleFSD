@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrCallsignNotFound = errors.New("callsign not found")
+	ErrCidMissMatch     = errors.New("cid miss match")
 )
 
 type ClientManagerInterface interface {
@@ -31,6 +32,18 @@ type BroadcastMessageData struct {
 	From    int
 	Target  BroadcastTarget
 	Message string
+}
+
+type LockChange struct {
+	TargetCallsign string
+	TargetCid      int
+	Locked         bool
+}
+
+type FlushFlightPlan struct {
+	TargetCallsign string
+	TargetCid      int
+	FlightPlan     *operation.FlightPlan
 }
 
 type SendRawMessageData struct {

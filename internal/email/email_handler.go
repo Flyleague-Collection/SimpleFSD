@@ -67,6 +67,13 @@ func (handler *EmailMessageHandler) HandleSendPasswordChangeEmailMessage(message
 	return queue.ErrMessageDataType
 }
 
+func (handler *EmailMessageHandler) HandleSendPasswordResetEmailMessage(message *queue.Message) error {
+	if val, ok := message.Data.(*PasswordResetEmailData); ok {
+		return handler.sender.SendPasswordResetEmail(val)
+	}
+	return queue.ErrMessageDataType
+}
+
 func (handler *EmailMessageHandler) HandleSendPermissionChangeEmailMessage(message *queue.Message) error {
 	if val, ok := message.Data.(*PermissionChangeEmailData); ok {
 		return handler.sender.SendPermissionChangeEmail(val)

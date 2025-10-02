@@ -17,11 +17,14 @@ var (
 	MetarCacheCleanInterval = flag.Duration("metar_cache_clean_interval", 30*time.Minute, "metar cache cleanup interval")
 	MetarQueryThread        = flag.Int("metar_query_thread", 32, "metar query thread")
 	FsdRecordFilter         = flag.Int("fsd_record_filter", 10, "record the minimum amount of time in the connection history")
+	Vatsim                  = flag.Bool("vatsim", false, "Enable Vatsim protocol")
 )
 
 const (
 	AppVersion    = "0.8.0"
-	ConfigVersion = "0.8.1"
+	ConfigVersion = "0.8.2"
+
+	SigningMethod = "HS512"
 
 	EnvDebugMode               = "DEBUG_MODE"
 	EnvConfigFilePath          = "CONFIG_FILE_PATH"
@@ -33,6 +36,7 @@ const (
 	EnvMetarCacheCleanInterval = "METAR_CACHE_CLEAN_INTERVAL"
 	EnvMetarQueryThread        = "METAR_QUERY_THREAD"
 	EnvFsdRecordFilter         = "FSD_RECORD_FILTER"
+	EnvVatsimProtocol          = "VATSIM_PROTOCOL"
 
 	LogFilePath = "logs"
 	MainLogName = "main"
@@ -50,6 +54,7 @@ const (
 	PermissionChangeTemplateFilePath      = "/template/permission_change.template"
 	KickedFromServerTemplateFilePath      = "/template/kicked_from_server.template"
 	PasswordChangeTemplateFilePath        = "/template/password_change.template"
+	PasswordResetTemplateFilePath         = "/template/password_reset.template"
 	ApplicationPassedTemplateFilePath     = "/template/application_passed.template"
 	ApplicationRejectedTemplateFilePath   = "/template/application_rejected.template"
 	ApplicationProcessingTemplateFilePath = "/template/application_processing.template"

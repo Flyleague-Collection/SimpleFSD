@@ -6,6 +6,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/fsd_server/packet"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"net"
 	"time"
 )
@@ -43,14 +44,19 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 	config := applicationContent.ConfigManager().Config()
 	logger := applicationContent.Logger().FsdLogger()
 
+	serverName := "FSD"
+	if *global.Vatsim {
+		serverName = "VATSIM FSD"
+	}
+
 	// 创建TCP监听器
 	sem := make(chan struct{}, config.Server.FSDServer.MaxWorkers)
 	ln, err := net.Listen("tcp", config.Server.FSDServer.Address)
 	if err != nil {
-		logger.FatalF("FSD Server Start error: %v", err)
+		logger.FatalF("%s Server Start error: %v", serverName, err)
 		return
 	}
-	logger.InfoF("FSD Server Listen On " + ln.Addr().String())
+	logger.InfoF(serverName + " Server Listen On " + ln.Addr().String())
 
 	// 确保在函数退出时关闭监听器
 	defer func() {
@@ -78,11 +84,16 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 	commandHandler.Register(fsd.AcceptHandoff, commandContent.HandleRequest, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
 	commandHandler.Register(fsd.ProController, commandContent.HandleRequest, &fsd.CommandRequirement{RequireLength: 3, Fatal: false})
 	commandHandler.Register(fsd.SquawkBox, commandContent.HandleSquawkBox, &fsd.CommandRequirement{RequireLength: 2, Fatal: false})
-	commandHandler.Register(fsd.AddAtc, commandContent.HandleAddAtc, &fsd.CommandRequirement{RequireLength: 12, Fatal: true})
+	if *global.Vatsim {
+		commandHandler.Register(fsd.AddAtc, commandContent.HandleVatsimAddAtc, &fsd.CommandRequirement{RequireLength: 7, Fatal: true})
+	} else {
+		commandHandler.Register(fsd.AddAtc, commandContent.HandleFsdAddAtc, &fsd.CommandRequirement{RequireLength: 12, Fatal: true})
+	}
 	commandHandler.Register(fsd.RemoveAtc, commandContent.RemoveClient, nil)
 	commandHandler.Register(fsd.AddPilot, commandContent.HandleAddPilot, &fsd.CommandRequirement{RequireLength: 8, Fatal: true})
 	commandHandler.Register(fsd.RemovePilot, commandContent.RemoveClient, nil)
 	commandHandler.Register(fsd.KillClient, commandContent.HandleKillClient, &fsd.CommandRequirement{RequireLength: 2, Fatal: false})
+	commandHandler.Register(fsd.ClientIdent, commandContent.HandleClientIdent, nil)
 
 	commandHandler.GeneratePossibleCommands()
 
