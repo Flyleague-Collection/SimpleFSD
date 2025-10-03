@@ -1,4 +1,14 @@
-<p>{{.Cid}}, 您好</p>
+<p>尊敬的{{.Cid}}: </p>
+<br>
+<p>您好, </p>
+<br>
+
 <p>您在{{.Time}}被{{.Operator}}踢出服务器</p>
 <p>理由是: {{.Reason}}</p>
-<p>如有疑问请联系 {{.Contact}}</p>
+
+<br>
+<p>如有疑问请联系: <a href="mailto:{{.Contact}}">{{.Contact}}</a></p>
+<br>
+
+<p>以上, </p>
+<p>APOCFLY</p>

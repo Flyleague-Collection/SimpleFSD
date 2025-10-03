@@ -1,5 +1,10 @@
-<p>{{.Cid}}, 您好</p>
-<p>您的邮箱验证码是{{.Code}}, 请不要告诉其他人</p>
+<p>尊敬的{{.Cid}}: </p>
+<br>
+<p>您好, </p>
+<br>
+
+<p>您的邮箱验证码是<strong style="color: red;">{{.Code}}</strong>, 请不要告诉其他人!</p>
 <p>验证码{{.ExpiredAt}}前有效, 有效期{{.Expired}}分钟, 请尽快使用</p>
 
-
+<p>以上, </p>
+<p>APOCFLY</p>
