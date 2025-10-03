@@ -7,4 +7,4 @@
 <p>验证码{{.ExpiredAt}}前有效, 有效期{{.Expired}}分钟, 请尽快使用</p>
 
 <p>以上, </p>
-<p>APOCFLY</p>
+<p>技术支持部</p>
