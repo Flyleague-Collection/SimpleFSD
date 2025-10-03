@@ -3,7 +3,6 @@
 <p>您好, </p>
 <br>
 
-<p>很遗憾的通知您: </p>
 <p>您的管制权限已被修改为: <strong>{{.NewValue}}</strong></p>
 <p>原管制权限: {{.OldValue}}, 操作人: {{.Operator}}</p>
 
