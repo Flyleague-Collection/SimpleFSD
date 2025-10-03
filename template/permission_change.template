@@ -3,7 +3,6 @@
 <p>您好, </p>
 <br>
 
-<p>很遗憾的通知您: </p>
 <p>您的管理权限已被修改为: <strong>{{.Permissions}}</strong>, 操作人: {{.Operator}}</p>
 <p>请登录飞控查看您的详细权限</p>
 
