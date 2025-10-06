@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
@@ -14,8 +17,6 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"strings"
-	"time"
 )
 
 type UserService struct {
@@ -150,6 +151,10 @@ func (userService *UserService) GetCurrentProfile(req *RequestUserCurrentProfile
 	})
 	if res != nil {
 		return res
+	}
+
+	if user.Rating <= fsd.Ban.Index() {
+		return NewApiResponse[ResponseUserCurrentProfile](ErrAccountSuspended, nil)
 	}
 
 	data := ResponseUserCurrentProfile(user)
