@@ -26,7 +26,7 @@ type FlightPlan struct {
 	Remarks          string    `gorm:"type:text;not null" json:"remarks"`
 	Route            string    `gorm:"type:text;not null" json:"route"`
 	Locked           bool      `gorm:"default:0;not null" json:"locked"`
-	FromWeb          bool      `gorm:"default:0;not null" json:"-"`
+	FromWeb          bool      `gorm:"default:0;not null" json:"from_web"`
 	CreatedAt        time.Time `json:"-"`
 	UpdatedAt        time.Time `json:"-"`
 }
