@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
@@ -11,11 +17,6 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"slices"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type Client struct {
@@ -165,6 +166,11 @@ func (client *Client) Delete() {
 
 	// 不计入ATIS时长
 	if client.isAtis {
+		return
+	}
+
+	// 不计入OBS登录时长
+	if client.facility == OBS {
 		return
 	}
 

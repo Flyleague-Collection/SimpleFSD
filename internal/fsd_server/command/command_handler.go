@@ -4,6 +4,10 @@ package command
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	c "github.com/half-nothing/simple-fsd/internal/fsd_server/client"
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
@@ -13,9 +17,6 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // verifyUserInfo 验证用户信息与处理客户端重连机制

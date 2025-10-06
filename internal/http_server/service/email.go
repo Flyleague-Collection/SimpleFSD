@@ -5,6 +5,9 @@ package service
 import (
 	"errors"
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
@@ -12,9 +15,6 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"math/rand"
-	"strings"
-	"time"
 )
 
 type EmailService struct {
@@ -62,7 +62,6 @@ func (emailService *EmailService) VerifyEmailCode(email string, code string, cid
 		return ErrEmailCodeIllegal
 	}
 
-	email = strings.ToLower(email)
 	emailCode, ok := emailService.emailCodeCache.Get(email)
 	if !ok {
 		return ErrEmailCodeExpired
