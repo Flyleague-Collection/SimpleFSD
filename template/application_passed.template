@@ -1,5 +1,15 @@
-<p>{{.Cid}}, 您好</p>
-<p>恭喜, {{.Operator}}已通过您的管制员申请</p>
-<p>欢迎加入空管中心, 祝上管顺利</p>
-<p>附加消息: {{.Message}}</p>
-<p>如有疑问请联系 {{.Contact}}</p>
+<p>尊敬的{{.Cid}}: </p>
+<br>
+<p>您好, </p>
+<br>
+
+<p>恭喜, 空管中心<strong>已通过</strong>您的管制员申请, 操作员: {{.Operator}}</p>
+<p>欢迎加入空管中心! </p>
+<p>附加消息: <p>
+<p>{{.Message}}</p>
+<br>
+<p>如有疑问请联系: <a href="mailto:{{.Contact}}">{{.Contact}}</a></p>
+<br>
+
+<p>以上, </p>
+<p>空管中心</p>
