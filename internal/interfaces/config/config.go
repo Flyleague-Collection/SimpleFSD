@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 )
 

@@ -4,12 +4,13 @@ package message
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	"golang.org/x/sync/errgroup"
-	"sync"
-	"time"
 )
 
 type ShutdownCallback struct {
@@ -81,7 +82,7 @@ func (asyncMessageQueue *AsyncMessageQueue) handleMessage(message *queue.Message
 		eg.Go(func() error { return subscriber(message) })
 	}
 	if err := eg.Wait(); err != nil {
-		asyncMessageQueue.logger.ErrorF("Error in handling message: %s", err.Error())
+		asyncMessageQueue.logger.ErrorF("Error in handling message type %s: %s", message.Type.String(), err.Error())
 		return err
 	}
 	return nil

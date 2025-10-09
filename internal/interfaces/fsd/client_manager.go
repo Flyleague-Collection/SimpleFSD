@@ -4,6 +4,7 @@ package fsd
 import (
 	"context"
 	"errors"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 )
@@ -29,7 +30,7 @@ type ClientManagerInterface interface {
 }
 
 type BroadcastMessageData struct {
-	From    int
+	From    string
 	Target  BroadcastTarget
 	Message string
 }
@@ -47,7 +48,7 @@ type FlushFlightPlan struct {
 }
 
 type SendRawMessageData struct {
-	From    int
+	From    string
 	To      string
 	Message string
 }

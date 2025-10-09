@@ -26,6 +26,7 @@ type Client struct {
 	userOperation       operation.UserOperationInterface
 	flightPlanOperation operation.FlightPlanOperationInterface
 	historyOperation    operation.HistoryOperationInterface
+	capacities          map[string]bool
 	isAtc               bool
 	isAtis              bool
 	logoffTime          string
@@ -82,11 +83,12 @@ func NewClient(
 		}
 	}
 	client := &Client{
-		logger:              logger,
+		logger:              log.NewLoggerAdapter(logger, fmt.Sprintf("%s(%d)[%s]", callsign, session.User().Cid, session.ConnId())),
 		config:              c,
 		userOperation:       userOperation,
 		flightPlanOperation: flightPlanOperation,
 		historyOperation:    historyOperation,
+		capacities:          make(map[string]bool),
 		isAtc:               isAtc,
 		isAtis:              strings.HasSuffix(callsign, "ATIS"),
 		isBreak:             false,
@@ -145,9 +147,9 @@ func (client *Client) Delete() {
 	}
 
 	defer func() {
-		client.logger.InfoF("[%s](%s) client session deleted", client.socket.ConnId(), client.callsign)
+		client.logger.Info("Client session deleted")
 		if !client.clientManager.DeleteClient(client.callsign) {
-			client.logger.ErrorF("[%s](%s) Failed to delete from client manager", client.socket.ConnId(), client.callsign)
+			client.logger.Error("Failed to delete from client manager")
 		}
 	}()
 
@@ -160,7 +162,7 @@ func (client *Client) Delete() {
 	if client.flightPlan != nil {
 		err := client.flightPlanOperation.UnlockFlightPlan(client.flightPlan)
 		if err != nil {
-			client.logger.ErrorF("[%s](%s) Failed to unlock flight plan", client.socket.ConnId(), client.callsign)
+			client.logger.Error("Failed to unlock flight plan")
 		}
 	}
 
@@ -184,18 +186,18 @@ func (client *Client) Delete() {
 	if client.isAtc {
 		// 写入管制连线时长
 		if err := client.historyOperation.SaveHistory(client.history); err != nil {
-			client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
+			client.logger.Error("Failed to end history: %v")
 		}
 		if err := client.userOperation.UpdateUserAtcTime(client.user, client.history.OnlineTime); err != nil {
-			client.logger.ErrorF("[%s](%s) Failed to add ATC time: %v", client.socket.ConnId(), client.callsign, err)
+			client.logger.Error("Failed to add ATC time: %v")
 		}
 	} else {
 		// 写入机组连线时长
 		if err := client.historyOperation.SaveHistory(client.history); err != nil {
-			client.logger.ErrorF("[%s](%s) Failed to end history: %v", client.socket.ConnId(), client.callsign, err)
+			client.logger.Error("Failed to end history: %v")
 		}
 		if err := client.userOperation.UpdateUserPilotTime(client.user, client.history.OnlineTime); err != nil {
-			client.logger.ErrorF("[%s](%s) Failed to add pilot time: %v", client.socket.ConnId(), client.callsign, err)
+			client.logger.Error("Failed to add pilot time: %v")
 		}
 	}
 }
@@ -208,7 +210,7 @@ func (client *Client) Reconnect(socket SessionInterface) bool {
 		return false
 	}
 
-	client.logger.InfoF("[%s](%s) client reconnected", client.socket.ConnId(), client.callsign)
+	client.logger.Info("Client reconnected")
 
 	if client.reconnectTimer != nil {
 		client.reconnectTimer.Stop()
@@ -216,6 +218,7 @@ func (client *Client) Reconnect(socket SessionInterface) bool {
 	}
 
 	client.ClearAtcAtisInfo()
+	client.capacities = make(map[string]bool)
 	client.disconnect.Store(false)
 	client.socket = socket
 	socket.SetCallsign(client.callsign)
@@ -251,8 +254,7 @@ func (client *Client) MarkedDisconnect(immediate bool) {
 
 	client.motdBytes = client.motdBytes[:0]
 	client.reconnectTimer = time.AfterFunc(client.config.Server.FSDServer.SessionCleanDuration, client.Delete)
-	client.logger.InfoF("[%s](%s) client disconnected, reconnect window: %v", client.socket.ConnId(),
-		client.callsign, client.config.Server.FSDServer.SessionCleanDuration)
+	client.logger.InfoF("client disconnected, reconnect window: %v", client.config.Server.FSDServer.SessionCleanDuration)
 }
 
 func (client *Client) UpsertFlightPlan(flightPlanData []string) error {
@@ -346,7 +348,7 @@ func (client *Client) SendLineWithoutLog(line []byte) error {
 	defer client.lock.RUnlock()
 
 	if client.disconnect.Load() {
-		client.logger.WarnF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
+		client.logger.Warn("Attempted send to disconnected client")
 		return ErrClientDisconnected
 	}
 
@@ -355,7 +357,7 @@ func (client *Client) SendLineWithoutLog(line []byte) error {
 	}
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
-		client.logger.ErrorF("[%s](%s) Failed to send data: %v", client.socket.ConnId(), client.callsign, err)
+		client.logger.ErrorF("Failed to send data: %v", err)
 		return ErrClientSocketWrite
 	}
 	return nil
@@ -363,7 +365,7 @@ func (client *Client) SendLineWithoutLog(line []byte) error {
 
 func (client *Client) SendLine(line []byte) {
 	if client.disconnect.Load() {
-		client.logger.DebugF("[%s](%s) Attempted send to disconnected client", client.socket.ConnId(), client.callsign)
+		client.logger.Debug("Attempted send to disconnected client")
 		return
 	}
 
@@ -371,14 +373,14 @@ func (client *Client) SendLine(line []byte) {
 	defer client.lock.RUnlock()
 
 	if !bytes.HasSuffix(line, SplitSign) {
-		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line)
+		client.logger.DebugF("<- %s", line)
 		line = append(line, SplitSign...)
 	} else {
-		client.logger.DebugF("[%s](%s) <- %s", client.socket.ConnId(), client.callsign, line[:len(line)-SplitSignLen])
+		client.logger.DebugF("<- %s", line[:len(line)-SplitSignLen])
 	}
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
-		client.logger.WarnF("[%s](%s) Failed to send data: %v", client.socket.ConnId(), client.callsign, err)
+		client.logger.WarnF("Failed to send data: %v", client.callsign, err)
 	}
 }
 
@@ -395,6 +397,21 @@ func (client *Client) SendMotd() {
 
 	client.motdBytes = buffer.Bytes()
 	client.SendLine(client.motdBytes)
+}
+
+func (client *Client) UpdateCapacities(capacities []string) {
+	for _, capacity := range capacities {
+		caps := strings.Split(capacity, "=")
+		if len(caps) != 2 {
+			client.logger.WarnF("Invalid capacitiy: %s", capacity)
+			continue
+		}
+		client.capacities[caps[0]] = utils.StrToInt(caps[1], 0) == 1
+	}
+}
+
+func (client *Client) CheckCapacity(capacity string) bool {
+	return client.capacities[capacity]
 }
 
 func (client *Client) CheckFacility(facility Facility) bool {

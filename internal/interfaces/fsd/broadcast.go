@@ -54,6 +54,10 @@ func BroadcastToAll(_, _ ClientInterface) bool {
 	return true
 }
 
+func BroadcastToPilot(toClient, _ ClientInterface) bool {
+	return !toClient.IsAtc()
+}
+
 func BroadcastToAtc(toClient, _ ClientInterface) bool {
 	return toClient.IsAtc()
 }

@@ -3,6 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/base"
 	"github.com/half-nothing/simple-fsd/internal/cache"
 	"github.com/half-nothing/simple-fsd/internal/database"
@@ -18,9 +22,6 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/message"
 	"github.com/half-nothing/simple-fsd/internal/metar"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"os"
-	"strconv"
-	"time"
 )
 
 func recoverFromError() {
@@ -70,6 +71,14 @@ func main() {
 	checkDurationEnv(global.EnvMetarCacheCleanInterval, global.MetarCacheCleanInterval)
 	checkIntEnv(global.EnvMetarQueryThread, global.MetarQueryThread, 32)
 	checkIntEnv(global.EnvFsdRecordFilter, global.FsdRecordFilter, 10)
+	checkBoolEnv(global.EnvVatsimProtocol, global.Vatsim)
+	checkBoolEnv(global.EnvVatsimFullProtocol, global.VatsimFull)
+	checkBoolEnv(global.EnvMutilThread, global.MutilThread)
+	checkBoolEnv(global.EnvVisualPilot, global.VisualPilot)
+
+	if !*global.Vatsim {
+		*global.VatsimFull = false
+	}
 
 	defer recoverFromError()
 
@@ -128,7 +137,7 @@ func main() {
 
 	cleaner.Add(messageQueue.ShutdownCallback())
 
-	clientManager := client.NewClientManager(fsdLogger, config)
+	clientManager := client.NewClientManager(fsdLogger, config, messageQueue)
 
 	messageQueue.Subscribe(queue.KickClientFromServer, clientManager.HandleKickClientFromServerMessage)
 	messageQueue.Subscribe(queue.SendMessageToClient, clientManager.HandleSendMessageToClientMessage)

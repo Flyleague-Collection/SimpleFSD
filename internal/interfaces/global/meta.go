@@ -18,11 +18,14 @@ var (
 	MetarQueryThread        = flag.Int("metar_query_thread", 32, "metar query thread")
 	FsdRecordFilter         = flag.Int("fsd_record_filter", 10, "record the minimum amount of time in the connection history")
 	Vatsim                  = flag.Bool("vatsim", false, "Enable Vatsim protocol")
+	VatsimFull              = flag.Bool("vatsim_full", false, "Enable Full Vatsim protocol")
+	MutilThread             = flag.Bool("mutil_thread", false, "Enable Mutil thread")
+	VisualPilot             = flag.Bool("visual_pilot", false, "Enable Visual Pilot point")
 )
 
 const (
 	AppVersion    = "0.8.0"
-	ConfigVersion = "0.8.2"
+	ConfigVersion = "0.8.3"
 
 	SigningMethod = "HS512"
 
@@ -36,7 +39,10 @@ const (
 	EnvMetarCacheCleanInterval = "METAR_CACHE_CLEAN_INTERVAL"
 	EnvMetarQueryThread        = "METAR_QUERY_THREAD"
 	EnvFsdRecordFilter         = "FSD_RECORD_FILTER"
-	EnvVatsimProtocol          = "VATSIM_PROTOCOL"
+	EnvVatsimProtocol          = "VATSIM"
+	EnvVatsimFullProtocol      = "VATSIM_FULL"
+	EnvMutilThread             = "MUTAR_THREAD"
+	EnvVisualPilot             = "VISUAL_PILOT"
 
 	LogFilePath = "logs"
 	MainLogName = "main"

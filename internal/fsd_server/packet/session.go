@@ -1,10 +1,11 @@
 package packet
 
 import (
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"net"
 	"sync/atomic"
+
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 )
 
 type Session struct {

@@ -3,6 +3,7 @@ package fsd
 
 import (
 	"errors"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 )
 
@@ -33,6 +34,8 @@ type ClientInterface interface {
 	SendLineWithoutLog(line []byte) error
 	SendLine(line []byte)
 	SendMotd()
+	UpdateCapacities(capacities []string)
+	CheckCapacity(capacity string) bool
 	CheckFacility(facility Facility) bool
 	CheckRating(rating []Rating) bool
 	IsAtc() bool

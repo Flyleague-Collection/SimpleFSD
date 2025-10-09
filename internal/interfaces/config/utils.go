@@ -4,14 +4,15 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"github.com/half-nothing/simple-fsd/internal/utils"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
 var (

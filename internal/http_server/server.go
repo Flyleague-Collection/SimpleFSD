@@ -5,12 +5,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/half-nothing/simple-fsd/internal/cache"
 	"github.com/half-nothing/simple-fsd/internal/http_server/controller"
 	mid "github.com/half-nothing/simple-fsd/internal/http_server/middleware"
 	impl "github.com/half-nothing/simple-fsd/internal/http_server/service"
 	"github.com/half-nothing/simple-fsd/internal/http_server/service/store"
+	ws "github.com/half-nothing/simple-fsd/internal/http_server/websocket"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
@@ -20,28 +29,28 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/samber/slog-echo"
-	"io"
-	"log/slog"
-	"net"
-	"net/http"
-	"net/url"
-	"time"
+	"golang.org/x/sync/errgroup"
 )
 
 type HttpServerShutdownCallback struct {
 	serverHandler *echo.Echo
+	websocket     *ws.WebSocketServer
 }
 
-func NewHttpServerShutdownCallback(serverHandler *echo.Echo) *HttpServerShutdownCallback {
+func NewHttpServerShutdownCallback(serverHandler *echo.Echo, websocket *ws.WebSocketServer) *HttpServerShutdownCallback {
 	return &HttpServerShutdownCallback{
 		serverHandler: serverHandler,
+		websocket:     websocket,
 	}
 }
 
 func (hc *HttpServerShutdownCallback) Invoke(ctx context.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	return hc.serverHandler.Shutdown(timeoutCtx)
+	var eg errgroup.Group
+	eg.Go(func() error { return hc.websocket.Close(timeoutCtx) })
+	eg.Go(func() error { return hc.serverHandler.Shutdown(timeoutCtx) })
+	return eg.Wait()
 }
 
 func StartHttpServer(applicationContent *ApplicationContent) {
@@ -53,6 +62,17 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	e.Logger.SetOutput(io.Discard)
 	e.Logger.SetLevel(log.OFF)
 	httpConfig := config.Server.HttpServer
+
+	messageQueue := applicationContent.MessageQueue()
+
+	websocketServer := ws.NewWebSocketServer(logger, messageQueue, httpConfig)
+
+	webSocketGroup := e.Group("/ws")
+	webSocketGroup.GET("/fsd", websocketServer.ConnectToFsd)
+
+	skipWebSocket := func(c echo.Context) bool {
+		return strings.HasPrefix(c.Path(), "/ws")
+	}
 
 	switch httpConfig.ProxyType {
 	case 0:
@@ -79,7 +99,10 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 		e.Use(middleware.HTTPSRedirect())
 	}
 
-	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{Timeout: 30 * time.Second}))
+	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+		Timeout: 30 * time.Second,
+		Skipper: skipWebSocket,
+	}))
 	e.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
 		LogErrorFunc: func(ctx echo.Context, err error, stack []byte) error {
 			logger.ErrorF("Recovered from a fatal error: %v, stack: %s", err, string(stack))
@@ -93,6 +116,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 		ServerErrorLevel: slog.LevelError,
 	}
 	e.Use(slogecho.NewWithConfig(logger.LogHandler(), loggerConfig))
+
 	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
 		XSSProtection:         "1; mode=block",
 		ContentTypeNosniff:    "nosniff",
@@ -100,12 +124,14 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 		HSTSMaxAge:            httpConfig.SSL.HstsExpiredTime,
 		HSTSExcludeSubdomains: !httpConfig.SSL.IncludeDomain,
 	}))
+
 	e.Use(middleware.CORS())
 	if httpConfig.BodyLimit != "" {
 		e.Use(middleware.BodyLimit(httpConfig.BodyLimit))
 	}
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		Level: 5,
+		Level:   5,
+		Skipper: skipWebSocket,
 	}))
 
 	if httpConfig.Limits.RateLimit <= 0 {
@@ -186,8 +212,6 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	flightPlanOperation := applicationContent.Operations().FlightPlanOperation()
 	announcementOperation := applicationContent.Operations().AnnouncementOperation()
 	metarManager := applicationContent.MetarManager()
-
-	messageQueue := applicationContent.MessageQueue()
 
 	auditLogService := impl.NewAuditService(logger, auditLogOperation)
 	messageQueue.Subscribe(queue.AuditLog, auditLogService.HandleAuditLogMessage)
@@ -336,7 +360,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	apiGroup.Use(middleware.Static(httpConfig.Store.LocalStorePath))
 
-	applicationContent.Cleaner().Add(NewHttpServerShutdownCallback(e))
+	applicationContent.Cleaner().Add(NewHttpServerShutdownCallback(e, websocketServer))
 
 	protocol := "http"
 	if httpConfig.SSL.Enable {

@@ -5,10 +5,11 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"time"
+
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"time"
 )
 
 type SessionContent struct {
@@ -75,13 +76,17 @@ func (content *SessionContent) handleLine(session *Session, line []byte) {
 		return
 	}
 	command, data := parserCommandLine(line, content.possibleCommands)
+	if command == Unknown {
+		content.logger.WarnF("[%s](%s) unknown command line %s", session.connId, session.callsign, line)
+		return
+	}
 	result := content.handleCommand(session, command, data, line)
 	if result == nil {
-		content.logger.WarnF("[%s](%s) handleCommand return a nil result", session.connId, session.callsign)
+		content.logger.WarnF("[%s](%s) command handler return a nil result, %s", session.connId, session.callsign, line)
 		return
 	}
 	if !result.Success {
-		content.logger.ErrorF("[%s](%s) handleCommand fail, %s, %s", session.connId, session.callsign, result.Errno.String(), result.Err.Error())
+		content.logger.ErrorF("[%s](%s) command handle fail, %s, %s, %s", session.connId, session.callsign, result.Errno.String(), result.Err.Error(), line)
 		content.SendError(session, result)
 	}
 }
@@ -95,6 +100,7 @@ func (content *SessionContent) HandleConnection(session *Session) {
 			}
 		})
 	}()
+
 	if *global.Vatsim {
 		_, _ = session.conn.Write([]byte("$DISERVER:CLIENT:VATSIM FSD V3.53a:0815b2e12302\r\n"))
 	}
@@ -104,12 +110,12 @@ func (content *SessionContent) HandleConnection(session *Session) {
 	for scanner.Scan() {
 		_ = session.conn.SetDeadline(time.Now().Add(content.heartbeatTimeout))
 		if scanner.Err() != nil {
-			content.logger.ErrorF("error while scanning, %v", scanner.Err())
+			content.logger.ErrorF("[%s](%s) Error while scanning, %v", session.connId, session.callsign, scanner.Err())
 			break
 		}
 		line := scanner.Bytes()
 		content.logger.DebugF("[%s](%s) -> %s", session.connId, session.callsign, line)
-		if session.client == nil {
+		if session.client == nil || !*global.MutilThread {
 			content.handleLine(session, line)
 		} else {
 			go content.handleLine(session, line)
@@ -121,9 +127,9 @@ func (content *SessionContent) HandleConnection(session *Session) {
 
 	if session.client != nil {
 		if session.client.IsAtc() {
-			content.clientManager.BroadcastMessage(MakePacketWithoutSign(RemoveAtc, session.client.Callsign(), global.FSDServerName), session.client, BroadcastToClientInRange)
+			go content.clientManager.BroadcastMessage(MakePacketWithoutSign(RemoveAtc, session.client.Callsign(), fmt.Sprintf("%04d", session.user.Cid)), session.client, BroadcastToClientInRange)
 		} else {
-			content.clientManager.BroadcastMessage(MakePacketWithoutSign(RemovePilot, session.client.Callsign(), global.FSDServerName), session.client, BroadcastToClientInRange)
+			go content.clientManager.BroadcastMessage(MakePacketWithoutSign(RemovePilot, session.client.Callsign(), fmt.Sprintf("%04d", session.user.Cid)), session.client, BroadcastToClientInRange)
 		}
 		session.client.MarkedDisconnect(false)
 	}

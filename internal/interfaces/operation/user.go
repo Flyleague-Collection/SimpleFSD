@@ -3,9 +3,10 @@ package operation
 
 import (
 	"errors"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"gorm.io/gorm"
-	"time"
 )
 
 type User struct {

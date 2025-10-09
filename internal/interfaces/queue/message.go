@@ -3,6 +3,7 @@ package queue
 
 import (
 	"errors"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 )
 
@@ -27,6 +28,7 @@ const (
 	ChangeFlightPlanLockStatus
 	AuditLog
 	AuditLogs
+	FsdMessageReceived
 )
 
 var messageTypes = []string{
@@ -47,6 +49,7 @@ var messageTypes = []string{
 	"ChangeFlightPlanLockStatus",
 	"AuditLog",
 	"AuditLogs",
+	"FsdMessageReceived",
 }
 
 func (messageType MessageType) String() string {

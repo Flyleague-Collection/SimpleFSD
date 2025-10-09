@@ -5,14 +5,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type ClientManager struct {
@@ -22,15 +24,17 @@ type ClientManager struct {
 	shuttingDown    atomic.Bool
 	config          *config.Config
 	clientSlicePool sync.Pool
+	messageQueue    queue.MessageQueueInterface
 	whazzupContent  *utils.CachedValue[OnlineClients]
 }
 
-func NewClientManager(logger log.LoggerInterface, config *config.Config) *ClientManager {
+func NewClientManager(logger log.LoggerInterface, config *config.Config, messageQueue queue.MessageQueueInterface) *ClientManager {
 	clientManager := &ClientManager{
-		logger:       logger,
+		logger:       log.NewLoggerAdapter(logger, "ClientManager"),
 		clients:      make(map[string]ClientInterface),
 		shuttingDown: atomic.Bool{},
 		config:       config,
+		messageQueue: messageQueue,
 		clientSlicePool: sync.Pool{
 			New: func() interface{} {
 				return make([]ClientInterface, 0, 128)
@@ -41,13 +45,13 @@ func NewClientManager(logger log.LoggerInterface, config *config.Config) *Client
 	return clientManager
 }
 
-func (cm *ClientManager) sendRawMessageTo(from int, to string, message string) error {
+func (cm *ClientManager) sendRawMessageTo(from string, to string, message string) error {
 	client, exists := cm.GetClient(to)
 	if !exists {
 		return ErrCallsignNotFound
 	}
 
-	packet := MakePacket(Message, fmt.Sprintf("(%04d)", from), to, message)
+	packet := MakePacket(Message, from, to, message)
 
 	client.SendLine(packet)
 	return nil
@@ -126,7 +130,7 @@ func (cm *ClientManager) broadcastMessage(message *BroadcastMessageData) error {
 		filter = BroadcastToAllClient
 	}
 
-	packet := MakePacket(Message, fmt.Sprintf("(%04d)", message.From), message.Target.String(), message.Message)
+	packet := MakePacket(Message, message.From, message.Target.String(), message.Message)
 
 	for _, client := range clients {
 		if client.Disconnected() {
@@ -290,7 +294,6 @@ func (cm *ClientManager) GetClientSnapshot() []ClientInterface {
 	return clients
 }
 
-// 并发断开所有客户端连接
 func (cm *ClientManager) disconnectClients(clients []ClientInterface) {
 	if len(clients) == 0 {
 		return
@@ -356,15 +359,23 @@ func (cm *ClientManager) DeleteClient(callsign string) bool {
 
 func (cm *ClientManager) SendMessageTo(callsign string, message []byte) error {
 	if cm.shuttingDown.Load() {
-		return fmt.Errorf("server is shutting down")
+		return errors.New("server is shutting down")
 	}
 
-	client, exists := cm.GetClient(callsign)
-	if !exists {
-		return ErrCallsignNotFound
+	if strings.HasPrefix(callsign, cm.config.Server.HttpServer.ClientPrefix) &&
+		strings.HasSuffix(callsign, cm.config.Server.HttpServer.ClientSuffix) {
+		cm.messageQueue.Publish(&queue.Message{
+			Type: queue.FsdMessageReceived,
+			Data: message,
+		})
+	} else {
+		client, exists := cm.GetClient(callsign)
+		if !exists {
+			return ErrCallsignNotFound
+		}
+		client.SendLine(message)
 	}
 
-	client.SendLine(message)
 	return nil
 }
 
@@ -380,9 +391,11 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 		return
 	}
 
-	fullMsg := make([]byte, len(message), len(message)+len(SplitSign))
+	fullMsg := make([]byte, len(message))
 	copy(fullMsg, message)
-	fullMsg = append(fullMsg, SplitSign...)
+	if !bytes.HasSuffix(message, SplitSign) {
+		fullMsg = append(fullMsg, SplitSign...)
+	}
 
 	// 并发广播
 	var wg sync.WaitGroup
@@ -405,7 +418,7 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 				wg.Done()
 			}()
 
-			cm.logger.DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), message)
+			cm.logger.DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), fullMsg)
 			err := cl.SendLineWithoutLog(fullMsg)
 			if err != nil && errors.Is(err, ErrClientSocketWrite) {
 				cl.MarkedDisconnect(false)

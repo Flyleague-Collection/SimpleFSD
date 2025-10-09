@@ -5,6 +5,7 @@ package service
 import (
 	"errors"
 	"fmt"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
@@ -58,7 +59,7 @@ func (clientService *ClientService) SendMessageToClient(req *RequestSendMessageT
 	if err := clientService.messageQueue.SyncPublish(&queue.Message{
 		Type: queue.SendMessageToClient,
 		Data: &fsd.SendRawMessageData{
-			From:    req.Cid,
+			From:    clientService.config.FormatCallsign(req.Cid),
 			To:      req.SendTo,
 			Message: req.Message,
 		},
@@ -155,7 +156,7 @@ func (clientService *ClientService) SendBroadcastMessage(req *RequestSendBroadca
 	clientService.messageQueue.Publish(&queue.Message{
 		Type: queue.BroadcastMessage,
 		Data: &fsd.BroadcastMessageData{
-			From:    req.Cid,
+			From:    clientService.config.FormatCallsign(req.Cid),
 			Target:  fsd.BroadcastTarget(req.Target),
 			Message: req.Message,
 		},

@@ -5,9 +5,10 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"net"
 	"strings"
+
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 )
 
 func parserCommandLine(line []byte, possibleCommands [][]byte) (ClientCommand, []string) {
@@ -17,7 +18,7 @@ func parserCommandLine(line []byte, possibleCommands [][]byte) (ClientCommand, [
 			return ClientCommand(prefix), strings.Split(decodeLine, ":")
 		}
 	}
-	return TempData, nil
+	return Unknown, nil
 }
 
 func isNetClosedError(err error) bool {

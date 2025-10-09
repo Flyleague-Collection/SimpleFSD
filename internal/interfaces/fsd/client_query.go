@@ -12,3 +12,7 @@ const (
 	EditFlightPlan   = "FA"
 	ClientFlightPlan = "FP"
 )
+
+const (
+	VisualPilot = "VISUPDATE"
+)

@@ -19,7 +19,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
-// verifyUserInfo 验证用户信息与处理客户端重连机制
+// verifyFsdUserInfo 验证用户信息与处理客户端重连机制
 func (content *CommandContent) verifyFsdUserInfo(session SessionInterface, callsign string, protocol int, cid operation.UserId, password string) *Result {
 	if !callsignValid(callsign) {
 		return ResultError(CallsignInvalid, true, callsign, nil)
@@ -62,6 +62,7 @@ func (content *CommandContent) verifyFsdUserInfo(session SessionInterface, calls
 	return nil
 }
 
+// verifyVatsimUserInfo 验证用户信息与处理客户端重连机制(VATSIM协议)
 func (content *CommandContent) verifyVatsimUserInfo(session SessionInterface, callsign string, cid operation.UserId, token string) *Result {
 	if !callsignValid(callsign) {
 		return ResultError(CallsignInvalid, true, callsign, nil)
@@ -135,7 +136,7 @@ func (content *CommandContent) checkRatingAndFacility(session SessionInterface, 
 	return nil
 }
 
-func (content *CommandContent) HandleVatsimAddAtc(session SessionInterface, data []string, rawLine []byte) *Result {
+func (content *CommandContent) HandleVatsimAddAtc(session SessionInterface, data []string, _ []byte) *Result {
 	callsign := data[0]
 	cid := operation.GetUserId(data[3])
 	if result := content.verifyVatsimUserInfo(session, callsign, cid, data[4]); result != nil {
@@ -154,14 +155,16 @@ func (content *CommandContent) HandleVatsimAddAtc(session SessionInterface, data
 		session.Client().SetRating(Rating(reqRating))
 		session.Client().SetRealName(realName)
 	}
-	session.Client().SendLine(MakePacket(ClientQuery, global.FSDServerName, callsign, "ATIS"))
-	go content.clientManager.BroadcastMessage(rawLine, session.Client(), BroadcastToClientInRange)
-	session.Client().SendMotd()
 	content.logger.InfoF("[%s] ATC login successfully", callsign)
+	broadcastData := data[:6]
+	broadcastData[4] = ""
+	go content.clientManager.BroadcastMessage(MakePacket(AddAtc, broadcastData...), session.Client(), BroadcastToClientInRange)
+	session.Client().SendMotd()
+	session.Client().SendLine(MakePacket(ClientQuery, global.FSDServerName, callsign, "ATIS"))
 	return ResultSuccess()
 }
 
-func (content *CommandContent) HandleFsdAddAtc(session SessionInterface, data []string, rawLine []byte) *Result {
+func (content *CommandContent) HandleFsdAddAtc(session SessionInterface, data []string, _ []byte) *Result {
 	callsign := data[0]
 	cid := operation.GetUserId(data[3])
 	password := data[4]
@@ -185,14 +188,25 @@ func (content *CommandContent) HandleFsdAddAtc(session SessionInterface, data []
 		session.Client().SetRating(Rating(reqRating))
 		session.Client().SetRealName(realName)
 	}
-	session.Client().SendLine(MakePacket(ClientQuery, global.FSDServerName, callsign, "ATIS"))
-	go content.clientManager.BroadcastMessage(rawLine, session.Client(), BroadcastToClientInRange)
-	session.Client().SendMotd()
 	content.logger.InfoF("[%s] ATC login successfully", callsign)
+	broadcastData := data[:6]
+	broadcastData[4] = ""
+	go content.clientManager.BroadcastMessage(MakePacket(AddAtc, broadcastData...), session.Client(), BroadcastToClientInRange)
+	session.Client().SendMotd()
+	session.Client().SendLine(MakePacket(ClientQuery, global.FSDServerName, callsign, AtcAtis))
 	return ResultSuccess()
 }
 
-func (content *CommandContent) HandleAddPilot(session SessionInterface, data []string, rawLine []byte) *Result {
+func (content *CommandContent) HandleVatsimAddPilot(session SessionInterface, data []string, rawLine []byte) *Result {
+	callsign := data[0]
+	cid := operation.GetUserId(data[2])
+	if result := content.verifyVatsimUserInfo(session, callsign, cid, data[3]); result != nil {
+		return result
+	}
+	return content.handleClientLogin(session, data, rawLine, callsign, utils.StrToInt(data[5], 0))
+}
+
+func (content *CommandContent) HandleFsdAddPilot(session SessionInterface, data []string, rawLine []byte) *Result {
 	callsign := data[0]
 	cid := operation.GetUserId(data[2])
 	password := data[3]
@@ -201,12 +215,16 @@ func (content *CommandContent) HandleAddPilot(session SessionInterface, data []s
 	if result != nil {
 		return result
 	}
+	return content.handleClientLogin(session, data, rawLine, callsign, protocol)
+}
+
+func (content *CommandContent) handleClientLogin(session SessionInterface, data []string, _ []byte, callsign string, protocol int) *Result {
+	simType := utils.StrToInt(data[6], 0)
+	realName := data[7]
 	reqRating := Rating(utils.StrToInt(data[4], 0) - 1)
 	if reqRating != Normal || !RatingFacilityMap[reqRating].CheckFacility(Pilot) {
 		return ResultError(RequestLevelTooHigh, true, callsign, nil)
 	}
-	simType := utils.StrToInt(data[6], 0)
-	realName := data[7]
 	if session.Client() == nil {
 		client := c.NewClient(content.application, callsign, reqRating, protocol, realName, session, false)
 		client.SetSimType(simType)
@@ -216,9 +234,12 @@ func (content *CommandContent) HandleAddPilot(session SessionInterface, data []s
 		session.Client().SetRating(reqRating)
 		session.Client().SetRealName(realName)
 	}
-	go content.clientManager.BroadcastMessage(rawLine, session.Client(), BroadcastToClientInRange)
+	content.logger.InfoF("[%s] Client login successfully", callsign)
+	broadcastData := data[:6]
+	broadcastData[4] = ""
+	go content.clientManager.BroadcastMessage(MakePacket(AddPilot, broadcastData...), session.Client(), BroadcastToClientInRange)
 	session.Client().SendMotd()
-	content.logger.InfoF("[%s] client login successfully", callsign)
+	session.Client().SendLine(MakePacket(ClientQuery, global.FSDServerName, callsign, ClientCapacity))
 	if !content.isSimulatorServer {
 		flightPlan := session.Client().FlightPlan()
 		if flightPlan != nil && flightPlan.FromWeb && callsign != flightPlan.Callsign {
@@ -331,8 +352,7 @@ func (content *CommandContent) HandleClientQuery(session SessionInterface, data 
 			}
 			session.Client().SendLine([]byte(content.flightPlanOperation.ToString(client.FlightPlan())))
 		case AvailableAtc:
-			available := isValidAtc(data[0])
-			if available {
+			if isValidAtc(data[0]) {
 				session.Client().SendLine(MakePacket(ClientResponse, global.FSDServerName, data[0], "ATC:Y", data[0]))
 			} else {
 				session.Client().SendLine(MakePacket(ClientResponse, global.FSDServerName, data[0], "ATC:N", data[0]))
@@ -401,13 +421,21 @@ func (content *CommandContent) HandleClientResponse(session SessionInterface, da
 	targetStation := data[1]
 	if targetStation == global.FSDServerName {
 		subQuery := data[2]
-		if subQuery == "ATIS" && commandLength >= 5 {
+		if subQuery == AtcAtis && commandLength >= 5 {
 			if data[3] == "T" {
 				session.Client().AddAtcAtisInfo(data[4])
 			}
 			if data[3] == "Z" {
 				session.Client().SetLogoffTime(data[4])
 			}
+			return ResultSuccess()
+		}
+		if subQuery == ClientCapacity && commandLength >= 4 {
+			session.Client().UpdateCapacities(data[3:])
+			if *global.VisualPilot && session.Client().CheckCapacity(VisualPilot) {
+				session.Client().SendLine(MakePacket(SwitchVisualPilot, global.FSDServerName, session.Callsign(), "1"))
+			}
+			return ResultSuccess()
 		}
 	}
 	if strings.HasPrefix(targetStation, "@") {
@@ -568,5 +596,10 @@ func (content *CommandContent) HandleWeatherQuery(session SessionInterface, data
 
 func (content *CommandContent) HandleClientIdent(session SessionInterface, data []string, _ []byte) *Result {
 	session.SetCallsign(data[0])
+	return ResultSuccess()
+}
+
+func (content *CommandContent) HandleBroadcastToClient(session SessionInterface, _ []string, rawLine []byte) *Result {
+	go content.clientManager.BroadcastMessage(rawLine, session.Client(), CombineBroadcastFilter(BroadcastToPilot, BroadcastToClientInRange))
 	return ResultSuccess()
 }

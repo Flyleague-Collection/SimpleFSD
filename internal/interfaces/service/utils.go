@@ -3,11 +3,12 @@ package service
 
 import (
 	"errors"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/labstack/echo/v4"
-	"time"
 )
 
 type HttpCode int
