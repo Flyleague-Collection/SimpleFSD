@@ -5,9 +5,9 @@ on:
     branches:
       - "main"
     paths:
-      - .github/workflows/**
-      - cmd/**
-      - internal/**
+      - .github/workflows/**/*
+      - cmd/**/*
+      - internal/**/*
       - go.mod
   pull_request:
     branches:
