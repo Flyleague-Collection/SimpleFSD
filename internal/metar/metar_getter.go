@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/PuerkitoBio/goquery"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/mdaverde/jsonpath"
-	"io"
-	"net/http"
-	"strings"
 )
 
 type MetarGetter struct {

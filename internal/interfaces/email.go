@@ -3,9 +3,10 @@ package interfaces
 
 import (
 	"errors"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
-	"time"
 )
 
 var (

@@ -22,8 +22,9 @@ import (
 	ws "github.com/half-nothing/simple-fsd/internal/http_server/websocket"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/http/service"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -32,19 +33,19 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type HttpServerShutdownCallback struct {
+type ShutdownCallback struct {
 	serverHandler *echo.Echo
 	websocket     *ws.WebSocketServer
 }
 
-func NewHttpServerShutdownCallback(serverHandler *echo.Echo, websocket *ws.WebSocketServer) *HttpServerShutdownCallback {
-	return &HttpServerShutdownCallback{
+func NewShutdownCallback(serverHandler *echo.Echo, websocket *ws.WebSocketServer) *ShutdownCallback {
+	return &ShutdownCallback{
 		serverHandler: serverHandler,
 		websocket:     websocket,
 	}
 }
 
-func (hc *HttpServerShutdownCallback) Invoke(ctx context.Context) error {
+func (hc *ShutdownCallback) Invoke(ctx context.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var eg errgroup.Group
@@ -128,37 +129,25 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	e.Use(middleware.CORS())
 	if httpConfig.BodyLimit != "" {
 		e.Use(middleware.BodyLimit(httpConfig.BodyLimit))
+	} else {
+		logger.Warn("No body limit set, be aware of possible DDOS attacks")
 	}
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level:   5,
 		Skipper: skipWebSocket,
 	}))
 
-	if httpConfig.Limits.RateLimit <= 0 {
-		logger.WarnF("Invalid rate limit value %d, using default 15", httpConfig.Limits.RateLimit)
-		httpConfig.Limits.RateLimit = 15
+	if httpConfig.RateLimit != 0 {
+		ipPathLimiter := utils.NewSlidingWindowLimiter(time.Minute, httpConfig.RateLimit)
+		ipPathLimiter.StartCleanup(2 * time.Minute)
+		e.Use(mid.RateLimitMiddleware(ipPathLimiter, mid.CombinedKeyFunc))
+		logger.InfoF("Rate limit: %d requests per minute", httpConfig.RateLimit)
+	} else {
+		logger.Warn("No rate limit was set, be aware of possible DDOS attacks")
 	}
-
-	if httpConfig.Limits.RateLimitDuration <= 0 {
-		logger.WarnF("Invalid rate limit duration %v, using default 1m", httpConfig.Limits.RateLimitDuration)
-		httpConfig.Limits.RateLimitDuration = time.Minute
-	}
-
-	ipPathLimiter := mid.NewSlidingWindowLimiter(
-		httpConfig.Limits.RateLimitDuration,
-		httpConfig.Limits.RateLimit,
-	)
-	cleanupInterval := httpConfig.Limits.RateLimitDuration * 2
-	if cleanupInterval > time.Hour {
-		cleanupInterval = time.Hour
-		logger.InfoF("Limiting cleanup interval to 1 hour for efficiency")
-	}
-	ipPathLimiter.StartCleanup(cleanupInterval)
 
 	whazzupUrl, _ := url.JoinPath(httpConfig.ServerAddress, "/api/clients")
 	whazzupContent := fmt.Sprintf("url0=%s", whazzupUrl)
-
-	e.Use(mid.RateLimitMiddleware(ipPathLimiter, mid.CombinedKeyFunc))
 
 	jwtConfig := echojwt.Config{
 		SigningKey:    []byte(httpConfig.JWT.Secret),
@@ -360,14 +349,13 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	apiGroup.Use(middleware.Static(httpConfig.Store.LocalStorePath))
 
-	applicationContent.Cleaner().Add(NewHttpServerShutdownCallback(e, websocketServer))
+	applicationContent.Cleaner().Add(NewShutdownCallback(e, websocketServer))
 
 	protocol := "http"
 	if httpConfig.SSL.Enable {
 		protocol = "https"
 	}
 	logger.InfoF("Starting %s server on %s", protocol, httpConfig.Address)
-	logger.InfoF("Rate limit: %d requests per %v", httpConfig.Limits.RateLimit, httpConfig.Limits.RateLimitDuration)
 
 	var err error
 	if httpConfig.SSL.Enable {

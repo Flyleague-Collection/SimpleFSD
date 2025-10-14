@@ -3,9 +3,10 @@ package config
 
 import (
 	"errors"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/thanhpk/randstr"
-	"time"
 )
 
 type JWTConfig struct {

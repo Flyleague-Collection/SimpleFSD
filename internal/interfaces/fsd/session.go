@@ -2,8 +2,9 @@
 package fsd
 
 import (
-	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"net"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 )
 
 type SessionInterface interface {

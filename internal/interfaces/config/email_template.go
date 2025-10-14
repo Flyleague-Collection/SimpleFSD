@@ -4,11 +4,12 @@ package config
 import (
 	"errors"
 	"fmt"
+	"html/template"
+	"net/url"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"golang.org/x/sync/errgroup"
-	"html/template"
-	"net/url"
 )
 
 type EmailTemplateConfig struct {

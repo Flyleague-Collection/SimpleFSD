@@ -4,11 +4,12 @@ package database
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type TicketOperation struct {

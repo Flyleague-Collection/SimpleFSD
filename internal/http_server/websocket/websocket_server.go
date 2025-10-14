@@ -14,9 +14,9 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/http/service"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/labstack/echo/v4"
 )
 
@@ -145,9 +145,18 @@ func (server *WebSocketServer) newConnection(conn *websocket.Conn) {
 	}
 
 	callsign := server.config.FormatCallsign(token.Cid)
-	client := NewFakeClient(server.logger, callsign, conn, server.messageQueue, server.ctx, 60*time.Second, 30*time.Second, 128, func(callsign string) {
-		server.RemoveClient(callsign)
-	})
+	client := NewFakeClient(
+		server.logger,
+		callsign,
+		conn,
+		server.messageQueue,
+		server.ctx,
+		*global.WebsocketTimeout,
+		*global.WebsocketHeartbeatInterval,
+		*global.WebsocketMessageChannelSize,
+		func(callsign string) {
+			server.RemoveClient(callsign)
+		})
 	server.lock.Lock()
 	c, ok := server.clientMap[callsign]
 	if ok {

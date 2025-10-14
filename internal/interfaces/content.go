@@ -9,13 +9,14 @@ import (
 )
 
 type ApplicationContent struct {
-	configManager ConfigManagerInterface
-	cleaner       CleanerInterface
-	clientManager fsd.ClientManagerInterface
-	logger        *log.Loggers
-	messageQueue  queue.MessageQueueInterface
-	metarManager  MetarManagerInterface
-	operations    *operation.DatabaseOperations
+	configManager     ConfigManagerInterface
+	cleaner           CleanerInterface
+	clientManager     fsd.ClientManagerInterface
+	connectionManager fsd.ConnectionManagerInterface
+	logger            *log.Loggers
+	messageQueue      queue.MessageQueueInterface
+	metarManager      MetarManagerInterface
+	operations        *operation.DatabaseOperations
 }
 
 func NewApplicationContent(
@@ -23,18 +24,20 @@ func NewApplicationContent(
 	cleaner CleanerInterface,
 	configManager ConfigManagerInterface,
 	clientManager fsd.ClientManagerInterface,
+	connectionManager fsd.ConnectionManagerInterface,
 	messageQueue queue.MessageQueueInterface,
 	metarManager MetarManagerInterface,
 	db *operation.DatabaseOperations,
 ) *ApplicationContent {
 	return &ApplicationContent{
-		configManager: configManager,
-		cleaner:       cleaner,
-		clientManager: clientManager,
-		logger:        logger,
-		messageQueue:  messageQueue,
-		metarManager:  metarManager,
-		operations:    db,
+		configManager:     configManager,
+		cleaner:           cleaner,
+		clientManager:     clientManager,
+		connectionManager: connectionManager,
+		logger:            logger,
+		messageQueue:      messageQueue,
+		metarManager:      metarManager,
+		operations:        db,
 	}
 }
 
@@ -45,6 +48,10 @@ func (app *ApplicationContent) ConfigManager() ConfigManagerInterface {
 func (app *ApplicationContent) Cleaner() CleanerInterface { return app.cleaner }
 
 func (app *ApplicationContent) ClientManager() fsd.ClientManagerInterface { return app.clientManager }
+
+func (app *ApplicationContent) ConnectionManager() fsd.ConnectionManagerInterface {
+	return app.connectionManager
+}
 
 func (app *ApplicationContent) Logger() *log.Loggers { return app.logger }
 

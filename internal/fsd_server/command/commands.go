@@ -3,8 +3,9 @@ package command
 
 import (
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"maps"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 )
 
 type CommandBlock struct {

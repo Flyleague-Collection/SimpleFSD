@@ -13,13 +13,12 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/fsd"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/http/service"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
-// verifyFsdUserInfo 验证用户信息与处理客户端重连机制
 func (content *CommandContent) verifyFsdUserInfo(session SessionInterface, callsign string, protocol int, cid operation.UserId, password string) *Result {
 	if !callsignValid(callsign) {
 		return ResultError(CallsignInvalid, true, callsign, nil)
@@ -62,7 +61,6 @@ func (content *CommandContent) verifyFsdUserInfo(session SessionInterface, calls
 	return nil
 }
 
-// verifyVatsimUserInfo 验证用户信息与处理客户端重连机制(VATSIM协议)
 func (content *CommandContent) verifyVatsimUserInfo(session SessionInterface, callsign string, cid operation.UserId, token string) *Result {
 	if !callsignValid(callsign) {
 		return ResultError(CallsignInvalid, true, callsign, nil)
@@ -314,11 +312,11 @@ func (content *CommandContent) sendFrequencyMessage(session SessionInterface, ta
 	if session.Client() == nil {
 		return ResultError(Syntax, false, "", fmt.Errorf("client not register"))
 	}
-	frequency := utils.StrToInt(targetStation[1:], -1)
+	frequency := utils.StrToInt(fmt.Sprintf("%d%s", 1, targetStation[1:]), -1)
 	if frequency == -1 {
 		return ResultError(Syntax, false, targetStation, fmt.Errorf("illegal frequency %s", targetStation))
 	}
-	if frequencyValid(frequency) {
+	if FrequencyValid(frequency) {
 		// 合法频率, 发给所有客户端
 		go content.clientManager.BroadcastMessage(rawLine, session.Client(), BroadcastToClientInRange)
 	} else {

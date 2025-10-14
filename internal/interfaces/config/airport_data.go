@@ -3,6 +3,7 @@ package config
 
 import (
 	"errors"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 )
 

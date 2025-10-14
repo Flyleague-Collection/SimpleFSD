@@ -2,12 +2,13 @@
 package message
 
 import (
-	"github.com/half-nothing/simple-fsd/internal/base"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 	"math/rand/v2"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/half-nothing/simple-fsd/internal/base"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 )
 
 func ExampleNewAsyncMessageQueue() {

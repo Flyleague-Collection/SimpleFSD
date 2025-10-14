@@ -5,16 +5,17 @@ package store
 
 import (
 	"context"
-	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
-	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 	"mime/multipart"
 	"net/url"
 	"strings"
+
+	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
+	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/http/service"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
 )
 
 type ALiYunOssStoreService struct {

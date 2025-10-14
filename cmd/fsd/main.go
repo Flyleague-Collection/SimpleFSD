@@ -22,6 +22,7 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/message"
 	"github.com/half-nothing/simple-fsd/internal/metar"
 	"github.com/half-nothing/simple-fsd/internal/utils"
+	"github.com/half-nothing/simple-fsd/internal/voice_server"
 )
 
 func recoverFromError() {
@@ -75,6 +76,9 @@ func main() {
 	checkBoolEnv(global.EnvVatsimFullProtocol, global.VatsimFull)
 	checkBoolEnv(global.EnvMutilThread, global.MutilThread)
 	checkBoolEnv(global.EnvVisualPilot, global.VisualPilot)
+	checkDurationEnv(global.EnvWebsocketHeartbeatInterval, global.WebsocketHeartbeatInterval)
+	checkDurationEnv(global.EnvWebsocketTimeout, global.WebsocketTimeout)
+	checkIntEnv(global.EnvWebsocketMessageChannelSize, global.WebsocketMessageChannelSize, 128)
 
 	if !*global.Vatsim {
 		*global.VatsimFull = false
@@ -94,7 +98,10 @@ func main() {
 	grpcLogger := base.NewLogger()
 	grpcLogger.Init(global.GrpcLogPath, global.GrpcLogName, *global.DebugMode, *global.NoLogs)
 
-	logger := log.NewLoggers(mainLogger, fsdLogger, httpLogger, grpcLogger)
+	voiceLogger := base.NewLogger()
+	voiceLogger.Init(global.VoiceLogPath, global.VoiceLogName, *global.DebugMode, *global.NoLogs)
+
+	logger := log.NewLoggers(mainLogger, fsdLogger, httpLogger, grpcLogger, voiceLogger)
 
 	mainLogger.Info("Application initializing...")
 
@@ -110,6 +117,7 @@ func main() {
 	cleaner.Add(fsdLogger.ShutdownCallback())
 	cleaner.Add(httpLogger.ShutdownCallback())
 	cleaner.Add(grpcLogger.ShutdownCallback())
+	cleaner.Add(voiceLogger.ShutdownCallback())
 
 	if err := fsd.SyncRatingConfig(config); err != nil {
 		mainLogger.FatalF("Error occurred while handle rating addition, details: %v", err)
@@ -137,7 +145,8 @@ func main() {
 
 	cleaner.Add(messageQueue.ShutdownCallback())
 
-	clientManager := client.NewClientManager(fsdLogger, config, messageQueue)
+	connectionManager := client.NewConnectionManager(fsdLogger)
+	clientManager := client.NewClientManager(fsdLogger, config, connectionManager, messageQueue)
 
 	messageQueue.Subscribe(queue.KickClientFromServer, clientManager.HandleKickClientFromServerMessage)
 	messageQueue.Subscribe(queue.SendMessageToClient, clientManager.HandleSendMessageToClientMessage)
@@ -165,12 +174,26 @@ func main() {
 	metarManager := metar.NewMetarManager(mainLogger, config.MetarSource, memoryCache)
 
 	mainLogger.Info("Creating application content...")
-	applicationContent := interfaces.NewApplicationContent(logger, cleaner, configManager, clientManager, messageQueue, metarManager, databaseOperation)
+	applicationContent := interfaces.NewApplicationContent(
+		logger,
+		cleaner,
+		configManager,
+		clientManager,
+		connectionManager,
+		messageQueue,
+		metarManager,
+		databaseOperation,
+	)
 
 	mainLogger.Info("Application initialized. Starting application...")
 
 	if config.Server.HttpServer.Enabled {
 		go http_server.StartHttpServer(applicationContent)
+	}
+
+	if config.Server.VoiceServer.Enabled {
+		voiceServer := voice_server.NewVoiceServer(applicationContent)
+		go voiceServer.Start()
 	}
 
 	//if config.Server.GRPCServer.Enabled {

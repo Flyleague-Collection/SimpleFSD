@@ -1,8 +1,9 @@
 package fsd
 
 import (
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"time"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 )
 
 type Heartbeat func() error

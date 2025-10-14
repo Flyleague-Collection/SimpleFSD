@@ -3,8 +3,9 @@ package log
 
 import (
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"log/slog"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 )
 
 type LoggerDecorator struct {

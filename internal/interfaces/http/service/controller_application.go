@@ -2,8 +2,9 @@
 package service
 
 import (
-	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"time"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 )
 
 var (

@@ -69,11 +69,18 @@ func BroadcastToSup(toClient, _ ClientInterface) bool {
 	return toClient.Rating() >= Supervisor
 }
 
-func BroadcastToClientInRange(toClient, fromClient ClientInterface) bool {
+func BroadcastToClientInRangeWithThreshold(toClient, fromClient ClientInterface, threshold float64) bool {
 	if fromClient == nil {
 		return true
 	}
 	distance := FindNearestDistance(toClient.Position(), fromClient.Position())
+	return distance <= threshold
+}
+
+func BroadcastToClientInRange(toClient, fromClient ClientInterface) bool {
+	if fromClient == nil {
+		return true
+	}
 	var threshold float64 = 0
 	switch {
 	case toClient.IsAtc() && fromClient.IsAtc():
@@ -81,11 +88,11 @@ func BroadcastToClientInRange(toClient, fromClient ClientInterface) bool {
 	case toClient.IsAtc():
 		threshold = toClient.VisualRange()
 	case fromClient.IsAtc():
-		threshold = toClient.VisualRange()
+		threshold = fromClient.VisualRange()
 	default:
 		threshold = toClient.VisualRange() + fromClient.VisualRange()
 	}
-	return distance <= threshold
+	return BroadcastToClientInRangeWithThreshold(toClient, fromClient, threshold)
 }
 
 func CombineBroadcastFilter(filters ...BroadcastFilter) BroadcastFilter {

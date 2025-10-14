@@ -4,10 +4,11 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"os"
 	"path/filepath"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 )
 
 type HttpServerStore struct {

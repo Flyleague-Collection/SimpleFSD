@@ -3,10 +3,11 @@ package config
 
 import (
 	"errors"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"gopkg.in/gomail.v2"
-	"time"
 )
 
 type EmailConfig struct {

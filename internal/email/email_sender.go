@@ -3,13 +3,14 @@ package email
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/utils"
 	"gopkg.in/gomail.v2"
-	"strings"
-	"time"
 )
 
 type EmailSender struct {

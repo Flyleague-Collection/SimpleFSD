@@ -18,23 +18,30 @@ import (
 )
 
 type ClientManager struct {
-	logger          log.LoggerInterface
-	clients         map[string]ClientInterface
-	lock            sync.RWMutex
-	shuttingDown    atomic.Bool
-	config          *config.Config
-	clientSlicePool sync.Pool
-	messageQueue    queue.MessageQueueInterface
-	whazzupContent  *utils.CachedValue[OnlineClients]
+	logger            log.LoggerInterface
+	clients           map[string]ClientInterface
+	connectionManager ConnectionManagerInterface
+	lock              sync.RWMutex
+	shuttingDown      atomic.Bool
+	config            *config.Config
+	clientSlicePool   sync.Pool
+	messageQueue      queue.MessageQueueInterface
+	whazzupContent    *utils.CachedValue[OnlineClients]
 }
 
-func NewClientManager(logger log.LoggerInterface, config *config.Config, messageQueue queue.MessageQueueInterface) *ClientManager {
+func NewClientManager(
+	logger log.LoggerInterface,
+	config *config.Config,
+	connectionManager ConnectionManagerInterface,
+	messageQueue queue.MessageQueueInterface,
+) *ClientManager {
 	clientManager := &ClientManager{
-		logger:       log.NewLoggerAdapter(logger, "ClientManager"),
-		clients:      make(map[string]ClientInterface),
-		shuttingDown: atomic.Bool{},
-		config:       config,
-		messageQueue: messageQueue,
+		logger:            log.NewLoggerAdapter(logger, "ClientManager"),
+		clients:           make(map[string]ClientInterface),
+		shuttingDown:      atomic.Bool{},
+		config:            config,
+		connectionManager: connectionManager,
+		messageQueue:      messageQueue,
 		clientSlicePool: sync.Pool{
 			New: func() interface{} {
 				return make([]ClientInterface, 0, 128)
@@ -330,6 +337,7 @@ func (cm *ClientManager) AddClient(client ClientInterface) error {
 		return fmt.Errorf("client already registered: %s", client.Callsign())
 	}
 	cm.clients[client.Callsign()] = client
+	cm.connectionManager.AddConnection(client)
 	return nil
 }
 
@@ -349,12 +357,13 @@ func (cm *ClientManager) DeleteClient(callsign string) bool {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
 
-	if _, exists := cm.clients[callsign]; !exists {
+	client, exists := cm.clients[callsign]
+	if !exists {
 		return false
 	}
 
 	delete(cm.clients, callsign)
-	return true
+	return cm.connectionManager.RemoveConnection(client) == nil
 }
 
 func (cm *ClientManager) SendMessageTo(callsign string, message []byte) error {
@@ -391,7 +400,8 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 		return
 	}
 
-	fullMsg := make([]byte, len(message))
+	messageLen := len(message)
+	fullMsg := make([]byte, messageLen)
 	copy(fullMsg, message)
 	if !bytes.HasSuffix(message, SplitSign) {
 		fullMsg = append(fullMsg, SplitSign...)
@@ -418,7 +428,7 @@ func (cm *ClientManager) BroadcastMessage(message []byte, fromClient ClientInter
 				wg.Done()
 			}()
 
-			cm.logger.DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), fullMsg)
+			cm.logger.DebugF("[Broadcast] -> [%s] %s", cl.Callsign(), fullMsg[:messageLen-len(SplitSign)])
 			err := cl.SendLineWithoutLog(fullMsg)
 			if err != nil && errors.Is(err, ErrClientSocketWrite) {
 				cl.MarkedDisconnect(false)

@@ -4,9 +4,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"slices"
 	"strings"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 )
 
 type MetarSourceType string

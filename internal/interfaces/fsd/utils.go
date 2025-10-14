@@ -8,6 +8,11 @@ var (
 	SplitSignLen = len(SplitSign)
 )
 
+const (
+	FrequencyMin = 118000
+	FrequencyMax = 136975
+)
+
 func MakePacketWithoutSign(command ClientCommand, parts ...string) []byte {
 	return bytes.TrimRight(MakePacket(command, parts...), string(SplitSign))
 }
@@ -39,4 +44,8 @@ func MakePacket(command ClientCommand, parts ...string) []byte {
 	copy(result[pos:], SplitSign)
 
 	return result
+}
+
+func FrequencyValid(frequency int) bool {
+	return FrequencyMin <= frequency && frequency <= FrequencyMax
 }

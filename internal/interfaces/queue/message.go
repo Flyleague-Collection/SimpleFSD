@@ -42,6 +42,7 @@ var messageTypes = []string{
 	"SendPasswordResetEmail",
 	"SendPermissionChangeEmail",
 	"SendTicketReplyEmail",
+	"SendMessageToClient",
 	"DeleteVerifyCode",
 	"KickClientFromServer",
 	"BroadcastMessage",

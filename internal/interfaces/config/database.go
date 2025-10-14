@@ -4,13 +4,14 @@ package config
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"slices"
-	"time"
 )
 
 type DatabaseType string

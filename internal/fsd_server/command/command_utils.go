@@ -7,8 +7,6 @@ const (
 	CallsignMinLen = 3
 	CallsignMaxLen = 12
 	ForbiddenChars = "!@#$%*:& \t"
-	FrequencyMin   = 18000
-	FrequencyMax   = 36975
 )
 
 var validSuffix = [6]string{"DEL", "GND", "TWR", "APP", "CTR", "FSS"}
@@ -41,8 +39,4 @@ func callsignValid(callsign string) bool {
 	}
 
 	return true
-}
-
-func frequencyValid(frequency int) bool {
-	return FrequencyMin <= frequency && frequency <= FrequencyMax
 }

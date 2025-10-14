@@ -3,10 +3,11 @@ package controller
 
 import (
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
-	"github.com/labstack/echo/v4"
 	"strings"
+
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/http/service"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/labstack/echo/v4"
 )
 
 type MetarControllerInterface interface {

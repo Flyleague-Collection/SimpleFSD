@@ -3,27 +3,28 @@ package database
 import (
 	"context"
 	. "fmt"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"time"
 )
 
-type DBCloseCallback struct {
+type ShutdownCallback struct {
 	logger log.LoggerInterface
 	db     *gorm.DB
 }
 
-func NewDBCloseCallback(logger log.LoggerInterface, db *gorm.DB) *DBCloseCallback {
-	return &DBCloseCallback{
+func NewShutdownCallback(logger log.LoggerInterface, db *gorm.DB) *ShutdownCallback {
+	return &ShutdownCallback{
 		logger: logger,
 		db:     db,
 	}
 }
 
-func (dc *DBCloseCallback) Invoke(ctx context.Context) error {
+func (dc *ShutdownCallback) Invoke(ctx context.Context) error {
 	dc.logger.InfoF("Closing database connection")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -35,7 +36,7 @@ func (dc *DBCloseCallback) Invoke(ctx context.Context) error {
 	return err
 }
 
-func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) (*DBCloseCallback, *DatabaseOperations, error) {
+func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) (*ShutdownCallback, *DatabaseOperations, error) {
 	queryTimeout := config.Database.QueryDuration
 
 	connection := config.Database.GetConnection(lg)
@@ -79,7 +80,7 @@ func ConnectDatabase(lg log.LoggerInterface, config *config.Config, debug bool) 
 	}
 	lg.Info("Database initialized and connection established")
 
-	return NewDBCloseCallback(lg, db),
+	return NewShutdownCallback(lg, db),
 		NewDatabaseOperations(
 			NewUserOperation(lg, db, queryTimeout, config.Server.General),
 			NewFlightPlanOperation(lg, db, queryTimeout, config.Server.General),

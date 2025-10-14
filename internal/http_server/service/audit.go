@@ -3,10 +3,10 @@
 package service
 
 import (
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/http/service"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/queue"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
 )
 
 type AudioLogService struct {

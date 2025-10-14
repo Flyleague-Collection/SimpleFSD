@@ -3,9 +3,10 @@ package fsd
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"strings"
 )
 
 type FacilityModel struct {

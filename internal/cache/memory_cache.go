@@ -2,10 +2,11 @@
 package cache
 
 import (
-	. "github.com/half-nothing/simple-fsd/internal/interfaces"
-	"github.com/half-nothing/simple-fsd/internal/utils"
 	"sync"
 	"time"
+
+	. "github.com/half-nothing/simple-fsd/internal/interfaces"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
 func isOutDate[T any](data *CachedItem[T]) bool {

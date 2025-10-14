@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"net/url"
 	"runtime"
 	"time"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 )
 
 type FSDServerConfig struct {

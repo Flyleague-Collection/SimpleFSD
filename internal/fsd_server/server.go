@@ -12,15 +12,15 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 )
 
-type FsdCloseCallback struct {
+type ShutdownCallback struct {
 	clientManager fsd.ClientManagerInterface
 }
 
-func NewFsdCloseCallback(clientManager fsd.ClientManagerInterface) *FsdCloseCallback {
-	return &FsdCloseCallback{clientManager: clientManager}
+func NewShutdownCallback(clientManager fsd.ClientManagerInterface) *ShutdownCallback {
+	return &ShutdownCallback{clientManager: clientManager}
 }
 
-func (dc *FsdCloseCallback) Invoke(ctx context.Context) error {
+func (dc *ShutdownCallback) Invoke(ctx context.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -65,7 +65,7 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 		}
 	}()
 
-	applicationContent.Cleaner().Add(NewFsdCloseCallback(applicationContent.ClientManager()))
+	applicationContent.Cleaner().Add(NewShutdownCallback(applicationContent.ClientManager()))
 
 	commandContent := command.NewCommandContent(logger, applicationContent)
 	commandHandler := command.NewCommandHandler()

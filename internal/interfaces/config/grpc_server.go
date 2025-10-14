@@ -4,8 +4,9 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"time"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 )
 
 type GRPCServerConfig struct {

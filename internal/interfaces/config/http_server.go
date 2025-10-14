@@ -20,7 +20,7 @@ type HttpServerConfig struct {
 	TrustedIpRange []string         `json:"trusted_ip_range"`
 	BodyLimit      string           `json:"body_limit"`
 	Store          *HttpServerStore `json:"store"`
-	Limits         *HttpServerLimit `json:"limits"`
+	RateLimit      int              `json:"rateLimit"`
 	Email          *EmailConfig     `json:"email"`
 	JWT            *JWTConfig       `json:"jwt"`
 	SSL            *SSLConfig       `json:"ssl"`
@@ -37,8 +37,8 @@ func defaultHttpServerConfig() *HttpServerConfig {
 		ProxyType:      0,
 		TrustedIpRange: make([]string, 0),
 		BodyLimit:      "10MB",
+		RateLimit:      15,
 		Store:          defaultHttpServerStore(),
-		Limits:         defaultHttpServerLimit(),
 		Email:          defaultEmailConfig(),
 		JWT:            defaultJWTConfig(),
 		SSL:            defaultSSLConfig(),
@@ -65,10 +65,12 @@ func (config *HttpServerConfig) checkValid(logger log.LoggerInterface) *ValidRes
 			return ValidFail(errors.New("client_prefix and client_suffix can't be empty at the same time"))
 		}
 
-		if result := config.SSL.checkValid(logger); result.IsFail() {
-			return result
+		if config.RateLimit < 0 {
+			logger.WarnF("Invalid rate limit value %d, using default 15", config.RateLimit)
+			config.RateLimit = 15
 		}
-		if result := config.Limits.checkValid(logger); result.IsFail() {
+
+		if result := config.SSL.checkValid(logger); result.IsFail() {
 			return result
 		}
 		if result := config.Email.checkValid(logger); result.IsFail() {

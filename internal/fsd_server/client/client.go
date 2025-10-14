@@ -20,41 +20,45 @@ import (
 )
 
 type Client struct {
-	socket              SessionInterface
-	logger              log.LoggerInterface
-	config              *config.Config
-	userOperation       operation.UserOperationInterface
-	flightPlanOperation operation.FlightPlanOperationInterface
-	historyOperation    operation.HistoryOperationInterface
-	capacities          map[string]bool
-	isAtc               bool
-	isAtis              bool
-	logoffTime          string
-	isBreak             bool
-	callsign            string
-	rating              Rating
-	facility            Facility
-	user                *operation.User
-	protocol            int
-	realName            string
-	position            [4]Position
-	simType             int
-	transponder         string
-	altitude            int
-	groundSpeed         int
-	frequency           int
-	pbh                 uint32
-	visualRange         float64
-	flightPlan          *operation.FlightPlan
-	atisInfo            []string
-	paths               []*PilotPath
-	history             *operation.History
-	clientManager       ClientManagerInterface
-	disconnect          atomic.Bool
-	motdBytes           []byte
-	reconnectTimer      *time.Timer
-	lock                sync.RWMutex
-	pathTrigger         *utils.OverflowTrigger
+	socket                  SessionInterface
+	logger                  log.LoggerInterface
+	config                  *config.Config
+	userOperation           operation.UserOperationInterface
+	flightPlanOperation     operation.FlightPlanOperationInterface
+	historyOperation        operation.HistoryOperationInterface
+	capacities              map[string]bool
+	isAtc                   bool
+	isAtis                  bool
+	logoffTime              string
+	isBreak                 bool
+	callsign                string
+	rating                  Rating
+	facility                Facility
+	user                    *operation.User
+	protocol                int
+	realName                string
+	position                [4]Position
+	simType                 int
+	transponder             string
+	altitude                int
+	groundSpeed             int
+	frequency               int
+	pbh                     uint32
+	visualRange             float64
+	flightPlan              *operation.FlightPlan
+	atisInfo                []string
+	paths                   []*PilotPath
+	history                 *operation.History
+	clientManager           ClientManagerInterface
+	disconnect              atomic.Bool
+	motdBytes               []byte
+	reconnectTimer          *time.Timer
+	lock                    sync.RWMutex
+	pathTrigger             *utils.OverflowTrigger
+	deleteCallback          Callback
+	disconnectCallback      Callback
+	reconnectCallback       Callback
+	messageReceivedCallback func([]byte)
 }
 
 func NewClient(
@@ -151,6 +155,9 @@ func (client *Client) Delete() {
 		if !client.clientManager.DeleteClient(client.callsign) {
 			client.logger.Error("Failed to delete from client manager")
 		}
+		if client.deleteCallback != nil {
+			client.deleteCallback()
+		}
 	}()
 
 	// 模拟机服务器不用执行后续操作
@@ -222,6 +229,9 @@ func (client *Client) Reconnect(socket SessionInterface) bool {
 	client.disconnect.Store(false)
 	client.socket = socket
 	socket.SetCallsign(client.callsign)
+	if client.reconnectCallback != nil {
+		client.reconnectCallback()
+	}
 	return true
 }
 
@@ -246,6 +256,10 @@ func (client *Client) MarkedDisconnect(immediate bool) {
 	// 取消之前的定时器
 	if client.reconnectTimer != nil {
 		client.reconnectTimer.Stop()
+	}
+
+	if client.disconnectCallback != nil {
+		client.disconnectCallback()
 	}
 
 	if immediate {
@@ -360,6 +374,11 @@ func (client *Client) SendLineWithoutLog(line []byte) error {
 		client.logger.ErrorF("Failed to send data: %v", err)
 		return ErrClientSocketWrite
 	}
+
+	if client.messageReceivedCallback != nil && bytes.HasPrefix(line, []byte(Message)) {
+		_, result, _ := bytes.Cut(line, []byte(Message))
+		go client.messageReceivedCallback(result)
+	}
 	return nil
 }
 
@@ -381,6 +400,11 @@ func (client *Client) SendLine(line []byte) {
 
 	if _, err := client.socket.Conn().Write(line); err != nil {
 		client.logger.WarnF("Failed to send data: %v", client.callsign, err)
+	}
+
+	if client.messageReceivedCallback != nil && bytes.HasPrefix(line, []byte(Message)) {
+		_, result, _ := bytes.Cut(line, []byte(Message))
+		go client.messageReceivedCallback(result)
 	}
 }
 
@@ -488,4 +512,20 @@ func (client *Client) ClearFlightPlan() {
 func (client *Client) SetFlightPlan(flightPlan *operation.FlightPlan) {
 	client.flightPlan = flightPlan
 	go client.clientManager.BroadcastMessage([]byte(client.flightPlanOperation.ToString(flightPlan)), client, BroadcastToAtc)
+}
+
+func (client *Client) SetDeleteCallback(deleteCallback Callback) {
+	client.deleteCallback = deleteCallback
+}
+
+func (client *Client) SetDisconnectCallback(disconnectCallback Callback) {
+	client.disconnectCallback = disconnectCallback
+}
+
+func (client *Client) SetReconnectCallback(reconnectCallback Callback) {
+	client.reconnectCallback = reconnectCallback
+}
+
+func (client *Client) SetMessageReceivedCallback(messageReceivedCallback func([]byte)) {
+	client.messageReceivedCallback = messageReceivedCallback
 }

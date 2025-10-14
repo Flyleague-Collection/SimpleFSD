@@ -7,6 +7,8 @@ import (
 	"github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 )
 
+type Callback func()
+
 type PilotPath struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
@@ -66,4 +68,8 @@ type ClientInterface interface {
 	SetRealName(realName string)
 	ClearFlightPlan()
 	SetFlightPlan(flightPlan *operation.FlightPlan)
+	SetDeleteCallback(deleteCallback Callback)
+	SetDisconnectCallback(disconnectCallback Callback)
+	SetReconnectCallback(reconnectCallback Callback)
+	SetMessageReceivedCallback(messageReceivedCallback func([]byte))
 }

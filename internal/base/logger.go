@@ -3,14 +3,15 @@ package base
 import (
 	"context"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log/slog"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/fatih/color"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -79,7 +80,7 @@ func (h *AsyncHandler) Handle(_ context.Context, r slog.Record) error {
 
 	// 时间 | 记录器 | 级别 | 消息
 	line := fmt.Sprintf(
-		"%s | %-4s | %-5s | %s",
+		"%s | %-5s | %-5s | %s",
 		color.GreenString(r.Time.Format("2006-01-02T15:04:05")),
 		h.logName,
 		level,

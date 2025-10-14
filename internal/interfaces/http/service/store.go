@@ -3,12 +3,13 @@ package service
 
 import (
 	"fmt"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"mime/multipart"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 )
 
 var (

@@ -3,11 +3,12 @@ package base
 import (
 	"encoding/json"
 	"errors"
+	"os"
+
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"github.com/half-nothing/simple-fsd/internal/utils"
-	"os"
 )
 
 func readConfig(logger log.LoggerInterface) (*Config, *ValidResult) {

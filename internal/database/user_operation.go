@@ -3,13 +3,14 @@ package database
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type UserOperation struct {

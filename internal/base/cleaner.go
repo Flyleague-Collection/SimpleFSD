@@ -3,14 +3,15 @@ package base
 import (
 	"context"
 	"fmt"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/global"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	"github.com/half-nothing/simple-fsd/internal/utils"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/global"
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
 type Cleaner struct {

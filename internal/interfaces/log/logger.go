@@ -2,15 +2,17 @@
 package log
 
 import (
-	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"log/slog"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 )
 
 type Loggers struct {
-	mainLogger LoggerInterface
-	fsdLogger  LoggerInterface
-	httpLogger LoggerInterface
-	grpcLogger LoggerInterface
+	mainLogger  LoggerInterface
+	fsdLogger   LoggerInterface
+	httpLogger  LoggerInterface
+	grpcLogger  LoggerInterface
+	voiceLogger LoggerInterface
 }
 
 type LoggerInterface interface {
@@ -34,12 +36,14 @@ func NewLoggers(
 	fsdLogger LoggerInterface,
 	httpLogger LoggerInterface,
 	grpcLogger LoggerInterface,
+	voiceLogger LoggerInterface,
 ) *Loggers {
 	return &Loggers{
-		mainLogger: mainLogger,
-		fsdLogger:  fsdLogger,
-		httpLogger: httpLogger,
-		grpcLogger: grpcLogger,
+		mainLogger:  mainLogger,
+		fsdLogger:   fsdLogger,
+		httpLogger:  httpLogger,
+		grpcLogger:  grpcLogger,
+		voiceLogger: voiceLogger,
 	}
 }
 
@@ -50,3 +54,5 @@ func (logger *Loggers) FsdLogger() LoggerInterface { return logger.fsdLogger }
 func (logger *Loggers) HttpLogger() LoggerInterface { return logger.httpLogger }
 
 func (logger *Loggers) GrpcLogger() LoggerInterface { return logger.grpcLogger }
+
+func (logger *Loggers) VoiceLogger() LoggerInterface { return logger.voiceLogger }

@@ -2,13 +2,14 @@
 package metar
 
 import (
+	"sync"
+	"time"
+
 	. "github.com/half-nothing/simple-fsd/internal/interfaces"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/config"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/global"
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	"golang.org/x/sync/singleflight"
-	"sync"
-	"time"
 )
 
 type MetarManager struct {

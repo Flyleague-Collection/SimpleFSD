@@ -2,11 +2,12 @@
 package service
 
 import (
-	"github.com/half-nothing/simple-fsd/internal/interfaces"
-	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
-	. "github.com/half-nothing/simple-fsd/internal/interfaces/service"
-	"github.com/half-nothing/simple-fsd/internal/utils"
 	"strings"
+
+	"github.com/half-nothing/simple-fsd/internal/interfaces"
+	. "github.com/half-nothing/simple-fsd/internal/interfaces/http/service"
+	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
+	"github.com/half-nothing/simple-fsd/internal/utils"
 )
 
 type MetarService struct {

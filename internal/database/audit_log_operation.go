@@ -3,10 +3,11 @@ package database
 
 import (
 	"context"
+	"time"
+
 	"github.com/half-nothing/simple-fsd/internal/interfaces/log"
 	. "github.com/half-nothing/simple-fsd/internal/interfaces/operation"
 	"gorm.io/gorm"
-	"time"
 )
 
 type AuditLogOperation struct {
