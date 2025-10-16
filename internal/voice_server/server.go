@@ -498,6 +498,10 @@ func (s *VoiceServer) broadcastVoicePacket(packet *VoicePacket, fromAddr *net.UD
 		return
 	}
 
+	if len(packet.Data) == 0 {
+		return
+	}
+
 	if client.Callsign != packet.Callsign {
 		client.Logger.WarnF("Invalid callsign from %s, expected %s, got %s", fromAddr, client.Callsign, packet.Callsign)
 		return
@@ -524,6 +528,7 @@ func (s *VoiceServer) broadcastVoicePacket(packet *VoicePacket, fromAddr *net.UD
 	channel.ClientsMutex.RLock()
 	for _, clientTransmitter := range channel.Clients {
 		if clientTransmitter.UDPAddr != nil &&
+			clientTransmitter.UDPAddr.String() != transmitter.UDPAddr.String() &&
 			fsd.BroadcastToClientInRange(clientTransmitter.ClientInfo.Client, client.Client) {
 			targets = append(targets, clientTransmitter.UDPAddr)
 		}
