@@ -1,20 +1,22 @@
 # SimpleFSD
 
-!> *本项目正在快速迭代中, API接口可能不稳定, 请注意及时查阅最新的API文档*
-
-[![ReleaseCard]][Release]![ReleaseDataCard]![LastCommitCard]  
-![BuildStateCard-Full]![BuildStateCard-Lite]  
-![ProjectLanguageCard]![ProjectLicense]
-
+### *本项目正在快速迭代中, API接口可能不稳定, 请及时查阅最新的API文档*
 
 一个用于模拟飞行联飞的FSD, 使用Go语言编写  
 FSD支持计划同步, 计划锁定, 网页计划提交   
 如果您觉得这个FSD功能太多, 过于庞大  
-我们还有专门精简过功能的[lite版本][Lite-Branch]  
-[lite版本][Lite-Branch]仅保留了核心的fsd功能  
+我们还有专门精简过功能的[lite版本][Lite]  
+[lite版本][Lite]仅保留了核心的fsd功能  
 当然我们还是建议您使用全功能fsd以获得更好的体验
 
-![](./image/show.png)
+想提交PR？想自己对服务器进行二次开发？请查阅我们的[WIKI]
+
+---
+[![ReleaseCard]][Release]![ReleaseDataCard]![LastCommitCard]  
+![BuildStateCard]![ProjectLanguageCard]![ProjectLicense]
+---
+
+![](./docs/image/show.png)
 
 ## 如何使用
 
@@ -143,8 +145,6 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       "host": "0.0.0.0",
       // Http服务器监听端口
       "port": 6810,
-      // Http服务器最大工作线程
-      "max_workers": 128,
       // 代理类型
       // 0 直连无代理服务器
       // 1 代理服务器使用 X-Forwarded-For Http头部
@@ -224,23 +224,7 @@ FSD支持计划同步, 计划锁定, 网页计划提交
         // Api访问限速窗口
         // 即 rate_limit 每 rate_limit_window
         // 滑动窗口计算
-        "rate_limit_window": "1m",
-        // 用户名最小长度
-        "username_length_min": 4,
-        // 用户名最大长度(系统支持的最大长度是64)
-        "username_length_max": 16,
-        // 邮箱最小长度
-        "email_length_min": 4,
-        // 邮箱最大长度(系统支持的最大长度是128)
-        "email_length_max": 64,
-        // 密码最小长度
-        "password_length_min": 6,
-        // 密码最大长度(系统支持的最大长度是128)
-        "password_length_max": 64,
-        // 最小CID
-        "cid_min": 1,
-        // 最大CID(系统支持的最大CID为2147483647)
-        "cid_max": 9999,
+        "rate_limit_window": "1m"
       },
       // 邮箱配置
       "email": {
@@ -386,7 +370,9 @@ FSD支持计划同步, 计划锁定, 网页计划提交
       // 返回json: 返回json格式的数据
       "return_type": "json",
       // jsonpath字符串, 用于提取json中的metar报文
-      "selector": "$.data.metar"
+      "selector": "$.data.metar",
+      "reverse": false,
+      "multiline": "\n"
     }
   ],
   // 数据库配置
@@ -590,7 +576,7 @@ FSD支持计划同步, 计划锁定, 网页计划提交
 > 在EuroScope中, Callsign, Facility, Rating 是三个独立的值
 > 但在本FSD中, 三者之间是有对应联系的
 
-![](./image/euroscope_logon.png)
+![](./docs/image/euroscope_logon.png)
 
 --- 
 
@@ -628,13 +614,9 @@ Copyright © 2025 Half_nothing
 
 [LastCommitCard]: https://img.shields.io/github/last-commit/Flyleague-Collection/SimpleFSD?display_timestamp=committer&style=for-the-badge&logo=github
 
-[BuildStateCard-Full]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build-main.yml?style=for-the-badge&logo=github&label=Full-Build
+[BuildStateCard]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build.yml?style=for-the-badge&logo=github&label=Full-Build
 
-[BuildStateCard-Lite]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build-lite.yml?style=for-the-badge&logo=github&label=Lite-Build
-
-[Full-Branch]: https://github.com/Flyleague-Collection/SimpleFSD
-
-[Lite-Branch]: https://github.com/Flyleague-Collection/SimpleFSD/tree/lite
+[Lite]: https://github.com/Flyleague-Collection/SimpleFSD-Lite
 
 [ProjectLanguageCard]: https://img.shields.io/github/languages/top/Flyleague-Collection/SimpleFSD?style=for-the-badge&logo=github
 
@@ -646,6 +628,6 @@ Copyright © 2025 Half_nothing
 
 [Issue]: https://github.com/Flyleague-Collection/SimpleFSD/issues/new
 
-[HttpApiDocs]: https://fsd.docs.half-nothing.cn/
+[HttpApiDocs]: https://api.fsd.half-nothing.cn/
 
-[WIKI]: https://github.com/Flyleague-Collection/SimpleFSD/wiki
+[WIKI]: https://docs.fsd.half-nothing.cn/
