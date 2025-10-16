@@ -5,16 +5,15 @@
 一个用于模拟飞行联飞的FSD, 使用Go语言编写  
 FSD支持计划同步, 计划锁定, 网页计划提交   
 如果您觉得这个FSD功能太多, 过于庞大  
-我们还有专门精简过功能的[lite版本][Lite-Branch]  
-[lite版本][Lite-Branch]仅保留了核心的fsd功能  
+我们还有专门精简过功能的[lite版本][Lite]  
+[lite版本][Lite]仅保留了核心的fsd功能  
 当然我们还是建议您使用全功能fsd以获得更好的体验
 
 想提交PR？想自己对服务器进行二次开发？请查阅我们的[WIKI]
 
 ---
 [![ReleaseCard]][Release]![ReleaseDataCard]![LastCommitCard]  
-![BuildStateCard-Full]![BuildStateCard-Lite]  
-![ProjectLanguageCard]![ProjectLicense]
+![BuildStateCard]![ProjectLanguageCard]![ProjectLicense]
 ---
 
 ![](./docs/image/show.png)
@@ -615,13 +614,9 @@ Copyright © 2025 Half_nothing
 
 [LastCommitCard]: https://img.shields.io/github/last-commit/Flyleague-Collection/SimpleFSD?display_timestamp=committer&style=for-the-badge&logo=github
 
-[BuildStateCard-Full]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build-main.yml?style=for-the-badge&logo=github&label=Full-Build
+[BuildStateCard]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build.yml?style=for-the-badge&logo=github&label=Full-Build
 
-[BuildStateCard-Lite]: https://img.shields.io/github/actions/workflow/status/Flyleague-Collection/SimpleFSD/go-build-lite.yml?style=for-the-badge&logo=github&label=Lite-Build
-
-[Full-Branch]: https://github.com/Flyleague-Collection/SimpleFSD
-
-[Lite-Branch]: https://github.com/Flyleague-Collection/SimpleFSD/tree/lite
+[Lite]: https://github.com/Flyleague-Collection/SimpleFSD-Lite
 
 [ProjectLanguageCard]: https://img.shields.io/github/languages/top/Flyleague-Collection/SimpleFSD?style=for-the-badge&logo=github
 
@@ -633,6 +628,6 @@ Copyright © 2025 Half_nothing
 
 [Issue]: https://github.com/Flyleague-Collection/SimpleFSD/issues/new
 
-[HttpApiDocs]: https://fsd.docs.half-nothing.cn/
+[HttpApiDocs]: https://api.fsd.half-nothing.cn/
 
-[WIKI]: https://github.com/Flyleague-Collection/SimpleFSD/wiki
+[WIKI]: https://docs.fsd.half-nothing.cn/
