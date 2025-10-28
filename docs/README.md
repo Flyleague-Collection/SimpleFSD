@@ -626,7 +626,7 @@ Copyright © 2025 Half_nothing
 
 [Action]: https://github.com/Flyleague-Collection/SimpleFSD/actions/workflows/go-build.yml
 
-[Issue]: https://github.com/Flyleague-Collection/SimpleFSD/issues/new
+[Issue]: https://github.com/Flyleague-Collection/SimpleFSD/issues/new?template=bug_report.yaml
 
 [HttpApiDocs]: https://api.fsd.half-nothing.cn/
 
