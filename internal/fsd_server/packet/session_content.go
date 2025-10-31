@@ -54,7 +54,9 @@ func (content *SessionContent) SendError(session *Session, result *Result) {
 
 	packet := MakePacket(Error, global.FSDServerName, session.callsign, fmt.Sprintf("%03d", result.Errno.Index()), result.Env, errString)
 	content.logger.DebugF("[%s](%s) <- %s", session.connId, session.callsign, packet[:len(packet)-SplitSignLen])
-	_, _ = session.conn.Write(packet)
+	if session.conn != nil {
+		_, _ = session.conn.Write(packet)
+	}
 	if result.Fatal {
 		session.close.Store(true)
 	}

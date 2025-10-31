@@ -347,6 +347,57 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 	auditLogGroup.GET("", auditLogController.GetAuditLogs, jwtMiddleware, requireNoFlushToken)
 	auditLogGroup.POST("/unlawful_overreach", auditLogController.LogUnlawfulOverreach, jwtMiddleware, requireNoFlushToken)
 
+	tokenManager := NewTokenManager(logger, config.Server.HttpServer.NavigraphToken, func(flushToken string) {
+		config.Server.HttpServer.NavigraphToken = flushToken
+		_ = applicationContent.ConfigManager().SaveConfig()
+	})
+
+	ErrCreateRequest := service.NewApiStatus("ERR_CREATE_REQUEST", "创建请求失败", service.ServerInternalError)
+	ErrSendRequest := service.NewApiStatus("ERR_SEND_REQUEST", "请求目标失败", service.ServerInternalError)
+	ErrCopyRequest := service.NewApiStatus("ERR_COPY_REQUEST", "复制目标请求", service.ServerInternalError)
+
+	chartGroup := apiGroup.Group("/charts")
+	chartGroup.Any("/*", func(c echo.Context) error {
+		originalRequest := c.Request()
+		targetUrl := c.Param("*")
+
+		req, err := http.NewRequest(originalRequest.Method, targetUrl, originalRequest.Body)
+		if err != nil {
+			return service.NewApiResponse[any](ErrCreateRequest, nil).Response(c)
+		}
+
+		for key, values := range originalRequest.Header {
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
+
+		req.Header.Set("Authorization", tokenManager.AccessToken())
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return service.NewApiResponse[any](ErrSendRequest, nil).Response(c)
+		}
+
+		for key, values := range resp.Header {
+			for _, value := range values {
+				c.Response().Header().Add(key, value)
+			}
+		}
+
+		c.Response().WriteHeader(resp.StatusCode)
+
+		_, err = io.Copy(c.Response().Writer, resp.Body)
+		_ = resp.Body.Close()
+
+		if err != nil {
+			return service.NewApiResponse[any](ErrCopyRequest, nil).Response(c)
+		}
+
+		return nil
+	}, jwtMiddleware, requireNoFlushToken)
+
 	apiGroup.Use(middleware.Static(httpConfig.Store.LocalStorePath))
 
 	applicationContent.Cleaner().Add(NewShutdownCallback(e, websocketServer))

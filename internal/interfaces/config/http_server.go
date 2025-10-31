@@ -24,6 +24,7 @@ type HttpServerConfig struct {
 	Email          *EmailConfig     `json:"email"`
 	JWT            *JWTConfig       `json:"jwt"`
 	SSL            *SSLConfig       `json:"ssl"`
+	NavigraphToken string           `json:"navigraph_token"`
 }
 
 func defaultHttpServerConfig() *HttpServerConfig {
@@ -42,6 +43,7 @@ func defaultHttpServerConfig() *HttpServerConfig {
 		Email:          defaultEmailConfig(),
 		JWT:            defaultJWTConfig(),
 		SSL:            defaultSSLConfig(),
+		NavigraphToken: "",
 	}
 }
 

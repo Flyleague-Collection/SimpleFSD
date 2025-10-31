@@ -27,8 +27,8 @@ var (
 )
 
 const (
-	AppVersion    = "0.8.0"
-	ConfigVersion = "0.8.4"
+	AppVersion    = "0.9.0"
+	ConfigVersion = "0.9.0"
 
 	SigningMethod = "HS512"
 
