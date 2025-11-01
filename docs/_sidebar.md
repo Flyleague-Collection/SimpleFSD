@@ -7,4 +7,4 @@
   * [配置文件](/configuration/config.md)
   * [命令行参数](/configuration/command_line.md)
   * [环境变量](/configuration/environment.md)
-* [API文档](https://fsd.docs.half-nothing.cn)
+* [API文档](https://api.fsd.half-nothing.cn)
