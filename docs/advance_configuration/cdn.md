@@ -39,6 +39,34 @@ FSD本体不能过CDN! CDN设计上就不是为了TCP长连接设计的
     否则需要手动为域名添加CNAME记录  
     检查CNAME记录生效后, 点击完成  
     ![](../image/setup_cdn/step5.png)
-7. a
-8. 
-9.  
+7. 进入CDN管理
+    ![](../image/setup_cdn/step6.png)
+8. 进入缓存管理页面  
+    删除除了第一行以外的所有内容  
+    ![](../image/setup_cdn/step7.png)
+9. 新增缓存规则  
+    ![](../image/setup_cdn/step8.png)
+10. 如下图填写缓存规则  
+    ![](../image/setup_cdn/step9.png)  
+    ![](../image/setup_cdn/step10.png)
+11. 最终的缓存规则应该如下图所示  
+    ![](../image/setup_cdn/step11.png)
+12. 推荐设置用量封顶  
+    ![](../image/setup_cdn/step12.png)  
+    ![](../image/setup_cdn/step12-example.png)
+
+## FSD配置
+由于腾讯云已经默认携带`X-Forwarded-For`HTTP头部  
+![](../image/setup_cdn/fsd_1.png)
+所以只需要对FSD的配置文件稍作修改即可  
+如果你的CDN提供商不是腾讯云, 请自行修改
+
+我们主要修改两个配置项  
+1. [proxy_type](../configuration/config.md#proxy_type代理类型)
+2. [trusted_ip_range](../configuration/config.md#trusted_ip_range信任的代理服务器地址)
+
+对于腾讯云，`proxy_type`为`1`，即`代理服务器使用Http头部X-Forwarded-For`  
+对于`trusted_ip_range`，请填写CDN的节点IP地址  
+腾讯云可以直接查询 [回源节点查询](https://console.cloud.tencent.com/cdn/originpull)  
+![](../image/setup_cdn/fsd_2.png)  
+将查询出来的IP段填写到`trusted_ip_range`中即可  

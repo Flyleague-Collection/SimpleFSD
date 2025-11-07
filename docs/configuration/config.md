@@ -124,19 +124,19 @@ FSD最大工作线程数, 也可以理解为最大同时连接的客户端数目
 
 EuroScope视程范围限制
 
-| 配置项           | 默认值 | 说明                             |
-| :--------------- | :----- | :------------------------------- |
-| refuse_out_range | false  | 是否断开超出视程范围限制的客户端 |
-| observer         | 300    | 观察员视程范围限制               |
-| delivery         | 20     | 放行视程范围限制                 |
-| ground           | 20     | 地面视程范围限制                 |
-| tower            | 50     | 塔台视程范围限制                 |
-| approach         | 150    | 进近视程范围限制                 |
-| center           | 600    | 区域视程范围限制                 |
-| apron            | 20     | 机坪视程范围限制                 |
-| supervisor       | 300    | 监管者视程范围限制               |
-| administrator    | 300    | 管理员视程范围限制               |
-| fss              | 1500   | 飞服视程范围限制                 |
+| 配置项              | 默认值   | 说明               |
+|:-----------------|:------|:-----------------|
+| refuse_out_range | false | 是否断开超出视程范围限制的客户端 |
+| observer         | 300   | 观察员视程范围限制        |
+| delivery         | 20    | 放行视程范围限制         |
+| ground           | 20    | 地面视程范围限制         |
+| tower            | 50    | 塔台视程范围限制         |
+| approach         | 150   | 进近视程范围限制         |
+| center           | 600   | 区域视程范围限制         |
+| apron            | 20    | 机坪视程范围限制         |
+| supervisor       | 300   | 监管者视程范围限制        |
+| administrator    | 300   | 管理员视程范围限制        |
+| fss              | 1500  | 飞服视程范围限制         |
 
 ---
 
@@ -172,11 +172,11 @@ Http服务器监听端口
 
 本字段表明位于Http服务器前方的代理服务器如何向本服务器传递客户端真实IP
 
-| 数值 | 含义                                    |
-| :--- | :-------------------------------------- |
-| 0    | 直连无代理服务器                        |
-| 1    | 代理服务器使用Http头部`X-Forwarded-For` |
-| 2    | 代理服务器使用Http头部`X-Real-Ip`       |
+| 数值 | 含义                             |
+|:---|:-------------------------------|
+| 0  | 直连无代理服务器                       |
+| 1  | 代理服务器使用Http头部`X-Forwarded-For` |
+| 2  | 代理服务器使用Http头部`X-Real-Ip`       |
 
 #### trusted_ip_range(信任的代理服务器地址)
 
@@ -186,7 +186,8 @@ Http服务器监听端口
 
 ?> 注意：内网地址和回环地址默认被信任, 即`127.0.0.1`或者`192.168.1.1`此类地址是默认被信任不用手动添加的
 
-如果在服务器前方配置有CDN, 那么这里需要填写CDN节点的<span style="font-size: 1.1rem;font-weight: 600;">所有</span>可能节点IP  
+如果在服务器前方配置有CDN, 那么这里需要填写CDN节点的<span style="font-size: 1.1rem;font-weight: 600;">所有</span>
+可能节点IP  
 这通常可以在CDN提供商文档处查到, 具体请看[CDN配置指引](../advance_configuration/cdn.md)  
 此处要求的IP地址格式为CIDR, 例如: `101.71.100.0/24`
 
@@ -207,14 +208,14 @@ Http服务器文件存储引擎配置
 
 Http服务器存储引擎, 可选值如下
 
-| 数值 | 含义          |
-| :--- | :------------ |
-| 0    | 本地存储      |
-| 1    | 阿里云OSS存储 |
-| 2    | 腾讯云COS存储 |
+| 数值 | 含义       |
+|:---|:---------|
+| 0  | 本地存储     |
+| 1  | 阿里云OSS存储 |
+| 2  | 腾讯云COS存储 |
 
 以*开头的字段仅当[存储引擎类型](#store_type存储引擎类型)不为`0`时此有效  
-即仅当存储类型不是本地存储时有效  
+即仅当存储类型不是本地存储时有效
 
 - *`region` 储存桶地域
 - *`bucket` 储存桶名称
@@ -342,14 +343,19 @@ JWT刷新秘钥过期时间
 - `cert_file` SSL证书文件路径
 - `key_file` SSL私钥文件路径
 
-#### navigraph_token(Navigraph秘钥)
+#### navigraph(Navigraph秘钥)
+
+- `enable` 是否启用
+- `token` 刷新秘钥
+
 用于对外提供航图查询代理  
 详情请看[Navigraph航图代理](../advance_configuration/navigraph.md)
 
 ### voice_server(语音服务器配置)
-- `enabled` 是否启用语音服务器  
-- `tcp_host` 语音服务器TCP监听地址  
-- `tcp_port` 语音服务器TCP监听端口  
+
+- `enabled` 是否启用语音服务器
+- `tcp_host` 语音服务器TCP监听地址
+- `tcp_port` 语音服务器TCP监听端口
 - `udp_host` 语音服务器UDP监听地址
 - `udp_port` 语音服务器UDP监听端口
 - `timeout_interval` 语音服务器心跳包超时时间
@@ -366,13 +372,13 @@ JWT刷新秘钥过期时间
 
 本配置项为列表, 列表项所有可能的配置项如下表
 
-| 配置项      | 说明                                       |
-| :---------- | :----------------------------------------- |
-| url         | 查询地址, %s会被替换为机场ICAO码           |
+| 配置项         | 说明                              |
+|:------------|:--------------------------------|
+| url         | 查询地址, %s会被替换为机场ICAO码            |
 | return_type | url返回类型, 返回值分为raw, html, json三种 |
-| reverse     | 数据排列方式                               |
-| multiline   | 数据分行方式                               |
-| selector    | 数据选择器, 仅返回类型为html或json时生效   |
+| reverse     | 数据排列方式                          |
+| multiline   | 数据分行方式                          |
+| selector    | 数据选择器, 仅返回类型为html或json时生效       |
 
 详细配置介绍和配置示例请看[Metar报文源配置](/configuration/metar/metar_source.md)
 
@@ -444,18 +450,18 @@ JWT刷新秘钥过期时间
 默认的席位对照表如下
 
 | 席位后缀名 | 允许的席位 |
-| :--------- | :--------- |
-| ADM        | ADM        |
-| SUP        | SUP        |
-| OBS        | OBS        |
-| DEL        | DEL        |
-| RMP        | RMP        |
-| GND        | GND        |
-| TWR        | TWR        |
-| APP        | APP        |
-| CTR        | CTR        |
-| FSS        | FSS        |
-| ATIS       | TWR        |
+|:------|:------|
+| ADM   | ADM   |
+| SUP   | SUP   |
+| OBS   | OBS   |
+| DEL   | DEL   |
+| RMP   | RMP   |
+| GND   | GND   |
+| TWR   | TWR   |
+| APP   | APP   |
+| CTR   | CTR   |
+| FSS   | FSS   |
+| ATIS  | TWR   |
 
 在明确的知道你在做什么之前, 不要修改这个配置  
 配置文件字段为`facility`
