@@ -3,7 +3,8 @@
 ## config_version(配置文件版本)
 
 配置文件版本，通常情况下主版本号与FSD版本号一致  
-即如果FSD的版本为x.y.z，那么配置文件的版本号为x.y.a  
+即如果FSD的版本为`x.y.z`  
+那么配置文件的版本号为`x.y.a`  
 如果FSD启动时发现配置文件版本不匹配  
 那么FSD会在报错后直接退出  
 你也可以通过添加`-update_config`命令行参数来让FSD自动迁移配置文件  
@@ -22,20 +23,21 @@
 
 控制服务器是否为模拟机服务器  
 由于需要检查网页提交计划与实际连线计划是否一致  
-所以飞行计划存储使用用户cid进行标识的  
+所以飞行计划存储使用用户cid进行标识  
 但模拟机所有的模拟机都是一个用户cid, 此时就会出问题  
 即模拟机计划错误或者无法获取到计划  
-此时需要将此配置设置为true  
+此时需要将此配置设置为`true`  
 这样服务器就会使用呼号作为标识  
 但是与此同时就失去了呼号匹配检查的功能  
-网页提交计划仍然可用, 只是没有检查功能
+网页提交计划仍然可用, 只是没有检查功能  
+此选项默认关闭
 
 #### bcrypt_cost(密码加密轮数)
 
 bcrypt密码加密轮数  
 该选项只影响FSD加密密码时进行的轮数  
-推荐值为12  
-取值范围: [4, 32)
+默认与推荐值为`12`  
+取值范围: `[4, 32)`
 
 ---
 
@@ -122,19 +124,19 @@ FSD最大工作线程数, 也可以理解为最大同时连接的客户端数目
 
 EuroScope视程范围限制
 
-| 配置项              | 默认值   | 说明               |
-|:-----------------|:------|:-----------------|
-| refuse_out_range | false | 是否断开超出视程范围限制的客户端 |
-| observer         | 300   | 观察员视程范围限制        |
-| delivery         | 20    | 放行视程范围限制         |
-| ground           | 20    | 地面视程范围限制         |
-| tower            | 50    | 塔台视程范围限制         |
-| approach         | 150   | 进近视程范围限制         |
-| center           | 600   | 区域视程范围限制         |
-| apron            | 20    | 机坪视程范围限制         |
-| supervisor       | 300   | 监管者视程范围限制        |
-| administrator    | 300   | 管理员视程范围限制        |
-| fss              | 1500  | 飞服视程范围限制         |
+| 配置项           | 默认值 | 说明                             |
+| :--------------- | :----- | :------------------------------- |
+| refuse_out_range | false  | 是否断开超出视程范围限制的客户端 |
+| observer         | 300    | 观察员视程范围限制               |
+| delivery         | 20     | 放行视程范围限制                 |
+| ground           | 20     | 地面视程范围限制                 |
+| tower            | 50     | 塔台视程范围限制                 |
+| approach         | 150    | 进近视程范围限制                 |
+| center           | 600    | 区域视程范围限制                 |
+| apron            | 20     | 机坪视程范围限制                 |
+| supervisor       | 300    | 监管者视程范围限制               |
+| administrator    | 300    | 管理员视程范围限制               |
+| fss              | 1500   | 飞服视程范围限制                 |
 
 ---
 
@@ -170,11 +172,11 @@ Http服务器监听端口
 
 本字段表明位于Http服务器前方的代理服务器如何向本服务器传递客户端真实IP
 
-| 数值 | 含义                             |
-|:---|:-------------------------------|
-| 0  | 直连无代理服务器                       |  
-| 1  | 代理服务器使用Http头部`X-Forwarded-For` |   
-| 2  | 代理服务器使用Http头部`X-Real-Ip`       |
+| 数值 | 含义                                    |
+| :--- | :-------------------------------------- |
+| 0    | 直连无代理服务器                        |
+| 1    | 代理服务器使用Http头部`X-Forwarded-For` |
+| 2    | 代理服务器使用Http头部`X-Real-Ip`       |
 
 #### trusted_ip_range(信任的代理服务器地址)
 
@@ -184,8 +186,8 @@ Http服务器监听端口
 
 ?> 注意：内网地址和回环地址默认被信任, 即`127.0.0.1`或者`192.168.1.1`此类地址是默认被信任不用手动添加的
 
-如果在服务器前方配置有CDN, 那么这里需要填写CDN节点的<span style="font-size: 1.1rem;font-weight: 600;">所有</span>可能节点IP,
-这通常可以在CDN提供商文档处查到  
+如果在服务器前方配置有CDN, 那么这里需要填写CDN节点的<span style="font-size: 1.1rem;font-weight: 600;">所有</span>可能节点IP  
+这通常可以在CDN提供商文档处查到, 具体请看[CDN配置指引](../advance_configuration/cdn.md)  
 此处要求的IP地址格式为CIDR, 例如: `101.71.100.0/24`
 
 #### body_limit(请求体大小限制)
@@ -205,70 +207,49 @@ Http服务器文件存储引擎配置
 
 Http服务器存储引擎, 可选值如下
 
-| 数值 | 含义       |
-|:---|:---------|
-| 0  | 本地存储     |
-| 1  | 阿里云OSS存储 |
-| 2  | 腾讯云COS存储 |
+| 数值 | 含义          |
+| :--- | :------------ |
+| 0    | 本地存储      |
+| 1    | 阿里云OSS存储 |
+| 2    | 腾讯云COS存储 |
 
-##### region(储存桶地域)
+以*开头的字段仅当[存储引擎类型](#store_type存储引擎类型)不为`0`时此有效  
+即仅当存储类型不是本地存储时有效  
 
-!> 当[存储引擎类型](#store_type存储引擎类型)为`0`时此字段无效
-
-##### bucket(储存桶名称)
-
-!> 当[存储引擎类型](#store_type存储引擎类型)为`0`时此字段无效
-
-##### access_id(访问ID)
-
-!> 当[存储引擎类型](#store_type存储引擎类型)为`0`时此字段无效
-
-##### access_key(访问秘钥)
-
-!> 当[存储引擎类型](#store_type存储引擎类型)为`0`时此字段无效
-
-##### cdn_domain(CDN访问加速域名)
-
-!> 当[存储引擎类型](#store_type存储引擎类型)为`0`时此字段无效
-
-表示CDN访问加速域名  
-如果此配置项不为空, 则在存储引擎最后返回访问链接的时候  
-使用此配置项作为基础域名去拼接最终访问链接  
-比如：  
-一个文件的路径是`xxxxxx.png`  
-本配置项为`https://cdn.example.com`  
-那么最终的访问路径就是`https://cdn.example.com/xxxxxx.png`
-
-##### use_internal_url(使用内网上传文件)
-
-使用内网地址上传文件, 仅阿里云OSS存储此字段有效
-
-##### local_store_path(本地文件保存路径)
-
-文件保存的本地路径
-
-##### remote_store_path(远程文件保存路径)
-
-!> 当[存储引擎类型](#store_type存储引擎类型)为`0`时此字段无效
-
-文件保存的远程路径
+- *`region` 储存桶地域
+- *`bucket` 储存桶名称
+- *`access_id` 访问ID
+- *`access_key` 访问秘钥
+- *`cdn_domain` CDN访问加速域名  
+  如果此配置项不为空, 则在存储引擎最后返回访问链接的时候  
+  使用此配置项作为基础域名去拼接最终访问链接  
+  比如：  
+  一个文件的路径是`xxxxxx.png`  
+  本配置项为`https://cdn.example.com`  
+  那么最终的访问路径就是`https://cdn.example.com/xxxxxx.png`
+- *`use_internal_url` 使用内网上传文件  
+  使用内网地址上传文件, 仅阿里云OSS存储此字段有效
+- `local_store_path` 本地文件保存路径  
+  文件保存的本地路径
+- *`remote_store_path` 远程文件保存路径  
+  文件保存的远程路径
 
 ##### file_limit(文件限制)
 
-* `image_limit` 图片文件限制
-    * `max_file_size` 允许的最大文件大小, 单位是B
-    * `allowed_file_ext` 允许的文件后缀名列表
-    * `store_prefix`  
+- `image_limit` 图片文件限制
+    - `max_file_size` 允许的最大文件大小, 单位是B
+    - `allowed_file_ext` 允许的文件后缀名列表
+    - `store_prefix`  
       存储路径前缀, 会拼接在[本地文件保存路径](#local_store_path本地文件保存路径)
       和[远程文件保存路径](#remote_store_path远程文件保存路径)后面  
       如果此项为`xxx`, [本地文件保存路径](#local_store_path本地文件保存路径)为
       `aaa`, [远程文件保存路径](#remote_store_path远程文件保存路径)为`bbb`, 文件名为`ccc.png`
       那么最终的文件路径就是
-        * 本地路径`aaa/xxx/ccc.png`
-        * 远程路径`bbb/xxx/ccc.png`
-    * `store_in_server`  
+        - 本地路径`aaa/xxx/ccc.png`
+        - 远程路径`bbb/xxx/ccc.png`
+    - `store_in_server`  
       是否在本地也保存一份, 当[存储引擎类型](#store_type存储引擎类型)为`0`时此字段必须为true
-* `file_limit` 文本文件限制  
+- `file_limit` 文本文件限制  
   配置项同`image_limit(图片文件限制)`
 
 #### rate_limit&rate_limit_window(API访问速率限制)
@@ -282,13 +263,13 @@ Http服务器存储引擎, 可选值如下
 
 #### email(邮箱配置)
 
-* `host` SMTP服务器地址
-* `port` SMTP服务器端口
-* `username` 发信账号
-* `password` 发信密码
-* `verify_expired_time` 邮箱验证码过期时间  
+- `host` SMTP服务器地址
+- `port` SMTP服务器端口
+- `username` 发信账号
+- `password` 发信密码
+- `verify_expired_time` 邮箱验证码过期时间  
   默认值为`5m`
-* `send_interval` 验证码发送间隔  
+- `send_interval` 验证码发送间隔  
   两次验证码发送间隔  
   默认值为`1m`
 
@@ -299,26 +280,26 @@ Http服务器存储引擎, 可选值如下
 请使用[命令行参数#skip_email_verification](/configuration/command_line.md#skip_email_verification)  
 注意这个参数会关闭整个邮件服务
 
-* `verify_code_email` 验证码邮件模板
-    * `file_path` 模板文件路径
-    * `email_title` 邮件标题
-    * `enable` 是否启用该邮件
-* `atc_rating_change_email` 管制员管制权限变更邮件模板
-    * 配置项同验证码邮件模板
-* `permission_change_email` 管理权限变更邮件模板
-    * 配置项同验证码邮件模板
-* `kicked_from_server_email` 踢出服务器通知邮件模板
-    * 配置项同验证码邮件模板
-* `password_change_email` 密码修改通知邮件模板
-    * 配置项同验证码邮件模板
-* `application_passed_email` 管制员申请通过通知邮件模板
-    * 配置项同验证码邮件模板
-* `application_rejected_email` 管制员申请拒绝通知邮件模板
-    * 配置项同验证码邮件模板
-* `application_processing_email` 管制员申请进度通知邮件模板
-    * 配置项同验证码邮件模板
-* `ticket_reply_email` 工单回复通知邮件模板
-    * 配置项同验证码邮件模板
+- `verify_code_email` 验证码邮件模板
+    - `file_path` 模板文件路径
+    - `email_title` 邮件标题
+    - `enable` 是否启用该邮件
+- `atc_rating_change_email` 管制员管制权限变更邮件模板
+    - 配置项同验证码邮件模板
+- `permission_change_email` 管理权限变更邮件模板
+    - 配置项同验证码邮件模板
+- `kicked_from_server_email` 踢出服务器通知邮件模板
+    - 配置项同验证码邮件模板
+- `password_change_email` 密码修改通知邮件模板
+    - 配置项同验证码邮件模板
+- `application_passed_email` 管制员申请通过通知邮件模板
+    - 配置项同验证码邮件模板
+- `application_rejected_email` 管制员申请拒绝通知邮件模板
+    - 配置项同验证码邮件模板
+- `application_processing_email` 管制员申请进度通知邮件模板
+    - 配置项同验证码邮件模板
+- `ticket_reply_email` 工单回复通知邮件模板
+    - 配置项同验证码邮件模板
 
 #### jwt(JWT配置)
 
@@ -349,17 +330,33 @@ JWT刷新秘钥过期时间
 
 #### ssl(SSL配置)
 
-* `enable` 是否启用SSL
-* `enable_hsts` 是否启用HSTS
-* `hsts_expired_time` HSTS过期时间(s)
-* `include_domain` HSTS是否包括子域名
+- `enable` 是否启用SSL
+- `enable_hsts` 是否启用HSTS
+- `hsts_expired_time` HSTS过期时间(s)
+- `include_domain` HSTS是否包括子域名
 
   !> 警告：如果你的其他子域名没有全部部署SSL证书  
   打开此开关可能导致没有SSL证书的域名无法访问  
   如果不懂请不要打开此开关
 
-* `cert_file` SSL证书文件路径
-* `key_file` SSL私钥文件路径
+- `cert_file` SSL证书文件路径
+- `key_file` SSL私钥文件路径
+
+#### navigraph_token(Navigraph秘钥)
+用于对外提供航图查询代理  
+详情请看[Navigraph航图代理](../advance_configuration/navigraph.md)
+
+### voice_server(语音服务器配置)
+- `enabled` 是否启用语音服务器  
+- `tcp_host` 语音服务器TCP监听地址  
+- `tcp_port` 语音服务器TCP监听端口  
+- `udp_host` 语音服务器UDP监听地址
+- `udp_port` 语音服务器UDP监听端口
+- `timeout_interval` 语音服务器心跳包超时时间
+- `max_data_size` 语音包最大大小
+- `broadcast_limit` 广播限制
+- `udp_packet_limit` UDP包数量限制
+- `tcp_packet_limit` TCP包数量限制
 
 ### grpc_server(GRPC服务器配置)
 
@@ -369,13 +366,13 @@ JWT刷新秘钥过期时间
 
 本配置项为列表, 列表项所有可能的配置项如下表
 
-| 配置项         | 说明                              |
-|:------------|:--------------------------------|
-| url         | 查询地址, %s会被替换为机场ICAO码            |
+| 配置项      | 说明                                       |
+| :---------- | :----------------------------------------- |
+| url         | 查询地址, %s会被替换为机场ICAO码           |
 | return_type | url返回类型, 返回值分为raw, html, json三种 |
-| reverse     | 数据排列方式                          |
-| multiline   | 数据分行方式                          |
-| selector    | 数据选择器, 仅返回类型为html或json时生效       |
+| reverse     | 数据排列方式                               |
+| multiline   | 数据分行方式                               |
+| selector    | 数据选择器, 仅返回类型为html或json时生效   |
 
 详细配置介绍和配置示例请看[Metar报文源配置](/configuration/metar/metar_source.md)
 
@@ -447,18 +444,18 @@ JWT刷新秘钥过期时间
 默认的席位对照表如下
 
 | 席位后缀名 | 允许的席位 |
-|:------|:------|
-| ADM   | ADM   |  
-| SUP   | SUP   |    
-| OBS   | OBS   |    
-| DEL   | DEL   |    
-| RMP   | RMP   |    
-| GND   | GND   |    
-| TWR   | TWR   |    
-| APP   | APP   |    
-| CTR   | CTR   |    
-| FSS   | FSS   |    
-| ATIS  | TWR   |    
+| :--------- | :--------- |
+| ADM        | ADM        |
+| SUP        | SUP        |
+| OBS        | OBS        |
+| DEL        | DEL        |
+| RMP        | RMP        |
+| GND        | GND        |
+| TWR        | TWR        |
+| APP        | APP        |
+| CTR        | CTR        |
+| FSS        | FSS        |
+| ATIS       | TWR        |
 
 在明确的知道你在做什么之前, 不要修改这个配置  
 配置文件字段为`facility`
@@ -618,6 +615,18 @@ JWT刷新秘钥过期时间
         "cert_file": "",
         "key_file": ""
       }
+    },
+    "voice_server": {
+      "enabled": true,
+      "tcp_host": "0.0.0.0",
+      "tcp_port": 6808,
+      "udp_host": "0.0.0.0",
+      "udp_port": 6807,
+      "timeout_interval": "30s",
+      "max_data_size": 1048576,
+      "broadcast_limit": 128,
+      "udp_packet_limit": 8192,
+      "tcp_packet_limit": 32
     },
     "grpc_server": {
       "enabled": false,

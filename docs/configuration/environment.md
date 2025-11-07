@@ -4,19 +4,27 @@
 
 ## 环境变量总览表
 
-| 参数名                                                       | 类型     | 默认值             | 作用                          |
-|:----------------------------------------------------------|:-------|:----------------|:----------------------------|
-| [DEBUG_MODE](#DEBUG_MODE)                                 | bool   | false           | 开启调试模式                      |
-| [CONFIG_FILE_PATH](#CONFIG_FILE_PATH)                     | string | "./config.json" | 配置文件路径                      |
-| [SKIP_EMAIL_VERIFICATION](#SKIP_EMAIL_VERIFICATION)       | bool   | false           | 跳过邮箱验证                      |
-| [UPDATE_CONFIG](#UPDATE_CONFIG)                           | bool   | false           | 迁移配置文件, 迁移旧版本配置文件           |
-| [NO_LOGS](#NO_LOGS)                                       | bool   | false           | 禁用日志输出到文件                   |
-| [MESSAGE_QUEUE_CHANNEL_SIZE](#MESSAGE_QUEUE_CHANNEL_SIZE) | int    | 128             | 内置消息队列大小                    |
-| [DOWNLOAD_PREFIX](#DOWNLOAD_PREFIX)                       | str    | 本仓库raw地址        | 下载前缀, 用于无法连接到github或其他情况下使用 |
-| [MESSAGE_QUEUE_CHANNEL_SIZE](#MESSAGE_QUEUE_CHANNEL_SIZE) | int    | 128             | 内置消息队列大小                    |
-| [METAR_CACHE_CLEAN_INTERVAL](#METAR_CACHE_CLEAN_INTERVAL) | str    | 30s             | 过期metar报文清理间隔               |
-| [METAR_QUERY_THREAD](#METAR_QUERY_THREAD)                 | int    | 32              | metar报文查询线程数                |
-| [FSD_RECORD_FILTER](#FSD_RECORD_FILTER)                   | int    | 10              | fsd连线记录数值过滤                 |
+| 参数名                                                            | 类型   | 默认值          | 作用                                           |
+| :---------------------------------------------------------------- | :----- | :-------------- | :--------------------------------------------- |
+| [DEBUG_MODE](#DEBUG_MODE)                                         | bool   | false           | 开启调试模式                                   |
+| [CONFIG_FILE_PATH](#CONFIG_FILE_PATH)                             | string | "./config.json" | 配置文件路径                                   |
+| [SKIP_EMAIL_VERIFICATION](#SKIP_EMAIL_VERIFICATION)               | bool   | false           | 跳过邮箱验证                                   |
+| [UPDATE_CONFIG](#UPDATE_CONFIG)                                   | bool   | false           | 迁移配置文件, 迁移旧版本配置文件               |
+| [NO_LOGS](#NO_LOGS)                                               | bool   | false           | 禁用日志输出到文件                             |
+| [MESSAGE_QUEUE_CHANNEL_SIZE](#MESSAGE_QUEUE_CHANNEL_SIZE)         | int    | 128             | 内置消息队列大小                               |
+| [DOWNLOAD_PREFIX](#DOWNLOAD_PREFIX)                               | str    | 本仓库raw地址   | 下载前缀, 用于无法连接到github或其他情况下使用 |
+| [MESSAGE_QUEUE_CHANNEL_SIZE](#MESSAGE_QUEUE_CHANNEL_SIZE)         | int    | 128             | 内置消息队列大小                               |
+| [METAR_CACHE_CLEAN_INTERVAL](#METAR_CACHE_CLEAN_INTERVAL)         | str    | 30s             | 过期metar报文清理间隔                          |
+| [METAR_QUERY_THREAD](#METAR_QUERY_THREAD)                         | int    | 32              | metar报文查询线程数                            |
+| [FSD_RECORD_FILTER](#FSD_RECORD_FILTER)                           | int    | 10              | fsd连线记录数值过滤                            |
+| [VATSIM](#VATSIM)                                                 | bool   | false           | 对管制员登录启用VATSIM协议                     |
+| [VATSIM_FULL](#VATSIM_FULL)                                       | bool   | false           | 对飞行员登录启用VATSIM协议                     |
+| [MUTAR_THREAD](#MUTAR_THREAD)                                     | bool   | false           | 使用多线程处理客户端连接                       |
+| [VISUAL_PILOT](#VISUAL_PILOT)                                     | bool   | false           | 启用虚拟坐标                                   |
+| [WEBSOCKET_HEART_INTERVAL](#WEBSOCKET_HEART_INTERVAL)             | str    | 30s             | websocket心跳间隔                              |
+| [WEBSOCKET_TIMEOUT](#WEBSOCKET_TIMEOUT)                           | str    | 60s             | websocket超时时间                              |
+| [WEBSOCKET_MESSAGE_CHANNEL_SIZE](#WEBSOCKET_MESSAGE_CHANNEL_SIZE) | int    | 128             | websocket消息频道大小                          |
+
 
 ## DEBUG_MODE
 
@@ -122,3 +130,76 @@ FSD连线记录过滤
 仅当连线时长高于本选项设置的数值时  
 此次联飞时长才会被记录在案  
 默认值为10  
+
+## VATSIM
+
+注意本环境变量会覆盖[命令行参数#vatsim](/configuration/command_line.md#vatsim)
+
+是否对管制员登录启用VATSIM协议支持  
+若开启，则当管制员登录服务器时  
+必须使用VATSIM协议  
+详情请看[VATSIM协议指南](../advance_configuration/vatsim.md)
+此选项默认关闭
+
+## VATSIM_FULL
+
+注意本环境变量会覆盖[命令行参数#vatsim_full](/configuration/command_line.md#vatsim_full)
+
+是否对飞行员登录启用VATSIM协议支持  
+当[VATSIM](#VATSIM)为`false`时本项不得为`true`  
+若开启，则当飞行员登录服务器时  
+必须使用VATSIM协议  
+详情请看[VATSIM协议指南](../advance_configuration/vatsim.md)
+此选项默认关闭
+
+## MUTAR_THREAD
+
+注意本环境变量会覆盖[命令行参数#mutil_thread](/configuration/command_line.md#mutil_thread)
+
+是否在处理客户端消息时使用并发  
+打开此开关可以获得更好的性能  
+但可能会遇到包括但不限于：ATIS行错位等问题  
+除非真的遇到严重的性能问题，否则不建议开启  
+此选项默认关闭
+
+## VISUAL_PILOT
+
+注意本环境变量会覆盖[命令行参数#visual_pilot](/configuration/command_line.md#visual_pilot)
+
+是否启用虚拟飞行员坐标点支持  
+如果打开且客户端支持虚拟飞行员坐标点  
+则服务器会开启虚拟飞行员坐标点功能  
+客户端`0.2s`上传一次当前位置  
+注意：此功能只会影响到飞行员相互之间的刷新间隔，即管制员并非0.2s刷新频率  
+此选项默认关闭
+
+## WEBSOCKET_HEART_INTERVAL
+
+注意本环境变量会覆盖[命令行参数#websocket_heartbeat_interval](/configuration/command_line.md#websocket_heartbeat_interval)
+
+websocket心跳包间隔  
+超过此间隔未发送消息  
+服务器会主动断开连接  
+输入值应当是一个Duration字符串  
+比如: 30m(30分钟), 10s(10秒), 1h(1小时)  
+默认值为30s
+
+
+## WEBSOCKET_TIMEOUT
+
+注意本环境变量会覆盖[命令行参数#websocket_timeout](/configuration/command_line.md#websocket_timeout)
+
+websocket超时时间  
+输入值应当是一个Duration字符串  
+比如: 30m(30分钟), 10s(10秒), 1h(1小时)  
+默认值为30s
+
+
+## WEBSOCKET_MESSAGE_CHANNEL_SIZE
+
+注意本环境变量会覆盖[命令行参数#websocket_message_channel_size](/configuration/command_line.md#websocket_message_channel_size)
+
+websocket消息队列缓冲区大小  
+如果你对websocket有大量写入或读取需求  
+可以适当调大这个值  
+默认大小为128

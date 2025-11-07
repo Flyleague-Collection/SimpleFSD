@@ -1,10 +1,15 @@
 * [关于本项目](/README.md)
-* [入门]()
-  * [快速开始](/quickstart.md)
-  * []()
-  * []()
-* [项目配置]()
+* 项目配置
+  * [快速开始](/configuration/quickstart.md)
   * [配置文件](/configuration/config.md)
   * [命令行参数](/configuration/command_line.md)
   * [环境变量](/configuration/environment.md)
+* 高级配置
+  * [CDN配置](/advance_configuration/cdn.md)
+  * [Navigraph航图查询](/advance_configuration/navigraph.md)
+  * [VATSIM协议](/advance_configuration/vatsim.md)
+* 项目细节
+  * [FSD协议](/technical/fsd.md)
+  * [VATSIM协议](/technical/vatsim.md)
+  * [语音服务器](/technical/voice.md)
 * [API文档](https://api.fsd.half-nothing.cn)
