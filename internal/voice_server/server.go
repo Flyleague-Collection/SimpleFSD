@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -105,6 +106,7 @@ func (s *VoiceServer) Start() error {
 }
 
 func (s *VoiceServer) Stop() {
+	s.logger.Debug("Stopping Voice Server")
 	s.cancel()
 
 	if s.tcpListener != nil {
@@ -138,7 +140,7 @@ func (s *VoiceServer) handleTCPConnections() {
 		default:
 			conn, err := s.tcpListener.Accept()
 			if err != nil {
-				s.logger.ErrorF("failed to accept connection: %v", err)
+				s.logger.ErrorF("Failed to accept connection: %v", err)
 				continue
 			}
 			s.logger.InfoF("Accepted new tcp connection from %s", conn.RemoteAddr())
@@ -167,11 +169,11 @@ func (s *VoiceServer) handleTCPConnection(conn net.Conn) {
 
 	jwtToken = strings.TrimRight(jwtToken, "\n")
 
-	logger.DebugF("Receive jwt token: %s", jwtToken)
+	logger.DebugF("Jwt token received: %s", jwtToken)
 
 	clientInfo, connection, err := s.authenticateClient(jwtToken)
 	if err != nil {
-		logger.ErrorF("Failed to authenticate client: %v", err)
+		logger.ErrorF("Failed to authenticate client: %s", err.Error())
 		s.sendError(conn, "Authentication failed: "+err.Error())
 		return
 	}
@@ -219,12 +221,15 @@ func (s *VoiceServer) handleTCPConnection(conn net.Conn) {
 			}
 			_ = conn.SetReadDeadline(time.Now().Add(s.config.TimeoutDuration))
 
+			logger.DebugF("Received control message: %v", msg)
+
 			if !s.tcpLimiter.Allow(client.TCPConn.RemoteAddr().String()) {
 				_ = client.SendError("Packet limit reached")
 				continue
 			}
 
 			if err := s.validateControlMessage(msg); err != nil {
+				logger.ErrorF("Failed to validate control message: %s", err.Error())
 				_ = client.SendError(err.Error())
 				continue
 			}
@@ -303,6 +308,8 @@ func (s *VoiceServer) handleControlMessage(client *ClientInfo, msg *ControlMessa
 		} else {
 			client.Client.SetMessageReceivedCallback(nil)
 		}
+	case VoiceReceive:
+		s.handleVoiceReceive(client, msg)
 	default:
 		if err := client.SendError("Unknown message type"); err != nil {
 			s.logger.ErrorF("Failed to send message: %v", err)
@@ -311,10 +318,46 @@ func (s *VoiceServer) handleControlMessage(client *ClientInfo, msg *ControlMessa
 	}
 }
 
-func (s *VoiceServer) handleChannelSwitch(client *ClientInfo, msg *ControlMessage) {
-	frequency := utils.StrToInt(msg.Data, -1)
+func (s *VoiceServer) handleVoiceReceive(client *ClientInfo, msg *ControlMessage) {
+	frequencyStr, receiveFlagStr, success := strings.Cut(msg.Data, ":")
+	if !success {
+		client.Logger.ErrorF("Fail to handle VoiceReceive packet, data format error: %s", msg.Data)
+		_ = client.SendError(fmt.Sprintf("Invalid data format of %s", msg.Data))
+		return
+	}
+
+	frequency := utils.StrToInt(frequencyStr, -1)
 	if frequency == -1 {
-		_ = client.SendError(fmt.Sprintf("Invalid frequency %s", msg.Data))
+		client.Logger.ErrorF("Fail to handle VoiceReceive packet, invalid frequency: %s", frequencyStr)
+		_ = client.SendError(fmt.Sprintf("Invalid frequency of %s", frequencyStr))
+		return
+	}
+
+	transmitter := s.getOrCreateTransmitter(client, msg.Transmitter)
+	freq := ChannelFrequency(frequency)
+	if freq != transmitter.Frequency {
+		client.Logger.ErrorF("Fail to handle VoiceReceive packet, frequency mismatch, expect %d got %d", transmitter.Frequency, freq)
+		_ = client.SendError(fmt.Sprintf("Frequency %s mismatch stored frequency of transmitter %d", frequencyStr, msg.Transmitter))
+		return
+	}
+
+	transmitter.ReceiveFlag = receiveFlagStr == "1"
+
+	_ = client.SendMessage(Message, fmt.Sprintf("SERVER:Transmitter %d set receive flag: %s", msg.Transmitter, strconv.FormatBool(transmitter.ReceiveFlag)))
+}
+
+func (s *VoiceServer) handleChannelSwitch(client *ClientInfo, msg *ControlMessage) {
+	frequencyStr, receiveFlagStr, success := strings.Cut(msg.Data, ":")
+	if !success {
+		client.Logger.ErrorF("Fail to handle ChannelSwitch packet, data format error: %s", msg.Data)
+		_ = client.SendError(fmt.Sprintf("Invalid data format of %s", msg.Data))
+		return
+	}
+
+	frequency := utils.StrToInt(frequencyStr, -1)
+	if frequency == -1 {
+		client.Logger.ErrorF("Fail to handle ChannelSwitch packet, invalid frequency: %s", frequencyStr)
+		_ = client.SendError(fmt.Sprintf("Invalid frequency of %s", frequencyStr))
 		return
 	}
 
@@ -324,9 +367,13 @@ func (s *VoiceServer) handleChannelSwitch(client *ClientInfo, msg *ControlMessag
 	s.removeFromChannel(transmitter)
 
 	transmitter.Frequency = freq
+	transmitter.ReceiveFlag = receiveFlagStr == "1"
+
 	s.addToChannel(transmitter)
 
-	_ = client.SendMessage(Message, fmt.Sprintf("SERVER:Transmitter %d switched to %d", msg.Transmitter, freq))
+	message := fmt.Sprintf("Transmitter %d switched to %d, receive: %s", msg.Transmitter, freq, strconv.FormatBool(transmitter.ReceiveFlag))
+	client.Logger.Debug(message)
+	_ = client.SendMessage(Message, "SERVER:"+message)
 }
 
 func (s *VoiceServer) handlePing(client *ClientInfo, msg *ControlMessage) {
@@ -341,7 +388,8 @@ func (s *VoiceServer) handlePing(client *ClientInfo, msg *ControlMessage) {
 func (s *VoiceServer) handleTextMessage(client *ClientInfo, msg *ControlMessage) {
 	to, message, found := strings.Cut(msg.Data, ":")
 	if !found {
-		_ = client.SendError("Invalid message format")
+		client.Logger.ErrorF("Fail to handle TextMessage packet, data format error: %s", msg.Data)
+		_ = client.SendError(fmt.Sprintf("Invalid data format of %s", msg.Data))
 		return
 	}
 
@@ -529,6 +577,7 @@ func (s *VoiceServer) broadcastVoicePacket(packet *VoicePacket, fromAddr *net.UD
 	for _, clientTransmitter := range channel.Clients {
 		if clientTransmitter.UDPAddr != nil &&
 			clientTransmitter.UDPAddr.String() != transmitter.UDPAddr.String() &&
+			clientTransmitter.ReceiveFlag &&
 			fsd.BroadcastToClientInRange(clientTransmitter.ClientInfo.Client, client.Client) {
 			targets = append(targets, clientTransmitter.UDPAddr)
 		}
@@ -592,10 +641,11 @@ func (s *VoiceServer) getOrCreateTransmitter(client *ClientInfo, transmitterID i
 
 	for len(client.Transmitters) < transmitterID+1 {
 		client.Transmitters = append(client.Transmitters, &Transmitter{
-			Id:         len(client.Transmitters),
-			ClientInfo: client,
-			Frequency:  0,
-			UDPAddr:    nil,
+			Id:          len(client.Transmitters),
+			ClientInfo:  client,
+			Frequency:   0,
+			ReceiveFlag: false,
+			UDPAddr:     nil,
 		})
 	}
 

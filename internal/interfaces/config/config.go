@@ -47,3 +47,11 @@ func (c *Config) CheckValid(logger log.LoggerInterface) *ValidResult {
 	}
 	return ValidPass()
 }
+
+func (c *Config) IsSimulatorServer() bool {
+	return c.Server.General.SimulatorServer
+}
+
+func (c *Config) GetAirportData(icao string) *AirportData {
+	return c.Server.FSDServer.AirportData[icao]
+}

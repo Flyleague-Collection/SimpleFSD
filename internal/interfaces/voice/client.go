@@ -13,24 +13,24 @@ import (
 )
 
 type Transmitter struct {
-	Id         int
-	ClientInfo *ClientInfo
-	Frequency  ChannelFrequency
-	UDPAddr    *net.UDPAddr
+	Id          int
+	ClientInfo  *ClientInfo
+	Frequency   ChannelFrequency
+	ReceiveFlag bool
+	UDPAddr     *net.UDPAddr
 }
 
 type ClientInfo struct {
-	Cid               int
-	Callsign          string
-	Client            fsd.ClientInterface
-	Logger            log.LoggerInterface
-	TCPConn           net.Conn
-	Decoder           *json.Decoder
-	Encoder           *json.Encoder
-	Disconnected      atomic.Bool
-	ActiveTransmitter int
-	TransmitterMutex  sync.Mutex
-	Transmitters      []*Transmitter
+	Cid              int
+	Callsign         string
+	Client           fsd.ClientInterface
+	Logger           log.LoggerInterface
+	TCPConn          net.Conn
+	Decoder          *json.Decoder
+	Encoder          *json.Encoder
+	Disconnected     atomic.Bool
+	TransmitterMutex sync.Mutex
+	Transmitters     []*Transmitter
 }
 
 func NewClientInfo(
@@ -78,6 +78,7 @@ func (client *ClientInfo) SendMessage(messageType MessageType, msg string) error
 func (client *ClientInfo) SendControlMessage(msg *ControlMessage) error {
 	msg.Cid = client.Cid
 	msg.Callsign = client.Callsign
+	client.Logger.DebugF("Sending control message: %v", msg)
 	if err := client.Encoder.Encode(msg); err != nil {
 		return fmt.Errorf("failed to write control message: %v", err)
 	}

@@ -11,7 +11,7 @@ type AirportData struct {
 	Lat          float64 `json:"lat"`
 	Lon          float64 `json:"lon"`
 	Alt          float64 `json:"alt"`
-	AirportRange int     `json:"airport_range"`
+	AirportRange float64 `json:"airport_range"`
 }
 
 func (config *AirportData) checkValid(_ log.LoggerInterface) *ValidResult {

@@ -24,7 +24,7 @@ type HttpServerConfig struct {
 	Email          *EmailConfig     `json:"email"`
 	JWT            *JWTConfig       `json:"jwt"`
 	SSL            *SSLConfig       `json:"ssl"`
-	NavigraphToken string           `json:"navigraph_token"`
+	Navigraph      *NavigraphConfig `json:"navigraph"`
 }
 
 func defaultHttpServerConfig() *HttpServerConfig {
@@ -43,7 +43,7 @@ func defaultHttpServerConfig() *HttpServerConfig {
 		Email:          defaultEmailConfig(),
 		JWT:            defaultJWTConfig(),
 		SSL:            defaultSSLConfig(),
-		NavigraphToken: "",
+		Navigraph:      defaultNavigraphConfig(),
 	}
 }
 
@@ -85,6 +85,9 @@ func (config *HttpServerConfig) checkValid(logger log.LoggerInterface) *ValidRes
 			return result
 		}
 		if result := config.Store.checkValid(logger); result.IsFail() {
+			return result
+		}
+		if result := config.Navigraph.checkValid(logger); result.IsFail() {
 			return result
 		}
 	}

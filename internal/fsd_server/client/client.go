@@ -59,6 +59,9 @@ type Client struct {
 	disconnectCallback      Callback
 	reconnectCallback       Callback
 	messageReceivedCallback func([]byte)
+	arrival                 bool
+	arrivalAirportData      *config.AirportData
+	arrivalAirportPosition  Position
 }
 
 func NewClient(
@@ -72,20 +75,25 @@ func NewClient(
 ) ClientInterface {
 	session.SetCallsign(callsign)
 	var flightPlan *operation.FlightPlan = nil
+
+	// 初始化操作和配置
 	c := applicationContent.ConfigManager().Config()
 	flightPlanOperation := applicationContent.Operations().FlightPlanOperation()
 	userOperation := applicationContent.Operations().UserOperation()
 	historyOperation := applicationContent.Operations().HistoryOperation()
 	logger := applicationContent.Logger().FsdLogger()
+
+	// 如果不是ATC且不是模拟器服务器，则尝试获取飞行计划
 	if !isAtc && !c.Server.General.SimulatorServer {
-		var err error
-		flightPlan, err = flightPlanOperation.GetFlightPlanByCid(session.User().Cid)
+		fp, err := flightPlanOperation.GetFlightPlanByCid(session.User().Cid)
 		if errors.Is(err, operation.ErrFlightPlanNotFound) {
 			logger.WarnF("No flight plan found for %s(%d)", callsign, session.User().Cid)
 		} else if err != nil {
 			logger.WarnF("Fail to get flight plan for %s(%d): %v", callsign, session.User().Cid, err)
 		}
+		flightPlan = fp
 	}
+
 	client := &Client{
 		logger:              log.NewLoggerAdapter(logger, fmt.Sprintf("%s(%d)[%s]", callsign, session.User().Cid, session.ConnId())),
 		config:              c,
@@ -120,6 +128,7 @@ func NewClient(
 		disconnect:          atomic.Bool{},
 		reconnectTimer:      nil,
 		lock:                sync.RWMutex{},
+		arrivalAirportData:  nil,
 	}
 	client.pathTrigger = utils.NewOverflowTrigger(c.Server.FSDServer.PosUpdatePoints, client.recordPathPoint)
 	return client
@@ -170,6 +179,14 @@ func (client *Client) Delete() {
 		err := client.flightPlanOperation.UnlockFlightPlan(client.flightPlan)
 		if err != nil {
 			client.logger.Error("Failed to unlock flight plan")
+		}
+	}
+
+	// 如果判断飞机已在目的机场内，则删除计划
+	if client.flightPlan != nil && client.checkArrival() {
+		err := client.flightPlanOperation.DeleteFlightPlan(client.flightPlan)
+		if err != nil {
+			client.logger.Error("Failed to delete flight plan")
 		}
 	}
 
@@ -272,6 +289,15 @@ func (client *Client) MarkedDisconnect(immediate bool) {
 }
 
 func (client *Client) UpsertFlightPlan(flightPlanData []string) error {
+	client.arrival = false
+	client.arrivalAirportData = nil
+	defer func() {
+		if client.flightPlan == nil || client.config.IsSimulatorServer() {
+			return
+		}
+		client.arrivalAirportData = client.config.GetAirportData(client.flightPlan.ArrivalAirport)
+		client.arrivalAirportPosition = Position{Latitude: client.arrivalAirportData.Lat, Longitude: client.arrivalAirportData.Lon}
+	}()
 	if client.flightPlan == nil {
 		flightPlan, err := client.flightPlanOperation.UpsertFlightPlan(client.user, client.callsign, flightPlanData)
 		if err != nil {
@@ -281,7 +307,7 @@ func (client *Client) UpsertFlightPlan(flightPlanData []string) error {
 		return nil
 	}
 	// 如果是模拟机服务器, 只创建就行
-	if client.config.Server.General.SimulatorServer {
+	if client.config.IsSimulatorServer() {
 		return nil
 	}
 	if client.flightPlan.Locked {
@@ -302,6 +328,13 @@ func (client *Client) SetPosition(index int, lat float64, lon float64) error {
 	client.position[index].Latitude = lat
 	client.position[index].Longitude = lon
 	return nil
+}
+
+func (client *Client) checkArrival() bool {
+	if client.arrivalAirportData != nil {
+		return DistanceInNauticalMiles(client.position[0], client.arrivalAirportPosition) <= client.arrivalAirportData.AirportRange
+	}
+	return false
 }
 
 func (client *Client) UpdatePilotPos(transponder int, lat float64, lon float64, alt int, groundSpeed int, pbh uint32) {

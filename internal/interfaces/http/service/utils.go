@@ -171,6 +171,10 @@ var (
 	ErrInvalidJwtType        = NewApiStatus("INVALID_JWT_TYPE", "非法的JWT令牌类型", Unauthorized)
 	ErrUnknownJwtError       = NewApiStatus("UNKNOWN_JWT_ERROR", "未知的JWT解析错误", ServerInternalError)
 	ErrUnknownServerError    = NewApiStatus("UNKNOWN_ERROR", "未知服务器错误", ServerInternalError)
+	ErrCreateRequest         = NewApiStatus("ERR_CREATE_REQUEST", "创建请求失败", ServerInternalError)
+	ErrSendRequest           = NewApiStatus("ERR_SEND_REQUEST", "请求目标失败", ServerInternalError)
+	ErrCopyRequest           = NewApiStatus("ERR_COPY_REQUEST", "复制目标请求", ServerInternalError)
+	ErrNotAvailable          = NewApiStatus("ERR_NOT_AVAILABLE", "航图服务不可用", ServerInternalError)
 )
 
 func NewErrorResponse(ctx echo.Context, codeStatus *ApiStatus) error {

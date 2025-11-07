@@ -92,6 +92,7 @@ func (cm *ClientManager) HandleFlightPlanFlushMessage(message *queue.Message) er
 		} else {
 			client.SetFlightPlan(val.FlightPlan)
 		}
+		return nil
 	}
 	return queue.ErrMessageDataType
 }

@@ -4,13 +4,14 @@ package voice
 type MessageType string
 
 var (
-	Switch      MessageType = "channel"
-	Ping        MessageType = "ping"
-	Pong        MessageType = "pong"
-	Error       MessageType = "error"
-	TextReceive MessageType = "text_receive"
-	Message     MessageType = "message"
-	Disconnect  MessageType = "disconnect"
+	Switch       MessageType = "channel"
+	Ping         MessageType = "ping"
+	Pong         MessageType = "pong"
+	Error        MessageType = "error"
+	TextReceive  MessageType = "text_receive"
+	VoiceReceive MessageType = "voice_receive"
+	Message      MessageType = "message"
+	Disconnect   MessageType = "disconnect"
 )
 
 type ControlMessage struct {
