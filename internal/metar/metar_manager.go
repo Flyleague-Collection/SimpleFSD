@@ -52,6 +52,13 @@ func (metarManager *MetarManager) cacheMetar(icao string, metar *string) {
 }
 
 func (metarManager *MetarManager) QueryMetar(icao string) (metar string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			metarManager.logger.ErrorF("QueryMetar panic recovered: %v", r)
+			err = ErrMetarNotFound
+		}
+	}()
+
 	if icao == "" || len(icao) != 4 {
 		return "", ErrICAOInvalid
 	}
@@ -64,6 +71,12 @@ func (metarManager *MetarManager) QueryMetar(icao string) (metar string, err err
 	}
 
 	result, err, _ := metarManager.requestGroup.Do(icao, func() (interface{}, error) {
+		defer func() {
+			if r := recover(); r != nil {
+				metarManager.logger.ErrorF("GetMetar panic recovered: %v", r)
+			}
+		}()
+
 		for _, getter := range metarManager.getters {
 			metar, err := getter.GetMetar(icao)
 			if err != nil {
@@ -75,6 +88,11 @@ func (metarManager *MetarManager) QueryMetar(icao string) (metar string, err err
 		metarManager.cacheMetar(icao, nil)
 		return "", ErrMetarNotFound
 	})
+
+	if err != nil {
+		return "", err
+	}
+
 	metar = result.(string)
 	return
 }

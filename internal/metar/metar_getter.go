@@ -99,7 +99,12 @@ func (getter *MetarGetter) GetMetar(icao string) (string, error) {
 			}
 			return rawData.Get(0).FirstChild.Data, nil
 		}
-		metars := strings.Split(rawData.Get(0).FirstChild.Data, getter.config.Multiline)
+		firstChild := rawData.Get(0).FirstChild
+		if firstChild == nil {
+			getter.logger.ErrorF("Get metar from url %s failed: no first child node found", url)
+			return "", ErrMetarNotFound
+		}
+		metars := strings.Split(firstChild.Data, getter.config.Multiline)
 		if len(metars) < 1 {
 			getter.logger.ErrorF("Get metar from url %s failed: no metar found", url)
 			return "", ErrMetarNotFound
