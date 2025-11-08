@@ -75,6 +75,10 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 		return strings.HasPrefix(c.Path(), "/ws")
 	}
 
+	skipCharts := func(c echo.Context) bool {
+		return strings.HasPrefix(c.Path(), "/api/charts")
+	}
+
 	switch httpConfig.ProxyType {
 	case 0:
 		e.IPExtractor = echo.ExtractIPDirect()
@@ -102,7 +106,9 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 
 	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
 		Timeout: 30 * time.Second,
-		Skipper: skipWebSocket,
+		Skipper: func(c echo.Context) bool {
+			return skipWebSocket(c) || skipCharts(c)
+		},
 	}))
 	e.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
 		LogErrorFunc: func(ctx echo.Context, err error, stack []byte) error {
