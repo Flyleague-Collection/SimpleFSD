@@ -11,6 +11,10 @@ const (
 	AvailableAtc     = "ATC"
 	EditFlightPlan   = "FA"
 	ClientFlightPlan = "FP"
+	WhoHoldTag       = "WH"
+	IHoleTag         = "IH"
+	ITakeTag         = "IT"
+	DropTag          = "DR"
 )
 
 const (

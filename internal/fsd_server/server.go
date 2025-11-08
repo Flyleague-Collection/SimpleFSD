@@ -120,6 +120,11 @@ func StartFSDServer(applicationContent *ApplicationContent) {
 
 		sem <- struct{}{}
 		go func(c net.Conn) {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.ErrorF("Recovered from panic: %v", r)
+				}
+			}()
 			session := packet.NewSession(conn)
 			sessionContent.HandleConnection(session)
 			<-sem

@@ -368,12 +368,14 @@ func (content *CommandContent) HandleClientQuery(session SessionInterface, data 
 	}
 	// 如果发送目标是一个频率
 	if strings.HasPrefix(targetStation, "@") {
-		err := content.sendFrequencyMessage(session, targetStation, rawLine)
 		// 如果目标频率是94835
 		if targetStation == EuroscopeFrequency {
 			subQuery := data[2]
 			if !content.isSimulatorServer {
-				if !session.Client().CheckFacility(AllowAtcFacility) {
+				if subQuery == ITakeTag && (session.Client().Rating() <= Observer || session.Client().Facility() <= OBS) {
+					return ResultError(InvalidCtrl, true, session.Client().Callsign(), nil)
+				}
+				if subQuery != WhoHoldTag && !session.Client().CheckFacility(AllowAtcFacility) {
 					return ResultError(InvalidCtrl, false, session.Client().Callsign(), nil)
 				}
 				if subQuery == EditFlightPlan && commandLength >= 5 {
@@ -383,7 +385,14 @@ func (content *CommandContent) HandleClientQuery(session SessionInterface, data 
 						// 这里并不是发给服务器的, 所以如果找不到指定客户端, 直接返回就行
 						return ResultSuccess()
 					}
-					cruiseAltitude := utils.StrToInt(data[4], 0)
+					if client.FlightPlan() == nil {
+						return ResultError(NoFlightPlan, false, session.Client().Callsign(), nil)
+					}
+					cruiseAltitude := utils.StrToInt(data[4], -1)
+					if cruiseAltitude == -1 {
+						content.logger.ErrorF("UpdateCruiseAltitude error: illegal cruise altitude %s, %s", data[4], rawLine)
+						return ResultError(Syntax, false, session.Client().Callsign(), nil)
+					}
 					if err := content.flightPlanOperation.UpdateCruiseAltitude(client.FlightPlan(), fmt.Sprintf("FL%03d", cruiseAltitude/100)); err != nil {
 						// 这里并不是发给服务器的, 所以如果出错, 直接返回就行
 						return ResultSuccess()
@@ -402,6 +411,7 @@ func (content *CommandContent) HandleClientQuery(session SessionInterface, data 
 				session.Client().SetBreak(false)
 			}
 		}
+		err := content.sendFrequencyMessage(session, targetStation, rawLine)
 		if err != nil {
 			return err
 		}

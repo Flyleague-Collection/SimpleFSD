@@ -32,6 +32,7 @@ type FSDServerConfig struct {
 	RangeLimit           *FsdRangeLimit          `json:"range_limit"`
 	FirstMotdLine        string                  `json:"first_motd_line"`
 	Motd                 []string                `json:"motd"`
+	CurrentMotd          []string                `json:"-"`
 }
 
 func defaultFSDServerConfig() *FSDServerConfig {
@@ -49,6 +50,7 @@ func defaultFSDServerConfig() *FSDServerConfig {
 		RangeLimit:          defaultFsdRangeLimitConfig(),
 		FirstMotdLine:       "Welcome to use %[1]s v%[2]s",
 		Motd:                make([]string, 0),
+		CurrentMotd:         make([]string, 0),
 	}
 }
 
@@ -65,11 +67,10 @@ func (config *FSDServerConfig) checkValid(logger log.LoggerInterface) *ValidResu
 		return result
 	}
 
-	config.FirstMotdLine = fmt.Sprintf(config.FirstMotdLine, config.FSDName, AppVersion.String())
 	data := make([]string, 0, 1+len(config.Motd))
-	data = append(data, config.FirstMotdLine)
+	data = append(data, fmt.Sprintf(config.FirstMotdLine, config.FSDName, AppVersion.String()))
 	data = append(data, config.Motd...)
-	config.Motd = data
+	config.CurrentMotd = data
 
 	config.Address = fmt.Sprintf("%s:%d", config.Host, config.Port)
 

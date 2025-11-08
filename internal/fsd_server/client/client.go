@@ -448,7 +448,7 @@ func (client *Client) SendMotd() {
 	}
 
 	buffer := bytes.Buffer{}
-	for _, message := range client.config.Server.FSDServer.Motd {
+	for _, message := range client.config.Server.FSDServer.CurrentMotd {
 		buffer.Write(MakePacket(Message, global.FSDServerName, client.callsign, message))
 	}
 
