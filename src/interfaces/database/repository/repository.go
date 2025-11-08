@@ -10,7 +10,6 @@ type DatabaseInterface interface {
 	GetControllerRecordRepository() ControllerRecordInterface
 	GetControllerApplicationRepository() ControllerApplicationInterface
 	GetAuditLogRepository() AuditLogInterface
-	GetControllerOperationRepository() ControllerInterface
 	GetControllerRepository() ControllerInterface
 	GetAnnouncementRepository() AnnouncementInterface
 }
