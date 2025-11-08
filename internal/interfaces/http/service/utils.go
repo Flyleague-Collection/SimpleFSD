@@ -175,6 +175,7 @@ var (
 	ErrSendRequest           = NewApiStatus("ERR_SEND_REQUEST", "请求目标失败", ServerInternalError)
 	ErrCopyRequest           = NewApiStatus("ERR_COPY_REQUEST", "复制目标请求", ServerInternalError)
 	ErrNotAvailable          = NewApiStatus("ERR_NOT_AVAILABLE", "航图服务不可用", ServerInternalError)
+	ErrTokenExpired          = NewApiStatus("TOKEN_EXPIRED", "令牌已过期，请联系管理员", Unauthorized)
 )
 
 func NewErrorResponse(ctx echo.Context, codeStatus *ApiStatus) error {

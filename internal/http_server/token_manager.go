@@ -240,6 +240,7 @@ func (m *TokenManager) HandleProxy(c echo.Context) error {
 
 	req, err := http.NewRequest(originalRequest.Method, targetUrl, originalRequest.Body)
 	if err != nil {
+		m.logger.ErrorF("HandleProxy Error: %s", err.Error())
 		return service.NewApiResponse[any](service.ErrCreateRequest, nil).Response(c)
 	}
 
@@ -251,9 +252,9 @@ func (m *TokenManager) HandleProxy(c echo.Context) error {
 
 	req.Header.Set("Authorization", m.getAccessToken())
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := m.client.Do(req)
 	if err != nil {
+		m.logger.ErrorF("HandleProxy SendRequest Error: %s", err.Error())
 		return service.NewApiResponse[any](service.ErrSendRequest, nil).Response(c)
 	}
 
@@ -263,12 +264,18 @@ func (m *TokenManager) HandleProxy(c echo.Context) error {
 		}
 	}
 
+	if resp.StatusCode == service.Unauthorized.Code() {
+		m.logger.Error("HandleProxy Error: Token expired")
+		return service.NewApiResponse[any](service.ErrTokenExpired, nil).Response(c)
+	}
+
 	c.Response().WriteHeader(resp.StatusCode)
 
 	_, err = io.Copy(c.Response().Writer, resp.Body)
 	_ = resp.Body.Close()
 
 	if err != nil {
+		m.logger.ErrorF("HandleProxy Error: %s", err.Error())
 		return service.NewApiResponse[any](service.ErrCopyRequest, nil).Response(c)
 	}
 

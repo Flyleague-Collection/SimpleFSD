@@ -354,7 +354,7 @@ func StartHttpServer(applicationContent *ApplicationContent) {
 			return service.NewApiResponse[any](service.ErrNotAvailable, nil).Response(c)
 		})
 	} else {
-		tokenManager := NewTokenManager(logger, config.Server.HttpServer.Navigraph, func(flushToken string) {
+		tokenManager := NewTokenManager(applicationContent.Logger().MainLogger(), config.Server.HttpServer.Navigraph, func(flushToken string) {
 			config.Server.HttpServer.Navigraph.Token = flushToken
 			_ = applicationContent.ConfigManager().SaveConfig()
 		})
