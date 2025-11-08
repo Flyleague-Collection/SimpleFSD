@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/global"
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type HttpServerStoreFileLimit struct {
@@ -19,7 +19,7 @@ type HttpServerStoreFileLimit struct {
 	RemoteRootPath string   `json:"-"`
 }
 
-func (config *HttpServerStoreFileLimit) checkValid(_ log.LoggerInterface) *ValidResult {
+func (config *HttpServerStoreFileLimit) checkValid(_ logger.LoggerInterface) *ValidResult {
 	if config.MaxFileSize < 0 {
 		return ValidFail(errors.New("invalid json field http_server.store.max_file_size, cannot be negative"))
 	}
@@ -48,14 +48,14 @@ func defaultHttpServerStoreFileLimits() *HttpServerStoreFileLimits {
 	}
 }
 
-func (config *HttpServerStoreFileLimits) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *HttpServerStoreFileLimits) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if result := config.ImageLimit.checkValid(logger); result.IsFail() {
 		return result
 	}
 	return ValidPass()
 }
 
-func (config *HttpServerStoreFileLimits) CheckLocalStore(_ log.LoggerInterface, localStore bool) *ValidResult {
+func (config *HttpServerStoreFileLimits) CheckLocalStore(_ logger.LoggerInterface, localStore bool) *ValidResult {
 	if !localStore {
 		return ValidPass()
 	}
@@ -68,7 +68,7 @@ func (config *HttpServerStoreFileLimits) CheckLocalStore(_ log.LoggerInterface, 
 	return ValidPass()
 }
 
-func (config *HttpServerStoreFileLimits) CreateDir(_ log.LoggerInterface, localRoot string, remoteRoot string) *ValidResult {
+func (config *HttpServerStoreFileLimits) CreateDir(_ logger.LoggerInterface, localRoot string, remoteRoot string) *ValidResult {
 	config.ImageLimit.LocalRootPath = localRoot
 	config.ImageLimit.RemoteRootPath = remoteRoot
 	if config.ImageLimit.StoreInServer {

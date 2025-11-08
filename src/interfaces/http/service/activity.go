@@ -2,7 +2,7 @@
 package service
 
 import (
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 )
 
 type ActivityModel struct {
@@ -66,7 +66,7 @@ type RequestGetActivities struct {
 	Time string `query:"time"`
 }
 
-type ResponseGetActivities []*operation.Activity
+type ResponseGetActivities []*entity.Activity
 
 type RequestGetActivitiesPage struct {
 	JwtHeader
@@ -75,22 +75,22 @@ type RequestGetActivitiesPage struct {
 }
 
 type ResponseGetActivitiesPage struct {
-	Items    []*operation.Activity `json:"items"`
-	Page     int                   `json:"page"`
-	PageSize int                   `json:"page_size"`
-	Total    int64                 `json:"total"`
+	Items    []*entity.Activity `json:"items"`
+	Page     int                `json:"page"`
+	PageSize int                `json:"page_size"`
+	Total    int64              `json:"total"`
 }
 
 type RequestActivityInfo struct {
 	ActivityId uint `param:"activity_id"`
 }
 
-type ResponseActivityInfo operation.Activity
+type ResponseActivityInfo entity.Activity
 
 type RequestAddActivity struct {
 	JwtHeader
 	EchoContentHeader
-	*operation.Activity
+	*entity.Activity
 }
 
 type ResponseAddActivity bool
@@ -138,7 +138,7 @@ type ResponsePilotLeave bool
 type RequestEditActivity struct {
 	JwtHeader
 	EchoContentHeader
-	*operation.Activity
+	*entity.Activity
 }
 
 type ResponseEditActivity bool

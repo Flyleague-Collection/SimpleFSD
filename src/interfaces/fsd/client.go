@@ -4,7 +4,7 @@ package fsd
 import (
 	"errors"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 )
 
 type Callback func()
@@ -48,13 +48,13 @@ type ClientInterface interface {
 	RealName() string
 	Position() [4]Position
 	VisualRange() float64
-	SetUser(user *operation.User)
+	SetUser(user *entity.User)
 	SetSimType(simType int)
-	FlightPlan() *operation.FlightPlan
-	User() *operation.User
+	FlightPlan() *entity.FlightPlan
+	User() *entity.User
 	Frequency() int
 	AtisInfo() []string
-	History() *operation.History
+	History() *entity.History
 	Transponder() string
 	Altitude() int
 	GroundSpeed() int
@@ -67,7 +67,7 @@ type ClientInterface interface {
 	SetRating(rating Rating)
 	SetRealName(realName string)
 	ClearFlightPlan()
-	SetFlightPlan(flightPlan *operation.FlightPlan)
+	SetFlightPlan(flightPlan *entity.FlightPlan)
 	SetDeleteCallback(deleteCallback Callback)
 	SetDisconnectCallback(disconnectCallback Callback)
 	SetReconnectCallback(reconnectCallback Callback)

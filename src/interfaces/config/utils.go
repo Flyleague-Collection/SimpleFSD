@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/global"
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 	"github.com/half-nothing/simple-fsd/src/utils"
 )
 
@@ -29,7 +29,7 @@ func createFileWithContent(filePath string, content []byte) error {
 	return os.WriteFile(filePath, content, global.DefaultFilePermissions)
 }
 
-func cachedContent(logger log.LoggerInterface, filePath, url string) ([]byte, error) {
+func cachedContent(logger logger.LoggerInterface, filePath, url string) ([]byte, error) {
 	if content, err := os.ReadFile(filePath); err == nil {
 		return content, nil
 	} else if !os.IsNotExist(err) {

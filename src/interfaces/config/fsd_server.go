@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/global"
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type FSDServerConfig struct {
@@ -54,7 +54,7 @@ func defaultFSDServerConfig() *FSDServerConfig {
 	}
 }
 
-func (config *FSDServerConfig) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *FSDServerConfig) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if config.MaxBroadcastWorkers > runtime.NumCPU()*50 {
 		config.MaxBroadcastWorkers = runtime.NumCPU() * 50
 	}

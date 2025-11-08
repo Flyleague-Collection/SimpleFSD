@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type VoiceServerConfig struct {
@@ -40,7 +40,7 @@ func defaultVoiceServerConfig() *VoiceServerConfig {
 	}
 }
 
-func (config *VoiceServerConfig) checkValid(_ log.LoggerInterface) *ValidResult {
+func (config *VoiceServerConfig) checkValid(_ logger.LoggerInterface) *ValidResult {
 	if config.Enabled {
 		if result := checkPort(config.TCPPort); result.IsFail() {
 			return result

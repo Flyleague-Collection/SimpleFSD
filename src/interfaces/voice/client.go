@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/fsd"
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type Transmitter struct {
@@ -24,7 +24,7 @@ type ClientInfo struct {
 	Cid              int
 	Callsign         string
 	Client           fsd.ClientInterface
-	Logger           log.LoggerInterface
+	Logger           logger.LoggerInterface
 	TCPConn          net.Conn
 	Decoder          *json.Decoder
 	Encoder          *json.Encoder
@@ -34,7 +34,7 @@ type ClientInfo struct {
 }
 
 func NewClientInfo(
-	logger log.LoggerInterface,
+	logger logger.LoggerInterface,
 	cid int,
 	callsign string,
 	conn net.Conn,

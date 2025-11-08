@@ -8,7 +8,7 @@ import (
 	"net/url"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/global"
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -88,7 +88,7 @@ func defaultEmailTemplateConfig() *EmailTemplateConfigs {
 }
 
 func validateTemplate(
-	logger log.LoggerInterface,
+	logger logger.LoggerInterface,
 	emailTemplate *EmailTemplateConfig,
 	urlPath string,
 	tplName string,
@@ -117,7 +117,7 @@ func validateTemplate(
 	return nil
 }
 
-func (config *EmailTemplateConfigs) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *EmailTemplateConfigs) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if !config.VerifyCodeEmail.Enable {
 		return ValidFail(errors.New("verify code email can not be disabled"))
 	}

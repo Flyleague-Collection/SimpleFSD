@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type Config struct {
@@ -30,7 +30,7 @@ func DefaultConfig() *Config {
 
 var ErrVersionUnmatch = errors.New("version mismatch")
 
-func (c *Config) CheckValid(logger log.LoggerInterface) *ValidResult {
+func (c *Config) CheckValid(logger logger.LoggerInterface) *ValidResult {
 	if version, err := newVersion(c.ConfigVersion); err != nil {
 		return ValidFailWith(errors.New("version string parse fail"), err)
 	} else if result := ConfVersion.checkVersion(version); result != AllMatch {

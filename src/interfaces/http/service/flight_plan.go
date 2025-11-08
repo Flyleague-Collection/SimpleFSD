@@ -1,7 +1,9 @@
 // Package service
 package service
 
-import "github.com/half-nothing/simple-fsd/src/interfaces/operation"
+import (
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+)
 
 var (
 	ErrFlightPlanNotFound       = NewApiStatus("FLIGHT_PLAN_NOT_FOUND", "飞行计划不存在", NotFound)
@@ -26,7 +28,7 @@ type FlightPlanServiceInterface interface {
 
 type RequestSubmitFlightPlan struct {
 	JwtHeader
-	*operation.FlightPlan
+	*entity.FlightPlan
 }
 
 type ResponseSubmitFlightPlan bool
@@ -36,7 +38,7 @@ type RequestGetFlightPlan struct {
 }
 
 type ResponseGetFlightPlan struct {
-	*operation.FlightPlan
+	*entity.FlightPlan
 }
 
 type RequestGetFlightPlans struct {
@@ -46,10 +48,10 @@ type RequestGetFlightPlans struct {
 }
 
 type ResponseGetFlightPlans struct {
-	Items    []*operation.FlightPlan `json:"items"`
-	Page     int                     `json:"page"`
-	PageSize int                     `json:"page_size"`
-	Total    int64                   `json:"total"`
+	Items    []*entity.FlightPlan `json:"items"`
+	Page     int                  `json:"page"`
+	PageSize int                  `json:"page_size"`
+	Total    int64                `json:"total"`
 }
 
 type RequestDeleteSelfFlightPlan struct {

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type MetarSourceType string
@@ -43,7 +43,7 @@ func defaultMetarSources() MetarSources {
 	}
 }
 
-func (config MetarSources) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config MetarSources) checkValid(logger logger.LoggerInterface) *ValidResult {
 	for _, metarSource := range config {
 		metarSource.MetarSourceType = MetarSourceType(strings.ToLower(metarSource.ReturnType))
 		if !slices.Contains(allowedMetarSources, metarSource.MetarSourceType) {

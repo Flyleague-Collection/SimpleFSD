@@ -4,7 +4,7 @@ package config
 import (
 	"errors"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,7 +20,7 @@ func defaultOtherConfig() *GeneralConfig {
 	}
 }
 
-func (config *GeneralConfig) checkValid(_ log.LoggerInterface) *ValidResult {
+func (config *GeneralConfig) checkValid(_ logger.LoggerInterface) *ValidResult {
 	if config.BcryptCost < bcrypt.MinCost || config.BcryptCost > bcrypt.MaxCost {
 		return ValidFail(errors.New("bcrypt_cost out of range, must between 4 and 31"))
 	}

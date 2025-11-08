@@ -1,7 +1,9 @@
 // Package service
 package service
 
-import "github.com/half-nothing/simple-fsd/src/interfaces/operation"
+import (
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+)
 
 var (
 	SuccessGetAuditLog          = NewApiStatus("GET_AUDIT_LOG", "成功获取审计日志", Ok)
@@ -20,10 +22,10 @@ type RequestGetAuditLog struct {
 }
 
 type ResponseGetAuditLog struct {
-	Items    []*operation.AuditLog `json:"items"`
-	Page     int                   `json:"page"`
-	PageSize int                   `json:"page_size"`
-	Total    int64                 `json:"total"`
+	Items    []*entity.AuditLog `json:"items"`
+	Page     int                `json:"page"`
+	PageSize int                `json:"page_size"`
+	Total    int64              `json:"total"`
 }
 
 type RequestLogUnlawfulOverreach struct {

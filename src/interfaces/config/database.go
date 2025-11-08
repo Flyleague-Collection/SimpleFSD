@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -55,7 +55,7 @@ func defaultDatabaseConfig() *DatabaseConfig {
 	}
 }
 
-func (config *DatabaseConfig) checkValid(_ log.LoggerInterface) *ValidResult {
+func (config *DatabaseConfig) checkValid(_ logger.LoggerInterface) *ValidResult {
 	config.DBType = DatabaseType(config.Type)
 	if !slices.Contains(allowedDatabaseType, config.DBType) {
 		return ValidFail(fmt.Errorf("database type %s is not allowed, support database is %v, please check the configuration file", config.DBType, allowedDatabaseType))
@@ -75,7 +75,7 @@ func (config *DatabaseConfig) checkValid(_ log.LoggerInterface) *ValidResult {
 	return ValidPass()
 }
 
-func (config *DatabaseConfig) GetConnection(logger log.LoggerInterface) gorm.Dialector {
+func (config *DatabaseConfig) GetConnection(logger logger.LoggerInterface) gorm.Dialector {
 	switch config.DBType {
 	case MySQL:
 		return mySQLConnection(logger, config)
@@ -88,7 +88,7 @@ func (config *DatabaseConfig) GetConnection(logger log.LoggerInterface) gorm.Dia
 	}
 }
 
-func mySQLConnection(logger log.LoggerInterface, db *DatabaseConfig) gorm.Dialector {
+func mySQLConnection(logger logger.LoggerInterface, db *DatabaseConfig) gorm.Dialector {
 	var enableSSL string
 	if db.EnableSSL {
 		enableSSL = "true"
@@ -107,7 +107,7 @@ func mySQLConnection(logger log.LoggerInterface, db *DatabaseConfig) gorm.Dialec
 	return mysql.Open(dsn)
 }
 
-func postgreSQLConnection(logger log.LoggerInterface, db *DatabaseConfig) gorm.Dialector {
+func postgreSQLConnection(logger logger.LoggerInterface, db *DatabaseConfig) gorm.Dialector {
 	var enableSSL string
 	if db.EnableSSL {
 		enableSSL = "enable"
@@ -126,6 +126,6 @@ func postgreSQLConnection(logger log.LoggerInterface, db *DatabaseConfig) gorm.D
 	return postgres.Open(dsn)
 }
 
-func sqliteConnection(_ log.LoggerInterface, db *DatabaseConfig) gorm.Dialector {
+func sqliteConnection(_ logger.LoggerInterface, db *DatabaseConfig) gorm.Dialector {
 	return sqlite.Open(db.Database)
 }

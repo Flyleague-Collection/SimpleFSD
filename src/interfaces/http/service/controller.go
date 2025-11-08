@@ -4,7 +4,7 @@ package service
 import (
 	"time"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 )
 
 var (
@@ -35,10 +35,10 @@ type RequestControllerList struct {
 }
 
 type ResponseControllerList struct {
-	Items    []*operation.User `json:"items"`
-	Page     int               `json:"page"`
-	PageSize int               `json:"page_size"`
-	Total    int64             `json:"total"`
+	Items    []*entity.User `json:"items"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
+	Total    int64          `json:"total"`
 }
 
 type RequestGetCurrentControllerRecord struct {
@@ -48,10 +48,10 @@ type RequestGetCurrentControllerRecord struct {
 }
 
 type ResponseGetCurrentControllerRecord struct {
-	Items    []*operation.ControllerRecord `json:"items"`
-	Page     int                           `json:"page"`
-	PageSize int                           `json:"page_size"`
-	Total    int64                         `json:"total"`
+	Items    []*entity.ControllerRecord `json:"items"`
+	Page     int                        `json:"page"`
+	PageSize int                        `json:"page_size"`
+	Total    int64                      `json:"total"`
 }
 
 type RequestGetControllerRecord struct {
@@ -62,10 +62,10 @@ type RequestGetControllerRecord struct {
 }
 
 type ResponseGetControllerRecord struct {
-	Items    []*operation.ControllerRecord `json:"items"`
-	Page     int                           `json:"page"`
-	PageSize int                           `json:"page_size"`
-	Total    int64                         `json:"total"`
+	Items    []*entity.ControllerRecord `json:"items"`
+	Page     int                        `json:"page"`
+	PageSize int                        `json:"page_size"`
+	Total    int64                      `json:"total"`
 }
 
 type RequestUpdateControllerRating struct {

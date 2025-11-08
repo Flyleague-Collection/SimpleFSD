@@ -3,13 +3,13 @@ package fsd
 import (
 	"time"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type Heartbeat func() error
 
 type HeartbeatSender struct {
-	logger   log.LoggerInterface
+	logger   logger.LoggerInterface
 	interval time.Duration
 	ticker   *time.Ticker
 	stopChan chan struct{}
@@ -17,7 +17,7 @@ type HeartbeatSender struct {
 }
 
 func NewHeartbeatSender(
-	logger log.LoggerInterface,
+	logger logger.LoggerInterface,
 	interval time.Duration,
 	sendFunc Heartbeat,
 ) *HeartbeatSender {

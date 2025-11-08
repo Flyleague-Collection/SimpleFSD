@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/global"
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 	"gopkg.in/gomail.v2"
 )
 
@@ -35,7 +35,7 @@ func defaultEmailConfig() *EmailConfig {
 	}
 }
 
-func (config *EmailConfig) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *EmailConfig) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if duration, err := time.ParseDuration(config.VerifyExpiredTime); err != nil {
 		return ValidFailWith(errors.New("invalid json field http_server.email.verify_expired_time"), err)
 	} else {

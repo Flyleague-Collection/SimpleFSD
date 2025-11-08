@@ -7,7 +7,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/half-nothing/simple-fsd/src/interfaces/config"
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/repository"
 	"github.com/labstack/echo/v4"
 )
 
@@ -103,7 +104,7 @@ func (jwt *JwtHeader) SetPermission(permission uint64) { jwt.Permission = permis
 
 func (jwt *JwtHeader) SetRating(rating int) { jwt.Rating = rating }
 
-func NewClaims(config *config.JWTConfig, user *operation.User, flushToken bool) *Claims {
+func NewClaims(config *config.JWTConfig, user *entity.User, flushToken bool) *Claims {
 	expiredDuration := config.ExpiresDuration
 	if flushToken {
 		expiredDuration += config.RefreshDuration
@@ -126,7 +127,7 @@ func NewClaims(config *config.JWTConfig, user *operation.User, flushToken bool) 
 	}
 }
 
-func NewFsdClaims(config *config.JWTConfig, user *operation.User) *FsdClaims {
+func NewFsdClaims(config *config.JWTConfig, user *entity.User) *FsdClaims {
 	return &FsdClaims{
 		ControllerRating: user.Rating,
 		PilotRating:      0,
@@ -193,33 +194,33 @@ func NewApiResponse[T any](codeStatus *ApiStatus, data *T) *ApiResponse[T] {
 
 func CheckDatabaseError[T any](err error) *ApiResponse[T] {
 	switch {
-	case errors.Is(err, operation.ErrIdentifierCheck):
+	case errors.Is(err, entity.ErrIdentifierCheck):
 		return NewApiResponse[T](ErrRegisterFail, nil)
-	case errors.Is(err, operation.ErrIdentifierTaken):
+	case errors.Is(err, entity.ErrIdentifierTaken):
 		return NewApiResponse[T](ErrIdentifierTaken, nil)
-	case errors.Is(err, operation.ErrUserNotFound):
+	case errors.Is(err, entity.ErrUserNotFound):
 		return NewApiResponse[T](ErrUserNotFound, nil)
-	case errors.Is(err, operation.ErrActivityNotFound):
+	case errors.Is(err, repository.ErrActivityNotFound):
 		return NewApiResponse[T](ErrActivityNotFound, nil)
-	case errors.Is(err, operation.ErrFlightPlanNotFound):
+	case errors.Is(err, entity.ErrFlightPlanNotFound):
 		return NewApiResponse[T](ErrFlightPlanNotFound, nil)
-	case errors.Is(err, operation.ErrTicketNotFound):
+	case errors.Is(err, entity.ErrTicketNotFound):
 		return NewApiResponse[T](ErrTicketNotFound, nil)
-	case errors.Is(err, operation.ErrTicketAlreadyClosed):
+	case errors.Is(err, entity.ErrTicketAlreadyClosed):
 		return NewApiResponse[T](ErrTicketAlreadyClosed, nil)
-	case errors.Is(err, operation.ErrFacilityNotFound):
+	case errors.Is(err, repository.ErrFacilityNotFound):
 		return NewApiResponse[T](ErrFacilityNotFound, nil)
-	case errors.Is(err, operation.ErrActivityHasClosed):
+	case errors.Is(err, repository.ErrActivityHasClosed):
 		return NewApiResponse[T](ErrActivityLocked, nil)
-	case errors.Is(err, operation.ErrActivityIdMismatch):
+	case errors.Is(err, repository.ErrActivityIdMismatch):
 		return NewApiResponse[T](ErrActivityIdMismatch, nil)
-	case errors.Is(err, operation.ErrControllerRecordNotFound):
+	case errors.Is(err, entity.ErrControllerRecordNotFound):
 		return NewApiResponse[T](ErrRecordNotFound, nil)
-	case errors.Is(err, operation.ErrApplicationNotFound):
+	case errors.Is(err, entity.ErrApplicationNotFound):
 		return NewApiResponse[T](ErrApplicationNotFound, nil)
-	case errors.Is(err, operation.ErrApplicationAlreadyExists):
+	case errors.Is(err, entity.ErrApplicationAlreadyExists):
 		return NewApiResponse[T](ErrApplicationAlreadyExists, nil)
-	case errors.Is(err, operation.ErrAnnouncementNotFound):
+	case errors.Is(err, entity.ErrAnnouncementNotFound):
 		return NewApiResponse[T](ErrAnnouncementNotFound, nil)
 	case err != nil:
 		return NewApiResponse[T](ErrDatabaseFail, nil)
@@ -228,11 +229,11 @@ func CheckDatabaseError[T any](err error) *ApiResponse[T] {
 	}
 }
 
-func CheckPermission[T any](permission uint64, perm operation.Permission) *ApiResponse[T] {
+func CheckPermission[T any](permission uint64, perm entity.Permission) *ApiResponse[T] {
 	if permission <= 0 {
 		return NewApiResponse[T](ErrNoPermission, nil)
 	}
-	userPermission := operation.Permission(permission)
+	userPermission := entity.Permission(permission)
 	if !userPermission.HasPermission(perm) {
 		return NewApiResponse[T](ErrNoPermission, nil)
 	}
@@ -298,12 +299,12 @@ func (callFunc *CallDatabaseFuncWithoutRet[T]) CallDBFuncWithoutRet(fc func() er
 }
 
 func GetTargetUserAndCheckPermissionFromDatabase[T any](
-	userOperation operation.UserOperationInterface,
+	userOperation entity.UserOperationInterface,
 	uid uint,
 	targetUid uint,
-	perm operation.Permission,
-) (user *operation.User, targetUser *operation.User, response *ApiResponse[T]) {
-	if user, response = CallDBFunc[*operation.User, T](func() (*operation.User, error) {
+	perm entity.Permission,
+) (user *entity.User, targetUser *entity.User, response *ApiResponse[T]) {
+	if user, response = CallDBFunc[*entity.User, T](func() (*entity.User, error) {
 		return userOperation.GetUserByUid(uid)
 	}); response != nil {
 		return
@@ -311,18 +312,18 @@ func GetTargetUserAndCheckPermissionFromDatabase[T any](
 	if response = CheckPermission[T](user.Permission, perm); response != nil {
 		return
 	}
-	targetUser, response = CallDBFunc[*operation.User, T](func() (*operation.User, error) {
+	targetUser, response = CallDBFunc[*entity.User, T](func() (*entity.User, error) {
 		return userOperation.GetUserByUid(targetUid)
 	})
 	return
 }
 
 func CheckPermissionFromDatabase[T any](
-	userOperation operation.UserOperationInterface,
+	userOperation entity.UserOperationInterface,
 	uid uint,
-	perm operation.Permission,
-) (user *operation.User, response *ApiResponse[T]) {
-	if user, response = CallDBFunc[*operation.User, T](func() (*operation.User, error) {
+	perm entity.Permission,
+) (user *entity.User, response *ApiResponse[T]) {
+	if user, response = CallDBFunc[*entity.User, T](func() (*entity.User, error) {
 		return userOperation.GetUserByUid(uid)
 	}); response != nil {
 		return

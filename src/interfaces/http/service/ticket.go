@@ -1,7 +1,9 @@
 // Package service
 package service
 
-import "github.com/half-nothing/simple-fsd/src/interfaces/operation"
+import (
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+)
 
 var (
 	ErrTicketNotFound      = NewApiStatus("TICKET_NOT_FOUND", "工单不存在", NotFound)
@@ -28,10 +30,10 @@ type RequestGetTickets struct {
 }
 
 type ResponseGetTickets struct {
-	Items    []*operation.Ticket `json:"items"`
-	Page     int                 `json:"page"`
-	PageSize int                 `json:"page_size"`
-	Total    int64               `json:"total"`
+	Items    []*entity.Ticket `json:"items"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"page_size"`
+	Total    int64            `json:"total"`
 }
 
 type RequestGetUserTickets struct {
@@ -41,10 +43,10 @@ type RequestGetUserTickets struct {
 }
 
 type ResponseGetUserTickets struct {
-	Items    []*operation.UserTicket `json:"items"`
-	Page     int                     `json:"page"`
-	PageSize int                     `json:"page_size"`
-	Total    int64                   `json:"total"`
+	Items    []*entity.UserTicket `json:"items"`
+	Page     int                  `json:"page"`
+	PageSize int                  `json:"page_size"`
+	Total    int64                `json:"total"`
 }
 
 type RequestCreateTicket struct {

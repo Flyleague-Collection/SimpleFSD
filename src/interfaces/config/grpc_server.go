@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type GRPCServerConfig struct {
@@ -27,7 +27,7 @@ func defaultGRPCServerConfig() *GRPCServerConfig {
 	}
 }
 
-func (config *GRPCServerConfig) checkValid(_ log.LoggerInterface) *ValidResult {
+func (config *GRPCServerConfig) checkValid(_ logger.LoggerInterface) *ValidResult {
 	if config.Enabled {
 		if result := checkPort(config.Port); result.IsFail() {
 			return result

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 	"github.com/thanhpk/randstr"
 )
 
@@ -25,7 +25,7 @@ func defaultJWTConfig() *JWTConfig {
 	}
 }
 
-func (config *JWTConfig) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *JWTConfig) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if duration, err := time.ParseDuration(config.ExpiresTime); err != nil {
 		return ValidFailWith(errors.New("invalid json field http_server.email.jwt_expires_time"), err)
 	} else {

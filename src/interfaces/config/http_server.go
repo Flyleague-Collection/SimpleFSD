@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type HttpServerConfig struct {
@@ -51,7 +51,7 @@ func (config *HttpServerConfig) FormatCallsign(cid int) string {
 	return fmt.Sprintf("%s%04d%s", config.ClientPrefix, cid, config.ClientSuffix)
 }
 
-func (config *HttpServerConfig) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *HttpServerConfig) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if config.Enabled {
 		if result := checkPort(config.Port); result.IsFail() {
 			return result

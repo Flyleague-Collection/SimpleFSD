@@ -2,7 +2,7 @@
 package service
 
 import (
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 	"github.com/labstack/echo/v4"
 )
 
@@ -69,9 +69,9 @@ type RequestUserLogin struct {
 }
 
 type ResponseUserLogin struct {
-	User       *operation.User `json:"user"`
-	Token      string          `json:"token"`
-	FlushToken string          `json:"flush_token"`
+	User       *entity.User `json:"user"`
+	Token      string       `json:"token"`
+	FlushToken string       `json:"flush_token"`
 }
 
 type RequestUserAvailability struct {
@@ -86,7 +86,7 @@ type RequestUserCurrentProfile struct {
 	JwtHeader
 }
 
-type ResponseUserCurrentProfile *operation.User
+type ResponseUserCurrentProfile *entity.User
 
 type RequestUserEditCurrentProfile struct {
 	JwtHeader
@@ -108,7 +108,7 @@ type RequestUserProfile struct {
 	TargetUid uint `param:"uid"`
 }
 
-type ResponseUserProfile *operation.User
+type ResponseUserProfile *entity.User
 
 type RequestUserList struct {
 	JwtHeader
@@ -117,10 +117,10 @@ type RequestUserList struct {
 }
 
 type ResponseUserList struct {
-	Items    []*operation.User `json:"items"`
-	Page     int               `json:"page"`
-	PageSize int               `json:"page_size"`
-	Total    int64             `json:"total"`
+	Items    []*entity.User `json:"items"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
+	Total    int64          `json:"total"`
 }
 
 type RequestUserEditProfile struct {
@@ -146,7 +146,7 @@ type RequestGetUserHistory struct {
 }
 
 type ResponseGetUserHistory struct {
-	*operation.UserHistory
+	*entity.UserHistory
 	TotalAtcTime   int `json:"total_atc_time"`
 	TotalPilotTime int `json:"total_pilot_time"`
 }
@@ -157,9 +157,9 @@ type RequestGetToken struct {
 }
 
 type ResponseGetToken struct {
-	User       *operation.User `json:"user"`
-	Token      string          `json:"token"`
-	FlushToken string          `json:"flush_token"`
+	User       *entity.User `json:"user"`
+	Token      string       `json:"token"`
+	FlushToken string       `json:"flush_token"`
 }
 
 type RequestResetUserPassword struct {

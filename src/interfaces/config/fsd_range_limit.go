@@ -2,7 +2,7 @@
 package config
 
 import (
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type FsdRangeLimit struct {
@@ -35,7 +35,7 @@ func defaultFsdRangeLimitConfig() *FsdRangeLimit {
 	}
 }
 
-func (config *FsdRangeLimit) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *FsdRangeLimit) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if config.Observer == 0 {
 		logger.Warn("Observer Range is 0, if you want to disable range limit, please set it to -1")
 		config.Observer = -1

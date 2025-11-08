@@ -1,7 +1,7 @@
 // Package config
 package config
 
-import "github.com/half-nothing/simple-fsd/src/interfaces/log"
+import "github.com/half-nothing/simple-fsd/src/interfaces/logger"
 
 type SSLConfig struct {
 	Enable          bool   `json:"enable"`
@@ -25,7 +25,7 @@ func defaultSSLConfig() *SSLConfig {
 	}
 }
 
-func (config *SSLConfig) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *SSLConfig) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if config.Enable {
 		if config.CertFile == "" || config.KeyFile == "" {
 			logger.WarnF("HTTPS server requires both cert and key files. Cert: %s, Key: %s. Falling back to HTTP", config.CertFile, config.KeyFile)

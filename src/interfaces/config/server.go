@@ -1,7 +1,7 @@
 // Package config
 package config
 
-import "github.com/half-nothing/simple-fsd/src/interfaces/log"
+import "github.com/half-nothing/simple-fsd/src/interfaces/logger"
 
 type ServerConfig struct {
 	General     *GeneralConfig     `json:"general"`
@@ -21,7 +21,7 @@ func defaultServerConfig() *ServerConfig {
 	}
 }
 
-func (config *ServerConfig) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *ServerConfig) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if result := config.General.checkValid(logger); result.IsFail() {
 		return result
 	}

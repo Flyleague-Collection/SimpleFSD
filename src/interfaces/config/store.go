@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/global"
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type HttpServerStore struct {
@@ -39,7 +39,7 @@ func defaultHttpServerStore() *HttpServerStore {
 	}
 }
 
-func (config *HttpServerStore) checkValid(logger log.LoggerInterface) *ValidResult {
+func (config *HttpServerStore) checkValid(logger logger.LoggerInterface) *ValidResult {
 	if result := config.FileLimit.checkValid(logger); result.IsFail() {
 		return result
 	}

@@ -2,7 +2,7 @@
 package config
 
 import (
-	"github.com/half-nothing/simple-fsd/src/interfaces/log"
+	"github.com/half-nothing/simple-fsd/src/interfaces/logger"
 )
 
 type NavigraphConfig struct {
@@ -17,6 +17,6 @@ func defaultNavigraphConfig() *NavigraphConfig {
 	}
 }
 
-func (config *NavigraphConfig) checkValid(_ log.LoggerInterface) *ValidResult {
+func (config *NavigraphConfig) checkValid(_ logger.LoggerInterface) *ValidResult {
 	return ValidPass()
 }

@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 	"github.com/half-nothing/simple-fsd/src/interfaces/queue"
 )
 
@@ -44,7 +44,7 @@ type LockChange struct {
 type FlushFlightPlan struct {
 	TargetCallsign string
 	TargetCid      int
-	FlightPlan     *operation.FlightPlan
+	FlightPlan     *entity.FlightPlan
 }
 
 type SendRawMessageData struct {
@@ -67,17 +67,17 @@ type OnlineGeneral struct {
 }
 
 type OnlinePilot struct {
-	Cid         int                   `json:"cid"`
-	Callsign    string                `json:"callsign"`
-	RealName    string                `json:"real_name"`
-	Latitude    float64               `json:"latitude"`
-	Longitude   float64               `json:"longitude"`
-	Transponder string                `json:"transponder"`
-	Heading     int                   `json:"heading"`
-	Altitude    int                   `json:"altitude"`
-	GroundSpeed int                   `json:"ground_speed"`
-	FlightPlan  *operation.FlightPlan `json:"flight_plan"`
-	LogonTime   string                `json:"logon_time"`
+	Cid         int                `json:"cid"`
+	Callsign    string             `json:"callsign"`
+	RealName    string             `json:"real_name"`
+	Latitude    float64            `json:"latitude"`
+	Longitude   float64            `json:"longitude"`
+	Transponder string             `json:"transponder"`
+	Heading     int                `json:"heading"`
+	Altitude    int                `json:"altitude"`
+	GroundSpeed int                `json:"ground_speed"`
+	FlightPlan  *entity.FlightPlan `json:"flight_plan"`
+	LogonTime   string             `json:"logon_time"`
 }
 
 type OnlineController struct {

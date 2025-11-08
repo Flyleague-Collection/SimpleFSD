@@ -4,7 +4,7 @@ package service
 import (
 	"time"
 
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 )
 
 var (
@@ -31,19 +31,19 @@ type RequestGetSelfApplication struct {
 	JwtHeader
 }
 
-type ResponseGetSelfApplication *operation.ControllerApplication
+type ResponseGetSelfApplication *entity.ControllerApplication
 
 type RequestGetApplications struct {
 	JwtHeader
 	PageArguments
 }
 
-type ResponseGetApplications *PageResponse[*operation.ControllerApplication]
+type ResponseGetApplications *PageResponse[*entity.ControllerApplication]
 
 type RequestSubmitControllerApplication struct {
 	JwtHeader
 	EchoContentHeader
-	*operation.ControllerApplication
+	*entity.ControllerApplication
 }
 
 type ResponseSubmitControllerApplication bool

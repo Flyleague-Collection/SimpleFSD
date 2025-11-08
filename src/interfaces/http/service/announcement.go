@@ -2,7 +2,7 @@
 package service
 
 import (
-	"github.com/half-nothing/simple-fsd/src/interfaces/operation"
+	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 )
 
 var (
@@ -27,19 +27,19 @@ type RequestGetAnnouncements struct {
 	PageArguments
 }
 
-type ResponseGetAnnouncements *PageResponse[*operation.UserAnnouncement]
+type ResponseGetAnnouncements *PageResponse[*entity.UserAnnouncement]
 
 type RequestGetDetailAnnouncements struct {
 	JwtHeader
 	PageArguments
 }
 
-type ResponseGetDetailAnnouncements *PageResponse[*operation.Announcement]
+type ResponseGetDetailAnnouncements *PageResponse[*entity.Announcement]
 
 type RequestPublishAnnouncement struct {
 	JwtHeader
 	EchoContentHeader
-	*operation.Announcement
+	*entity.Announcement
 }
 
 type ResponsePublishAnnouncement bool
@@ -48,7 +48,7 @@ type RequestEditAnnouncement struct {
 	JwtHeader
 	EchoContentHeader
 	AnnouncementId uint `param:"aid"`
-	*operation.Announcement
+	*entity.Announcement
 }
 
 type ResponseEditAnnouncement bool
