@@ -3,8 +3,6 @@ package entity
 
 import (
 	"time"
-
-	"github.com/half-nothing/simple-fsd/src/interfaces/database/DTO"
 )
 
 type Announcement struct {
@@ -20,15 +18,6 @@ type Announcement struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-func (announcement *Announcement) ToUserAnnouncementDTO() *DTO.UserAnnouncement {
-	return &DTO.UserAnnouncement{
-		ID:        announcement.ID,
-		Title:     announcement.Title,
-		Content:   announcement.Content,
-		Type:      announcement.Type,
-		Important: announcement.Important,
-		ForceShow: announcement.ForceShow,
-		CreatedAt: announcement.CreatedAt,
-		UpdatedAt: announcement.UpdatedAt,
-	}
+func (announcement *Announcement) GetId() uint {
+	return announcement.ID
 }
