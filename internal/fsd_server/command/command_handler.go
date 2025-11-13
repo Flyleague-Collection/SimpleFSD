@@ -314,7 +314,7 @@ func (content *CommandContent) sendFrequencyMessage(session SessionInterface, ta
 	}
 	frequency := utils.StrToInt(fmt.Sprintf("%d%s", 1, targetStation[1:]), -1)
 	if frequency == -1 {
-		return ResultError(Syntax, false, targetStation, fmt.Errorf("illegal frequency %s", targetStation))
+		return ResultError(Syntax, true, targetStation, fmt.Errorf("illegal frequency %s", targetStation))
 	}
 	if FrequencyValid(frequency) {
 		// 合法频率, 发给所有客户端
