@@ -210,7 +210,7 @@ func CheckDatabaseError[T any](err error) *ApiResponse[T] {
 		return NewApiResponse[T](ErrTicketAlreadyClosed, nil)
 	case errors.Is(err, repository.ErrFacilityNotFound):
 		return NewApiResponse[T](ErrFacilityNotFound, nil)
-	case errors.Is(err, repository.ErrActivityHasClosed):
+	case errors.Is(err, repository.ErrActivityEnded):
 		return NewApiResponse[T](ErrActivityLocked, nil)
 	case errors.Is(err, repository.ErrActivityIdMismatch):
 		return NewApiResponse[T](ErrActivityIdMismatch, nil)

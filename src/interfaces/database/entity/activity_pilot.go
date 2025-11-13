@@ -1,9 +1,7 @@
 // Package entity
 package entity
 
-import (
-	"time"
-)
+import "time"
 
 type ActivityPilot struct {
 	ID           uint      `gorm:"primarykey" json:"id"`
@@ -15,4 +13,8 @@ type ActivityPilot struct {
 	Status       int       `gorm:"default:0;not null" json:"status"`
 	CreatedAt    time.Time `json:"-"`
 	UpdatedAt    time.Time `json:"-"`
+}
+
+func (entity *ActivityPilot) GetId() uint {
+	return entity.ID
 }

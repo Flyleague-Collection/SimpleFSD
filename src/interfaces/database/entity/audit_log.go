@@ -8,6 +8,7 @@ type AuditLog struct {
 	CreatedAt     time.Time     `gorm:"not null" json:"time"`
 	EventType     string        `gorm:"index:eventType;not null" json:"event_type"`
 	Subject       int           `gorm:"index:Subject;not null" json:"subject"`
+	User          *User         `gorm:"foreignKey:Subject;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"user"`
 	Object        string        `gorm:"index:Object;not null" json:"object"`
 	Ip            string        `gorm:"not null" json:"ip"`
 	UserAgent     string        `gorm:"not null" json:"user_agent"`

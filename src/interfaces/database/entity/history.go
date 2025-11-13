@@ -4,8 +4,9 @@ package entity
 import "time"
 
 type History struct {
-	ID         uint      `gorm:"primarykey" json:"-"`
+	ID         uint      `gorm:"primarykey" json:"id"`
 	Cid        int       `gorm:"index;not null" json:"-"`
+	User       *User     `gorm:"foreignKey:Cid;references:Cid;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"user"`
 	Callsign   string    `gorm:"size:16;index;not null" json:"callsign"`
 	StartTime  time.Time `gorm:"not null" json:"start_time"`
 	EndTime    time.Time `gorm:"not null" json:"end_time"`

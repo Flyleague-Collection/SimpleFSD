@@ -1,6 +1,13 @@
 // Package repository
 package repository
 
+import "errors"
+
+var (
+	ErrArgument      = errors.New("argument error")
+	ErrDataConflicts = errors.New("data conflicts")
+)
+
 type DatabaseInterface interface {
 	GetUserRepository() UserInterface
 	GetTicketRepository() TicketInterface

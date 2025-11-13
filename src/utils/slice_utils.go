@@ -14,6 +14,10 @@ func (operation *SliceOperation[T]) Append(element T) *SliceOperation[T] {
 	return operation
 }
 
+func (operation *SliceOperation[T]) Clone() *SliceOperation[T] {
+	return NewSliceOperation(operation.value)
+}
+
 func (operation *SliceOperation[T]) Value() []T { return operation.value }
 
 func (operation *SliceOperation[T]) Find(comparator func(element T) bool) T {
@@ -25,14 +29,18 @@ func (operation *SliceOperation[T]) Filter(filter func(element T) bool) *SliceOp
 	return operation
 }
 
-func (operation *SliceOperation[T]) Map(mapper func(element *T)) *SliceOperation[T] {
+func (operation *SliceOperation[T]) Map(mapper func(element T)) *SliceOperation[T] {
 	Map(operation.value, mapper)
 	return operation
 }
 
-func (operation *SliceOperation[T]) ForEach(callback func(element *T)) *SliceOperation[T] {
+func (operation *SliceOperation[T]) ForEach(callback func(index int, element T)) *SliceOperation[T] {
 	ForEach(operation.value, callback)
 	return operation
+}
+
+func FilterNotNull[T any](element T) bool {
+	return element != nil
 }
 
 func ReverseForEach[T any](slice []T, f func(index int, value T)) {
@@ -61,14 +69,14 @@ func Filter[T any](src []T, filter func(element T) bool) (result []T) {
 	return
 }
 
-func Map[T any](src []T, mapper func(element *T)) {
+func Map[T any](src []T, mapper func(element T)) {
 	for _, v := range src {
-		mapper(&v)
+		mapper(v)
 	}
 }
 
-func ForEach[T any](src []T, callback func(element *T)) {
-	for _, v := range src {
-		callback(&v)
+func ForEach[T any](src []T, callback func(index int, element T)) {
+	for i, v := range src {
+		callback(i, v)
 	}
 }

@@ -1,5 +1,7 @@
 # SimpleFSD
 
+### *FSD自[bc47926]后开始重构，即自[bc47926]后的FSD不再向前兼容数据库*
+
 [![ReleaseCard]][Release]![ReleaseDataCard]![LastCommitCard]  
 ![BuildStateCard]![ProjectLanguageCard]![ProjectLicense]
 
@@ -61,3 +63,5 @@ Copyright © 2025 Half_nothing
 [Release]: https://www.github.com/Flyleague-Collection/SimpleFSD/releases/latest
 
 [WIKI]: https://docs.fsd.half-nothing.cn/
+
+[bc47926]: https://github.com/Flyleague-Collection/SimpleFSD/commit/bc479265b2fc29b838e5ebc99b17a7258a1f4b03
