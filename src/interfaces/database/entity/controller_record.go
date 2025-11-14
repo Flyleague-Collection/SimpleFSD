@@ -6,11 +6,15 @@ import (
 )
 
 type ControllerRecord struct {
-	ID          uint      `gorm:"primarykey" json:"id"`
-	Type        int       `gorm:"not null" json:"type"`
-	UserId      uint      `gorm:"index:Uid;not null" json:"uid"`
-	User        *User     `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade;" json:"user"`
-	OperatorCid int       `gorm:"index:OperatorCid;not null" json:"operator_cid"`
-	Content     string    `gorm:"not null" json:"content"`
-	CreatedAt   time.Time `gorm:"not null" json:"time"`
+	ID          uint      `gorm:"primarykey"`
+	Type        int       `gorm:"default:0;not null"`
+	UserId      uint      `gorm:"index:Uid;not null"`
+	User        *User     `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:cascade,OnDelete:cascade"`
+	OperatorCid int       `gorm:"index:OperatorCid;not null"`
+	Content     string    `gorm:"not null"`
+	CreatedAt   time.Time `gorm:"not null"`
+}
+
+func (record *ControllerRecord) GetId() uint {
+	return record.ID
 }
