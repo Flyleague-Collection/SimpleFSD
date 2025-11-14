@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+	"github.com/half-nothing/simple-fsd/src/interfaces/enum"
 )
 
 var (
@@ -29,29 +30,29 @@ var (
 	ErrControllerAlreadySign      = errors.New("you can not sign more than one facility")
 )
 
-type ActivityStatus *Enum[int]
+type ActivityStatus *enum.Enum[int]
 
 var (
-	ActivityStatusRegistering ActivityStatus = NewEnum(0, "报名中")
-	ActivityStatusInTheEvent  ActivityStatus = NewEnum(1, "活动中")
-	ActivityStatusEnded       ActivityStatus = NewEnum(2, "已结束")
+	ActivityStatusRegistering ActivityStatus = enum.New(0, "报名中")
+	ActivityStatusInTheEvent  ActivityStatus = enum.New(1, "活动中")
+	ActivityStatusEnded       ActivityStatus = enum.New(2, "已结束")
 )
 
-var ActivityStatusManager = NewEnumManager(
+var ActivityStatusManager = enum.NewManager(
 	ActivityStatusRegistering,
 	ActivityStatusInTheEvent,
 	ActivityStatusEnded,
 )
 
-type ActivityType *Enum[int]
+type ActivityType *enum.Enum[int]
 
 var (
-	ActivityTypeOneWay     ActivityType = NewEnum(0, "单向单站")
-	ActivityTypeBothWay    ActivityType = NewEnum(1, "双向双站")
-	ActivityTypeFIROpenDay ActivityType = NewEnum(2, "空域开放日")
+	ActivityTypeOneWay     ActivityType = enum.New(0, "单向单站")
+	ActivityTypeBothWay    ActivityType = enum.New(1, "双向双站")
+	ActivityTypeFIROpenDay ActivityType = enum.New(2, "空域开放日")
 )
 
-var ActivityTypeManager = NewEnumManager(
+var ActivityTypeManager = enum.NewManager(
 	ActivityTypeOneWay,
 	ActivityTypeBothWay,
 	ActivityTypeFIROpenDay,

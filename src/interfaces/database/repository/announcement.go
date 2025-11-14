@@ -5,17 +5,18 @@ import (
 	"errors"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+	"github.com/half-nothing/simple-fsd/src/interfaces/enum"
 )
 
-type AnnouncementType *Enum[int]
+type AnnouncementType *enum.Enum[int]
 
 var (
-	AnnouncementTypeNormal     AnnouncementType = NewEnum(0, "普通公告")
-	AnnouncementTypeController AnnouncementType = NewEnum(1, "空管中心公告")
-	AnnouncementTypeTechnical  AnnouncementType = NewEnum(2, "技术组公告")
+	AnnouncementTypeNormal     AnnouncementType = enum.New(0, "普通公告")
+	AnnouncementTypeController AnnouncementType = enum.New(1, "空管中心公告")
+	AnnouncementTypeTechnical  AnnouncementType = enum.New(2, "技术组公告")
 )
 
-var AnnouncementTypeManager = NewEnumManager(
+var AnnouncementTypeManager = enum.NewManager(
 	AnnouncementTypeNormal,
 	AnnouncementTypeController,
 	AnnouncementTypeTechnical,

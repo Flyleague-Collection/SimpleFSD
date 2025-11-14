@@ -3,18 +3,19 @@ package repository
 
 import (
 	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+	"github.com/half-nothing/simple-fsd/src/interfaces/enum"
 )
 
-type ActivityPilotStatus *Enum[int]
+type ActivityPilotStatus *enum.Enum[int]
 
 var (
-	ActivityPilotStatusSigned    ActivityPilotStatus = NewEnum(0, "报名")
-	ActivityPilotStatusClearance ActivityPilotStatus = NewEnum(1, "放行")
-	ActivityPilotStatusTakeoff   ActivityPilotStatus = NewEnum(2, "起飞")
-	ActivityPilotStatusLanding   ActivityPilotStatus = NewEnum(3, "着陆")
+	ActivityPilotStatusSigned    ActivityPilotStatus = enum.New(0, "报名")
+	ActivityPilotStatusClearance ActivityPilotStatus = enum.New(1, "放行")
+	ActivityPilotStatusTakeoff   ActivityPilotStatus = enum.New(2, "起飞")
+	ActivityPilotStatusLanding   ActivityPilotStatus = enum.New(3, "着陆")
 )
 
-var ActivityPilotManager = NewEnumManager(
+var ActivityPilotManager = enum.NewManager(
 	ActivityPilotStatusSigned,
 	ActivityPilotStatusClearance,
 	ActivityPilotStatusTakeoff,

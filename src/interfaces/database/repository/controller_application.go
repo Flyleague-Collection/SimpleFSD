@@ -5,18 +5,19 @@ import (
 	"errors"
 
 	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
+	"github.com/half-nothing/simple-fsd/src/interfaces/enum"
 )
 
-type ApplicationStatus *Enum[int]
+type ApplicationStatus *enum.Enum[int]
 
 var (
-	ApplicationStatusSubmitted       ApplicationStatus = NewEnum(0, "已提交")
-	ApplicationStatusUnderProcessing ApplicationStatus = NewEnum(1, "处理中")
-	ApplicationStatusPassed          ApplicationStatus = NewEnum(2, "已通过")
-	ApplicationStatusRejected        ApplicationStatus = NewEnum(3, "已拒绝")
+	ApplicationStatusSubmitted       ApplicationStatus = enum.New(0, "已提交")
+	ApplicationStatusUnderProcessing ApplicationStatus = enum.New(1, "处理中")
+	ApplicationStatusPassed          ApplicationStatus = enum.New(2, "已通过")
+	ApplicationStatusRejected        ApplicationStatus = enum.New(3, "已拒绝")
 )
 
-var ApplicationStatusManager = NewEnumManager(
+var ApplicationStatusManager = enum.NewManager(
 	ApplicationStatusSubmitted,
 	ApplicationStatusUnderProcessing,
 	ApplicationStatusPassed,
