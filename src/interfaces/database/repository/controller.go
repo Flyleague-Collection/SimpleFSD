@@ -4,7 +4,7 @@ package repository
 import "github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 
 type ControllerInterface interface {
-	GetTotalControllers() (total int64, err error)
-	GetControllers(page, pageSize int) (users []*entity.User, total int64, err error)
-	SetControllerRating(user *entity.User, updateInfo map[string]interface{}) (err error)
+	GetTotal() (total int64, err error)
+	GetPage(page int, pageSize int) (users []*entity.User, total int64, err error)
+	SetRating(user *entity.User, updateInfo map[string]interface{}) error
 }

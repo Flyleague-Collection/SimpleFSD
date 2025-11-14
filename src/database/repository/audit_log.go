@@ -51,6 +51,9 @@ func (repo *AuditLogRepository) New(
 }
 
 func (repo *AuditLogRepository) GetById(id uint) (*entity.AuditLog, error) {
+	if id <= 0 {
+		return nil, repository.ErrArgument
+	}
 	auditLog := &entity.AuditLog{ID: id}
 	err := repo.query(func(tx *gorm.DB) error {
 		return tx.First(auditLog).Error

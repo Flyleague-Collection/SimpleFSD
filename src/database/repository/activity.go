@@ -97,6 +97,9 @@ func (repo *ActivityRepository) NewFIROpenDay(builder *repository.ActivityBuilde
 //   - *entity.Activity: 对应ID的活动实体指针
 //   - error: 查询过程中可能发生的错误，如果记录不存在则返回ErrActivityNotFound
 func (repo *ActivityRepository) GetById(id uint) (*entity.Activity, error) {
+	if id <= 0 {
+		return nil, repository.ErrActivityNotFound
+	}
 	activity := &entity.Activity{ID: id}
 
 	queryBuilder := NewQueryBuilder[*entity.Activity]()
