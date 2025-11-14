@@ -7,7 +7,7 @@ import (
 	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 )
 
-type AnnouncementType *Enum
+type AnnouncementType *Enum[int]
 
 var (
 	AnnouncementTypeNormal     AnnouncementType = NewEnum(0, "普通公告")

@@ -223,7 +223,7 @@ func (repo *ActivityControllerRepository) JoinActivity(
 		return repository.ErrActivityDeleted
 	}
 
-	if activity.Status == repository.ActivityStatusEnded.Index {
+	if activity.Status == repository.ActivityStatusEnded.Value {
 		return repository.ErrActivityEnded
 	}
 

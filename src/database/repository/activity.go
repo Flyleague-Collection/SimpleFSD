@@ -163,7 +163,7 @@ func (repo *ActivityRepository) GetPage(
 
 func (repo *ActivityRepository) UpdateStatus(activityId uint, status repository.ActivityStatus) error {
 	processFunc := func(tx *gorm.DB) error {
-		result := tx.Model(&entity.Activity{ID: activityId}).Update("status", status.Index)
+		result := tx.Model(&entity.Activity{ID: activityId}).Update("status", status.Value)
 		if result.RowsAffected == 0 {
 			return repository.ErrActivityNotFound
 		}

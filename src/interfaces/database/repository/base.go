@@ -8,13 +8,13 @@ type Base[T any] interface {
 	Update(entity T, updates map[string]interface{}) error
 }
 
-type Enum struct {
-	Index int    `json:"value"`
-	Name  string `json:"name"`
+type Enum[T any] struct {
+	Value T      `json:"value"`
+	Label string `json:"label"`
 }
 
-func NewEnum(index int, name string) *Enum {
-	return &Enum{Index: index, Name: name}
+func NewEnum[T any](value T, label string) *Enum[T] {
+	return &Enum[T]{Value: value, Label: label}
 }
 
 type Builder[T any] interface {

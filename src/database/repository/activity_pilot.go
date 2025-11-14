@@ -67,7 +67,7 @@ func (repo *ActivityPilotRepository) New(
 		UserId:       userId,
 		Callsign:     callsign,
 		AircraftType: aircraftType,
-		Status:       repository.ActivityPilotStatusSigned.Index,
+		Status:       repository.ActivityPilotStatusSigned.Value,
 	}
 }
 
@@ -244,7 +244,7 @@ func (repo *ActivityPilotRepository) Update(entity *entity.ActivityPilot, update
 // 返回值:
 //   - error: 更新过程中可能发生的错误，如实体为空、参数无效或数据库操作错误
 func (repo *ActivityPilotRepository) UpdateStatus(entity *entity.ActivityPilot, status repository.ActivityPilotStatus) error {
-	return repo.update(entity, map[string]interface{}{"status": status.Index})
+	return repo.update(entity, map[string]interface{}{"status": status.Value})
 }
 
 // JoinActivity 更新飞行员加入活动的信息

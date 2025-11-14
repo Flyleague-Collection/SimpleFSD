@@ -62,7 +62,7 @@ func (repo *AnnouncementRepository) New(
 	return &entity.Announcement{
 		PublisherId: user.ID,
 		Content:     content,
-		Type:        announcementType.Index,
+		Type:        announcementType.Value,
 		Important:   important,
 		ForceShow:   forceShow,
 	}

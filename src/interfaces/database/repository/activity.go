@@ -29,7 +29,7 @@ var (
 	ErrControllerAlreadySign      = errors.New("you can not sign more than one facility")
 )
 
-type ActivityStatus *Enum
+type ActivityStatus *Enum[int]
 
 var (
 	ActivityStatusRegistering ActivityStatus = NewEnum(0, "报名中")
@@ -54,7 +54,7 @@ func GetActivityStatus(index int) ActivityStatus {
 	return activityStatuses[index]
 }
 
-type ActivityType *Enum
+type ActivityType *Enum[int]
 
 var (
 	ActivityTypeOneWay     ActivityType = NewEnum(0, "单向单站")

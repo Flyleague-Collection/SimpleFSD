@@ -15,7 +15,7 @@ type ActivityBuilder struct {
 func NewActivityBuilder() *ActivityBuilder {
 	return &ActivityBuilder{
 		activity: &entity.Activity{
-			Status: ActivityStatusRegistering.Index,
+			Status: ActivityStatusRegistering.Value,
 		},
 	}
 }
@@ -23,7 +23,7 @@ func NewActivityBuilder() *ActivityBuilder {
 // 活动通用信息
 
 func (builder *ActivityBuilder) SetType(activityType ActivityType) *ActivityBuilder {
-	builder.activity.Type = activityType.Index
+	builder.activity.Type = activityType.Value
 	return builder
 }
 

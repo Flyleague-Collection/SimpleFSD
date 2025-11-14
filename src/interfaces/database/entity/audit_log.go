@@ -15,6 +15,10 @@ type AuditLog struct {
 	ChangeDetails *ChangeDetail `gorm:"type:text;serializer:json" json:"change_details"`
 }
 
+func (auditLog *AuditLog) GetId() uint {
+	return auditLog.ID
+}
+
 type ChangeDetail struct {
 	OldValue string `json:"old_value"`
 	NewValue string `json:"new_value"`

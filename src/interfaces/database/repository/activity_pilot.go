@@ -5,7 +5,7 @@ import (
 	"github.com/half-nothing/simple-fsd/src/interfaces/database/entity"
 )
 
-type ActivityPilotStatus *Enum
+type ActivityPilotStatus *Enum[int]
 
 var (
 	ActivityPilotStatusSigned    ActivityPilotStatus = NewEnum(0, "报名")
