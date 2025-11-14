@@ -15,22 +15,11 @@ var (
 	AnnouncementTypeTechnical  AnnouncementType = NewEnum(2, "技术组公告")
 )
 
-var announcementTypes = []AnnouncementType{
+var AnnouncementTypeManager = NewEnumManager(
 	AnnouncementTypeNormal,
 	AnnouncementTypeController,
 	AnnouncementTypeTechnical,
-}
-
-func IsValidAnnouncementType(val int) bool {
-	return 0 <= val && val < len(announcementTypes)
-}
-
-func GetAnnouncementType(val int) AnnouncementType {
-	if !IsValidAnnouncementType(val) {
-		return nil
-	}
-	return announcementTypes[val]
-}
+)
 
 var (
 	ErrAnnouncementNotFound = errors.New("announcement not found")

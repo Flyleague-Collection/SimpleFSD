@@ -37,22 +37,11 @@ var (
 	ActivityStatusEnded       ActivityStatus = NewEnum(2, "已结束")
 )
 
-var activityStatuses = []ActivityStatus{
+var ActivityStatusManager = NewEnumManager(
 	ActivityStatusRegistering,
 	ActivityStatusInTheEvent,
 	ActivityStatusEnded,
-}
-
-func IsValidActivityStatus(index int) bool {
-	return 0 <= index && index < len(activityStatuses)
-}
-
-func GetActivityStatus(index int) ActivityStatus {
-	if !IsValidActivityStatus(index) {
-		return nil
-	}
-	return activityStatuses[index]
-}
+)
 
 type ActivityType *Enum[int]
 
@@ -62,22 +51,11 @@ var (
 	ActivityTypeFIROpenDay ActivityType = NewEnum(2, "空域开放日")
 )
 
-var activityTypes = []ActivityType{
+var ActivityTypeManager = NewEnumManager(
 	ActivityTypeOneWay,
 	ActivityTypeBothWay,
 	ActivityTypeFIROpenDay,
-}
-
-func IsValidActivityType(index int) bool {
-	return 0 <= index && index < len(activityTypes)
-}
-
-func GetActivityType(index int) ActivityType {
-	if !IsValidActivityType(index) {
-		return nil
-	}
-	return activityTypes[index]
-}
+)
 
 // ActivityInterface 联飞活动操作接口定义
 type ActivityInterface interface {

@@ -14,23 +14,12 @@ var (
 	ActivityPilotStatusLanding   ActivityPilotStatus = NewEnum(3, "着陆")
 )
 
-var activityPilotStatuses = []ActivityPilotStatus{
+var ActivityPilotManager = NewEnumManager(
 	ActivityPilotStatusSigned,
 	ActivityPilotStatusClearance,
 	ActivityPilotStatusTakeoff,
 	ActivityPilotStatusLanding,
-}
-
-func IsValidActivityPilotStatus(index int) bool {
-	return 0 <= index && index < len(activityStatuses)
-}
-
-func GetActivityPilotStatus(index int) ActivityPilotStatus {
-	if !IsValidActivityPilotStatus(index) {
-		return nil
-	}
-	return activityPilotStatuses[index]
-}
+)
 
 type ActivityPilotInterface interface {
 	Base[*entity.ActivityPilot]
