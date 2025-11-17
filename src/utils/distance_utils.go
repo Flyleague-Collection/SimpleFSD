@@ -1,7 +1,9 @@
-package fsd
+package utils
 
 import (
 	"math"
+
+	"github.com/half-nothing/simple-fsd/src/interfaces/global"
 )
 
 const (
@@ -10,7 +12,7 @@ const (
 )
 
 // DistanceInNauticalMiles 使用球面余弦定理计算两点间距离
-func DistanceInNauticalMiles(p1, p2 Position) float64 {
+func DistanceInNauticalMiles(p1, p2 global.Position) float64 {
 	lat1 := p1.Latitude * math.Pi / 180
 	lon1 := p1.Longitude * math.Pi / 180
 	lat2 := p2.Latitude * math.Pi / 180
@@ -22,14 +24,14 @@ func DistanceInNauticalMiles(p1, p2 Position) float64 {
 }
 
 // FindNearestDistance 查找两组点之间的最近距离
-func FindNearestDistance(groupA, groupB [4]Position) (minDistance float64) {
+func FindNearestDistance(groupA, groupB [4]global.Position) (minDistance float64) {
 	minDistance = math.MaxFloat64
 	for _, a := range groupA {
-		if !a.PositionValid() {
+		if !a.Valid() {
 			continue
 		}
 		for _, b := range groupB {
-			if !b.PositionValid() {
+			if !b.Valid() {
 				continue
 			}
 			distance := DistanceInNauticalMiles(a, b)

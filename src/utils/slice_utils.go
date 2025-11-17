@@ -49,6 +49,15 @@ func ReverseForEach[T any](slice []T, f func(index int, value T)) {
 	}
 }
 
+func Any[T any](src []T, comparator func(element T) bool) bool {
+	for _, v := range src {
+		if comparator(v) {
+			return true
+		}
+	}
+	return false
+}
+
 func Find[T any](src []T, comparator func(element T) bool) T {
 	for _, v := range src {
 		if comparator(v) {
