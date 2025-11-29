@@ -60,4 +60,4 @@ Copyright © 2025 Half_nothing
 
 [Release]: https://www.github.com/Flyleague-Collection/SimpleFSD/releases/latest
 
-[WIKI]: https://docs.fsd.half-nothing.cn/
+[WIKI]: https://docs.half-nothing.cn/
